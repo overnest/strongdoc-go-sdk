@@ -1,0 +1,2 @@
+Introducing the First Privacy API
+Build data protection into any application or workflow, allowing both security and usability to co-exist in a privacy-focused world.
