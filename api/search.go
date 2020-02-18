@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
-	"github.com/strongdoc/client/go/client"
-	"github.com/strongdoc/client/go/proto"
+	"github.com/overnest/strongdoc-go/client"
+	"github.com/overnest/strongdoc-go/proto"
 )
 
 // Search searches the the terms in the uploaded or encrypted documents

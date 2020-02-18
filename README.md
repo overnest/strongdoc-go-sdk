@@ -1,1 +1,0 @@
-strongdoc-go

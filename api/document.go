@@ -8,8 +8,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/strongdoc/client/go/client"
-	"github.com/strongdoc/client/go/proto"
+	"github.com/overnest/strongdoc-go/client"
+	"github.com/overnest/strongdoc-go/proto"
 )
 
 // UploadDocument uploads a document to be stored by strongdoc
