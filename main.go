@@ -3,10 +3,11 @@ package main
 import (
 	"bytes"
 	"flag"
+	"github.com/overnest/strongdoc-go/api"
 	"io/ioutil"
 	"log"
 
-	"github.com/strongdoc/client/go/api"
+	//"github.com/overnest/strongdoc-go/client"
 )
 
 func main() {
