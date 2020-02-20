@@ -15,7 +15,7 @@ var (
 	port = flag.String("port", "9090", "The port to connect to")
 	//cert = flag.String("cert", "../ssca.cert.pem", "The root certificate used to connect to the server")
 	addr = flag.String("addr", "localhost", "The address of the server to connect to")
-	cert = flag.String("cert", "../localhost.crt", "The root certificate used to connect to the server")
+	cert = flag.String("cert", "./localhost.crt", "The root certificate used to connect to the server")
 )
 
 // TokenAuth is the auth token used to call gRPC APIs that requires auth

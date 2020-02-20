@@ -5,9 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"github.com/overnest/strongdoc-go/api"
-	"github.com/overnest/strongdoc-go/utils"
 	"io/ioutil"
 	"log"
+	"path"
+	"runtime"
+
 	//"github.com/overnest/strongdoc-go/client"
 )
 
@@ -33,7 +35,8 @@ func main() {
 		}
 	}()
 
-	introFilePath, err := utils.FetchFileLoc("../testDocuments/CompanyIntro.txt")
+	introFilePath, err := FetchFileLoc("./testDocuments/CompanyIntro.txt")
+	println("introFilePath: [%s]", introFilePath)
 	txtBytes, err := ioutil.ReadFile(introFilePath)
 	if err != nil {
 		log.Printf("read file err: %s", err)
@@ -74,7 +77,8 @@ func main() {
 		return
 	}
 
-	pdfFilePath, err := utils.FetchFileLoc("../testDocuments/BedMounts.pdf")
+	pdfFilePath, err := FetchFileLoc("./testDocuments/BedMounts.pdf")
+	println("pdfFilePath: [%s]", pdfFilePath)
 	pdfBytes, err := ioutil.ReadFile(pdfFilePath)
 	if err != nil {
 		log.Printf("read file err: %s", err)
@@ -108,4 +112,15 @@ func main() {
 		log.Printf("Can not remove document: %s", err)
 		return
 	}
+}
+
+func FetchFileLoc(relativeFilePath string) (string, error) {
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("cannot get runtime caller")
+	}
+	absFilepath := path.Join(path.Dir(filename), "..", relativeFilePath)
+	fmt.Printf("Returning Path [%v]\n", absFilepath)
+
+	return absFilepath, nil
 }
