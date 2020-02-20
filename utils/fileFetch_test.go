@@ -7,7 +7,7 @@ import (
 )
 
 func TestFileFetch(t *testing.T) {
-	path, _ := FetchFileLoc("../")
+	path, _ := FetchFileLoc("./")
 	f, _ := os.Open(path)
 	lst, _ := f.Readdirnames(0)
 	assert.Contains(t, lst, "go.mod")
