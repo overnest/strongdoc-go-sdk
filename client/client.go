@@ -3,19 +3,19 @@ package client
 import (
 	"context"
 	"flag"
-	"log"
-	"time"
-
+	"github.com/overnest/strongdoc-go/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"log"
+	"time"
 )
 
 var (
-	addr = flag.String("addr", "api.strongsalt.com", "The StrongSalt API server")
+	//addr = flag.String("addr", "api.strongsalt.com", "The StrongSalt API server")
 	port = flag.String("port", "9090", "The port to connect to")
-	cert = flag.String("cert", "./ssca.cert.pem", "The root certificate used to connect to the server")
-	//addr = flag.String("addr", "localhost", "The address of the server to connect to")
-	//cert = flag.String("cert", "./localhost.crt", "The root certificate used to connect to the server")
+	//cert = flag.String("cert", "../ssca.cert.pem", "The root certificate used to connect to the server")
+	addr = flag.String("addr", "localhost", "The address of the server to connect to")
+	cert = flag.String("cert", "../localhost.crt", "The root certificate used to connect to the server")
 )
 
 // TokenAuth is the auth token used to call gRPC APIs that requires auth
@@ -53,9 +53,9 @@ func (t *NoAuth) RequireTransportSecurity() bool {
 func ConnectToServerNoAuth() (conn *grpc.ClientConn, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-
+	certFilePath, err := utils.FetchFileLoc(*cert)
 	// Create the client TLS credentials
-	creds, err := credentials.NewClientTLSFromFile(*cert, "")
+	creds, err := credentials.NewClientTLSFromFile(certFilePath, "")
 	if err != nil {
 		log.Fatalf("could not load tls cert: %s", err)
 	}
@@ -72,8 +72,9 @@ func ConnectToServerWithAuth(token string) (conn *grpc.ClientConn, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
+	certFilePath, err := utils.FetchFileLoc(*cert)
 	// Create the client TLS credentials
-	creds, err := credentials.NewClientTLSFromFile(*cert, "")
+	creds, err := credentials.NewClientTLSFromFile(certFilePath, "")
 	if err != nil {
 		log.Fatalf("could not load tls cert: %s", err)
 	}

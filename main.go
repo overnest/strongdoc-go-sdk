@@ -3,10 +3,11 @@ package main
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"github.com/overnest/strongdoc-go/api"
+	"github.com/overnest/strongdoc-go/utils"
 	"io/ioutil"
 	"log"
-
 	//"github.com/overnest/strongdoc-go/client"
 )
 
@@ -19,13 +20,11 @@ func main() {
 		log.Printf("Failed to register organization: %s", err)
 		return
 	}
-
 	token, err := api.Login(adminID, api.AdminPassword, orgID)
 	if err != nil {
 		log.Printf("Failed to log in: %s", err)
 		return
 	}
-
 	defer func() {
 		_, err = api.RemoveOrganization(token)
 		if err != nil {
@@ -34,7 +33,12 @@ func main() {
 		}
 	}()
 
-	txtBytes, err := ioutil.ReadFile("./testDocuments/CompanyIntro.txt")
+	introFilePath, err := utils.FetchFileLoc("../testDocuments/CompanyIntro.txt")
+	txtBytes, err := ioutil.ReadFile(introFilePath)
+	if err != nil {
+		log.Printf("read file err: %s", err)
+		return
+	}
 	uploadDocID, err := api.UploadDocument(token, "CompanyIntro.txt", txtBytes)
 	if err != nil {
 		log.Printf("Can not upload document: %s", err)
@@ -57,6 +61,7 @@ func main() {
 		log.Printf("Can not download document: %s", err)
 		return
 	}
+	fmt.Printf("%v", downBytes)
 
 	if !bytes.Equal(txtBytes, downBytes) {
 		log.Printf("The downloaded content is different from uploaded")
@@ -69,7 +74,12 @@ func main() {
 		return
 	}
 
-	pdfBytes, err := ioutil.ReadFile("./testDocuments/BedMounts.pdf")
+	pdfFilePath, err := utils.FetchFileLoc("../testDocuments/BedMounts.pdf")
+	pdfBytes, err := ioutil.ReadFile(pdfFilePath)
+	if err != nil {
+		log.Printf("read file err: %s", err)
+		return
+	}
 	encryptDocID, ciphertext, err := api.EncryptDocument(token, "BedMounts.pdf", pdfBytes)
 	if err != nil {
 		log.Printf("Can not encrypt document: %s", err)
