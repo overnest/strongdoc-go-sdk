@@ -65,6 +65,8 @@ func UploadDocument(token string, docName string, plaintext []byte) (docID strin
 	return
 }
 
+// UploadDocumentStream accepts a reader and reads from it until it
+// ends. Incomplete downloads will not be completed.
 func UploadDocumentStream(token string, docName string, reader *bytes.Reader) (docID string, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
@@ -125,7 +127,8 @@ func UploadDocumentStream(token string, docName string, reader *bytes.Reader) (d
 	return
 }
 
-// DownloadDocument downloads a document stored in strongdoc
+// DownloadDocument downloads a document stored in Strongdoc-provided
+// storage.
 func DownloadDocument(token string, docID string) (plaintext []byte, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
@@ -315,7 +318,11 @@ func DecryptDocument(token, docID string, ciphertext []byte) (plaintext []byte, 
 	return
 }
 
-// RemoveDocument deletes the document from strongdoc storage
+// RemoveDocument deletes a document from Strongdoc-provided
+// storage. If you are a regular user, you may only remove
+// a document that belongs to you. If you are an administrator,
+// you can remove all the documents of the organization
+// for which you are an administrator.
 func RemoveDocument(token, docID string) error {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {

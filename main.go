@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"github.com/overnest/strongdoc-go/api"
 	"io/ioutil"
 	"log"
-	"path"
-	"runtime"
 
-	//"github.com/overnest/strongdoc-go/client"
+	"github.com/overnest/strongdoc-go/api"
 )
 
 func main() {
+
+	fmt.Printf("Hello!")
+
 	flag.Parse()
 
 	orgID, adminID, err := api.RegisterOrganization(api.Organization, "", api.AdminName,
@@ -22,11 +22,13 @@ func main() {
 		log.Printf("Failed to register organization: %s", err)
 		return
 	}
+
 	token, err := api.Login(adminID, api.AdminPassword, orgID)
 	if err != nil {
 		log.Printf("Failed to log in: %s", err)
 		return
 	}
+
 	defer func() {
 		_, err = api.RemoveOrganization(token)
 		if err != nil {
@@ -35,14 +37,10 @@ func main() {
 		}
 	}()
 
-	introFilePath, err := FetchFileLoc("./testDocuments/CompanyIntro.txt")
-	println("introFilePath: [%s]", introFilePath)
-	txtBytes, err := ioutil.ReadFile(introFilePath)
-	if err != nil {
-		log.Printf("read file err: %s", err)
-		return
-	}
-	uploadDocID, err := api.UploadDocument(token, "CompanyIntro.txt", txtBytes)
+	txtBytes, err := ioutil.ReadFile("/Users/jonathan/strongdoc-go/testDocuments/CompanyIntro.txt")
+	fmt.Printf("Printing txtBytes: [%v]", txtBytes)
+
+	uploadDocID, err := api.UploadDocumentStream(token, "CompanyIntro.txt", bytes.NewReader(txtBytes))
 	if err != nil {
 		log.Printf("Can not upload document: %s", err)
 		return
@@ -61,10 +59,24 @@ func main() {
 
 	downBytes, err := api.DownloadDocument(token, uploadDocID)
 	if err != nil {
-		log.Printf("Can not download document: %s", err)
 		return
 	}
-	fmt.Printf("%v", downBytes)
+
+	//downStream, err := api.DownloadDocumentStream(token, uploadDocID)
+	//if err != nil {
+	//	log.Printf("Can not download document: %s", err)
+	//	return
+	//}
+	//p := make([]byte, 100)
+	//var readingErr error = nil
+	//downBytes := make([]byte, 0)
+	//for readingErr != io.EOF {
+	//	if readingErr != nil {
+	//		return
+	//	}
+	//	_, readingErr = downStream.Read(p)
+	//	p = append(downBytes, p...)
+	//}
 
 	if !bytes.Equal(txtBytes, downBytes) {
 		log.Printf("The downloaded content is different from uploaded")
@@ -77,20 +89,15 @@ func main() {
 		return
 	}
 
-	pdfFilePath, err := FetchFileLoc("./testDocuments/BedMounts.pdf")
-	println("pdfFilePath: [%s]", pdfFilePath)
-	pdfBytes, err := ioutil.ReadFile(pdfFilePath)
-	if err != nil {
-		log.Printf("read file err: %s", err)
-		return
-	}
+	pdfBytes, err := ioutil.ReadFile("/Users/jonathan/strongdoc-go/testDocuments/BedMounts.pdf")
+	fmt.Printf("Printing pdfBytes: [%v]", pdfBytes)
 	encryptDocID, ciphertext, err := api.EncryptDocument(token, "BedMounts.pdf", pdfBytes)
 	if err != nil {
 		log.Printf("Can not encrypt document: %s", err)
 		return
 	}
 
-	hits, err = api.Search(token, "bed mounts")
+	//hits, err = api.Search(token, "bed mounts")
 	if err != nil {
 		log.Printf("Can not search documents: %s", err)
 		return
@@ -112,15 +119,4 @@ func main() {
 		log.Printf("Can not remove document: %s", err)
 		return
 	}
-}
-
-func FetchFileLoc(relativeFilePath string) (string, error) {
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("cannot get runtime caller")
-	}
-	absFilepath := path.Join(path.Dir(filename), "..", relativeFilePath)
-	fmt.Printf("Returning Path [%v]\n", absFilepath)
-
-	return absFilepath, nil
 }

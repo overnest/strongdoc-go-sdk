@@ -8,7 +8,8 @@ import (
 	"github.com/overnest/strongdoc-go/proto"
 )
 
-// RegisterOrganization creates an organization
+// RegisterOrganization creates an organization. The user who
+// created the organization is automatically an administrator.
 func RegisterOrganization(orgName, orgAddr, adminName, adminPassword, adminEmail string) (orgID, adminID string, err error) {
 	noAuthConn, err := client.ConnectToServerNoAuth()
 	if err != nil {
@@ -34,7 +35,10 @@ func RegisterOrganization(orgName, orgAddr, adminName, adminPassword, adminEmail
 	return resp.GetOrgID(), resp.GetUserID(), nil
 }
 
-// RemoveOrganization removes an organization
+// RemoveOrganization removes an organization, and all of its
+// users, documents, and other data that it owns.
+//
+// Requires administrator privileges.
 func RemoveOrganization(token string) (success bool, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {

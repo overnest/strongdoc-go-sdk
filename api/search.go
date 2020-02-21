@@ -8,7 +8,8 @@ import (
 	"github.com/overnest/strongdoc-go/proto"
 )
 
-// Search searches the the terms in the uploaded or encrypted documents
+// Search searches for the queries in the uploaded and encrypted documents.
+// The list of document IDs and scores are included in the result.
 func Search(token, query string) ([]*proto.DocumentResult, error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
