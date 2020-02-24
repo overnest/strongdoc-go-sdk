@@ -191,8 +191,10 @@ func (stream *S3Stream) Read(p []byte) (n int, err error) {
 		}
 		if rcvErr != nil && rcvErr != io.EOF {
 			return 0, fmt.Errorf("error reading from rpc connection: [%v]", rcvErr)
-		} else if rcvErr == io.EOF {
+		} else if rcvErr == io.EOF && bufReadErr == io.EOF {
 			return 0, io.EOF
+		} else if rcvErr == io.EOF {
+			return nPreRcvBytes, nil
 		}
 		plaintext := res.GetPlaintext()
 		stream.buffer.Write(plaintext)
@@ -204,14 +206,17 @@ func (stream *S3Stream) Read(p []byte) (n int, err error) {
 	}
 }
 
-
+// DownloadDocumentStream generates an S3Stream object, which implements
+// the io.Reader interface. It contains a client which maintains a
+// connection to Strongdoc-provided storage. Returns 0, EOF iff
+// the stream has been exhausted.
 func DownloadDocumentStream(token string, docID string) (s3stream S3Stream, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
+	//defer authConn.Close()
 	authClient := proto.NewStrongDocServiceClient(authConn)
 
 	req := &proto.DownloadDocStreamReq{DocID: docID}
