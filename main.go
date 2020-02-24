@@ -23,7 +23,7 @@ func main() {
 		return
 	}
 
-	token, err := api.Login(adminID, api.AdminPassword, orgID)
+	token, err := api.Login(api.AdminEmail, api.AdminPassword, api.Organization)
 	if err != nil {
 		log.Printf("Failed to log in: %s", err)
 		return

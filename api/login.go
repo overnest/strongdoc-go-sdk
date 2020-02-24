@@ -30,19 +30,20 @@ func Login(userID, password, orgID string) (string, error) {
 }
 
 // Logout retires the Bearer token in use, ending the session.
-func Logout(token string) (err error) {
+func Logout(token string) (status string, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
-		return err
+		return
 	}
 	defer authConn.Close()
 
 	authClient := proto.NewStrongDocServiceClient(authConn)
-	_, err = authClient.Logout(context.Background(), &proto.LogoutRequest{})
+	res, err := authClient.Logout(context.Background(), &proto.LogoutRequest{})
 	if err != nil {
-		return err
+		return
 	}
+	status = res.Status
 
-	return nil
+	return
 }

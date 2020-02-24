@@ -15,7 +15,5 @@ func FetchFileLoc(relativeFilePath string) (string, error) {
 		return "", fmt.Errorf("cannot get runtime caller")
 	}
 	absFilepath := path.Join(path.Dir(filename), "..", relativeFilePath)
-	fmt.Printf("Returning Path [%v]\n", absFilepath)
-
 	return absFilepath, nil
 }
