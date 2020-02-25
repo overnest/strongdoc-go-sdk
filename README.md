@@ -1,5 +1,5 @@
 # StrongDoc Go SDK by StrongSalt
-This is a Go SDK for the [StrongDoc](api.strongdoc.com "Strongdoc API") service, produced by StrongSalt. The API endpoint for Go clients of Strongdoc is implemented with GRPC.
+This is a Go SDK for the [StrongDoc](https://api.strongdoc.com "Strongdoc API") service, produced by StrongSalt. The API endpoint for Go clients of Strongdoc is implemented with GRPC.
 
 ## Important Links
 
