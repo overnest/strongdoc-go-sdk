@@ -13,13 +13,14 @@ func TestLogout(t *testing.T) {
 	pass := adminPassword
 	orgID := organization
 	adminID := adminEmail
-	//
-	//orgID, adminID, err := api.RegisterOrganization(organization, "", adminName,
-	//	adminPassword, adminEmail)
-	//if err != nil {
-	//	log.Printf("Failed to register organization: %s", err)
-	//	return
-	//}
+
+
+	_, _, err := api.RegisterOrganization(organization, "", adminName,
+		adminPassword, adminEmail)
+	if err != nil {
+		log.Printf("Failed to register organization: %s", err)
+		return
+	}
 
 	token, err := api.Login(adminID, pass, orgID)
 	if err != nil {

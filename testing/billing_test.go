@@ -8,20 +8,28 @@ import (
 	"testing"
 )
 
-func TestGetBillingDetails(t *testing.T) {
+func _TestGetBillingDetails(t *testing.T) {
 
-	//_, _, err := RegisterOrganization(Organization, "", AdminName,
-	//	AdminPassword, AdminEmail)
-	//if err != nil {
-	//	log.Printf("Failed to register organization: %s", err)
-	//	return
-	//}	
+	_, _, err := api.RegisterOrganization(organization, "", adminName,
+		adminPassword, adminEmail)
+	if err != nil {
+		log.Printf("Failed to register organization: %s", err)
+		return
+	}
 
 	token, err := api.Login(adminEmail, adminPassword, organization)
 	if err != nil {
 		log.Printf("Failed to log in: %s", err)
 		return
 	}
+
+	defer func() {
+		_, err = api.RemoveOrganization(token)
+		if err != nil {
+			log.Printf("Failed to log in: %s", err)
+			return
+		}
+	}()
 	
 	billingDetails := api.Billing(token)
 	tr, err := billingDetails.Traffic()

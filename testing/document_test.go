@@ -3,6 +3,7 @@ package testing
 import (
 	"bytes"
 	"fmt"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 	"github.com/overnest/strongdoc-go/api"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
@@ -11,13 +12,12 @@ import (
 )
 
 func TestRcv(t *testing.T) {
-
-	//_, _, err := RegisterOrganization(Organization, "", AdminName,
-	//	AdminPassword, AdminEmail)
-	//if err != nil {
-	//	log.Printf("Failed to register organization: %s", err)
-	//	return
-	//}
+	_, _, err := api.RegisterOrganization(organization, "", adminName,
+		adminPassword, adminEmail)
+	if err != nil {
+		log.Printf("Failed to register organization: %s", err)
+		return
+	}
 
 	token, err := api.Login(adminEmail, adminPassword, organization)
 	if err != nil {
@@ -25,8 +25,16 @@ func TestRcv(t *testing.T) {
 		return
 	}
 
+	defer func() {
+		_, err = api.RemoveOrganization(token)
+		if err != nil {
+			log.Printf("Failed to log in: %s", err)
+			return
+		}
+	}()
 
-	txtBytes, err := ioutil.ReadFile("/Users/jonathan/strongdoc-go/testDocuments/CompanyIntro.txt")
+	filePath, err := utils.FetchFileLoc("/testDocuments/CompanyIntro.txt")
+	txtBytes, err := ioutil.ReadFile(filePath)
 	fmt.Printf("Printing txtBytes: [%v]\n", txtBytes)
 
 	uploadDocID, err := api.UploadDocumentStream(token, "CompanyIntro.txt", bytes.NewReader(txtBytes))
