@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/overnest/strongdoc-go/api"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
 	"testing"
 )
 
-func TestUploadDocument(t *testing.T) {
+func TestRcv(t *testing.T) {
 
 	//_, _, err := RegisterOrganization(Organization, "", AdminName,
 	//	AdminPassword, AdminEmail)
@@ -26,7 +27,7 @@ func TestUploadDocument(t *testing.T) {
 
 
 	txtBytes, err := ioutil.ReadFile("/Users/jonathan/strongdoc-go/testDocuments/CompanyIntro.txt")
-	fmt.Printf("Printing txtBytes: [%v]", txtBytes)
+	fmt.Printf("Printing txtBytes: [%v]\n", txtBytes)
 
 	uploadDocID, err := api.UploadDocumentStream(token, "CompanyIntro.txt", bytes.NewReader(txtBytes))
 	if err != nil {
@@ -34,44 +35,24 @@ func TestUploadDocument(t *testing.T) {
 		return
 	}
 
-	hits, err := api.Search(token, "security")
-	if err != nil {
-		log.Printf("Can not search documents: %s", err)
-		return
-	}
+	downDocBytesNoStream, err := api.DownloadDocument(token, uploadDocID)
+	assert.Nil(t, err)
+	fmt.Printf("%s\n", string(downDocBytesNoStream))
 
-	if len(hits) != 1 {
-		log.Printf("Incorrect search results. Expecting 1, getting %v", len(hits))
-		return
-	}
 	s, err := api.DownloadDocumentStream(token, uploadDocID)
+	buf := make([]byte, 10)
+	downDocBytesStream := make([]byte,0)
+	for err == nil {
+		n, readErr := s.Read(buf)
+		err = readErr
+		downDocBytesStream = append(downDocBytesStream, buf[:n]...)
+	}
+	assert.Errorf(t, err, "EOF")
+	fmt.Printf("%s\n", string(downDocBytesStream))
 
-	p := make([]byte, 1000)
 
-	s.Read(p)
-	fmt.Println(p)
-
-
-	//downStream, err := api.DownloadDocumentStream(token, uploadDocID)
-	//if err != nil {
-	//	log.Printf("Can not download document: %s", err)
-	//	return
-	//}
-	//p := make([]byte, 100)
-	//var readingErr error = nil
-	//downBytes := make([]byte, 0)
-	//for readingErr != io.EOF {
-	//	if readingErr != nil {
-	//		return
-	//	}
-	//	_, readingErr = downStream.Read(p)
-	//	p = append(downBytes, p...)
-	//}
-	//
-	//if !bytes.Equal(txtBytes, downBytes) {
-	//	log.Printf("The downloaded content is different from uploaded")
-	//	return
-	//}
+	assert.True(t, bytes.Equal(downDocBytesStream, txtBytes))
+	assert.True(t, bytes.Equal(downDocBytesStream, downDocBytesNoStream))
 
 	err = api.RemoveDocument(token, uploadDocID)
 	if err != nil {

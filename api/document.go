@@ -13,7 +13,6 @@ import (
 )
 
 // UploadDocument uploads a document to Strongdoc-provided storage.
-// Returns a docID used to perform queries on it.
 func UploadDocument(token string, docName string, plaintext []byte) (docID string, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
@@ -233,7 +232,9 @@ func DownloadDocumentStream(token string, docID string) (s3stream S3Stream, err 
 	return s3stream, nil
 }
 
-// EncryptDocument encrypts a document with strongdoc, but does not store the actual document
+// EncryptDocument encrypts a document with Strongdoc
+// and returns the encrypted ciphertext. No data is ever
+// written to storage on Strongdoc servers.
 func EncryptDocument(token string, docName string, plaintext []byte) (docID string, ciphertext []byte, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
@@ -297,6 +298,10 @@ type encryptStream struct {
 	docId string
 }
 
+// EncryptDocument returns an object that implements io.Reader and io.Writer.
+// Write your document and Read the
+// returned encrypted ciphertext. No data is ever
+// written to storage on Strongdoc servers.
 func EncryptDocumentStream(token string, docName string) (ec encryptStream, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
@@ -335,7 +340,7 @@ func EncryptDocumentStream(token string, docName string) (ec encryptStream, err 
 func (stream *encryptStream) DocId() string {
 	return stream.docId
 }
-// BUG: for some reason, stream crashes when 0 bytes are
+// BUG: stream crashes when 0 bytes are
 // available in the stream.
 func (stream *encryptStream) Read(p []byte) (n int, err error) {
 	docID := stream.docId
@@ -440,7 +445,11 @@ func DecryptDocumentStream(token string, docId string) (ec decryptStream, err er
 func (stream *decryptStream) DocId() string {
 	return stream.docId
 }
-// BUG: for some reason, stream crashes when 0 bytes are
+// Read reads the length of the stream. It assumes that
+// the stream from server still has data or that the internal
+// buffer still has some data in it.
+//
+// BUG(derpyplops): for some reason, stream crashes when 0 bytes are
 // available in the stream.
 func (stream *decryptStream) Read(p []byte) (n int, err error) {
 	docID := stream.docId
@@ -475,15 +484,16 @@ func (stream *decryptStream) Read(p []byte) (n int, err error) {
 	}
 }
 
-func (stream *decryptStream) Write(plaintext []byte) (n int, err error) {
+// Write writes a stream of bytes that comprise the ciphertext to be decoded.
+func (stream *decryptStream) Write(cipherText []byte) (n int, err error) {
 	svc := *stream.stream
 	var blockSize int = 10000
-	for i := 0; i < len(plaintext); i += blockSize {
+	for i := 0; i < len(cipherText); i += blockSize {
 		var block []byte
-		if i+blockSize < len(plaintext) {
-			block = plaintext[i : i+blockSize]
+		if i+blockSize < len(cipherText) {
+			block = cipherText[i : i+blockSize]
 		} else {
-			block = plaintext[i:]
+			block = cipherText[i:]
 		}
 		n += len(block)
 		dataReq := &proto.DecryptDocStreamReq{
@@ -499,7 +509,8 @@ func (stream *decryptStream) Write(plaintext []byte) (n int, err error) {
 }
 
 
-// DecryptDocument encrypts a document with strongdoc. It requires original ciphertext, since the document is not stored
+// DecryptDocument encrypts a document with Strongdoc.
+// It requires original ciphertext, since the document is not stored
 func DecryptDocument(token, docID string, ciphertext []byte) (plaintext []byte, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
@@ -599,6 +610,8 @@ func ShareDocument(token, docId, userId string) (success bool, err error) {
 	return
 }
 
+// UnshareDocument rescinds permission earlier granted for other users
+// to access their documents.
 func UnshareDocument(token, docId, userId string) (count int64, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
@@ -622,6 +635,8 @@ type Documents struct {
 	protoDocs *[]*proto.ListDocumentsResponse_Document
 }
 
+// ListDocuments returns a slice of Document objects, representing
+// the documents accessible by the user.
 func ListDocuments(token string) (docs Documents, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
@@ -641,6 +656,7 @@ func ListDocuments(token string) (docs Documents, err error) {
 	return
 }
 
+// AddSharableOrg adds a sharable Organization.
 func AddSharableOrg(token, orgId string) (success bool, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
@@ -659,6 +675,7 @@ func AddSharableOrg(token, orgId string) (success bool, err error) {
 	return
 }
 
+// RemoveSharableOrg removes a sharable Organization.
 func RemoveSharableOrg(token, orgId string) (success bool, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
@@ -677,7 +694,7 @@ func RemoveSharableOrg(token, orgId string) (success bool, err error) {
 	return
 }
 
-
+// SetMultiLevelSharing sets MultiLevel Sharing.
 func SetMultiLevelSharing(token string, enable bool) (success bool, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
