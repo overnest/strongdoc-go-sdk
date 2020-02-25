@@ -290,35 +290,214 @@ func EncryptDocument(token string, docName string, plaintext []byte) (docID stri
 	return
 }
 
-type encryptDocumentStream struct {
+type encryptStream struct {
 	stream *proto.StrongDocService_EncryptDocumentStreamClient
-	buffer *bytes.Buffer
+	readBuffer *bytes.Buffer
+	writeBuffer *bytes.Buffer
 	docId string
 }
 
-//func EncryptDocumentStream(token string, docName string) (docID string, reader io.Reader, writer io.Writer, err error) {
-//	authConn, err := client.ConnectToServerWithAuth(token)
-//	if err != nil {
-//		log.Fatalf("Can not obtain auth connection %s", err)
-//		return
-//	}
-//	defer authConn.Close()
-//	authClient := proto.NewStrongDocServiceClient(authConn)
-//
-//	stream, err := authClient.EncryptDocumentStream(context.Background())
-//	if err != nil {
-//		return
-//	}
-//
-//	streamObj := encryptDocumentStream{
-//		stream: &stream,
-//		buffer: new(bytes.Buffer),
-//		docId:  "",
-//	}
-//
-//
-//	return
-//}
+func EncryptDocumentStream(token string, docName string) (ec encryptStream, err error) {
+	authConn, err := client.ConnectToServerWithAuth(token)
+	if err != nil {
+		log.Fatalf("Can not obtain auth connection %s", err)
+		return
+	}
+	authClient := proto.NewStrongDocServiceClient(authConn)
+
+	stream, err := authClient.EncryptDocumentStream(context.Background())
+	if err != nil {
+		return
+	}
+
+	docNameReq := &proto.EncryptDocStreamReq{
+		NameOrData: &proto.EncryptDocStreamReq_DocName{
+			DocName: docName}}
+	if err = stream.Send(docNameReq); err != nil {
+		return
+	}
+
+	res, err := stream.Recv()
+	if err != nil {
+		return
+	}
+
+	docId := res.GetDocID()
+
+	ec = encryptStream{
+		stream: &stream,
+		readBuffer: new(bytes.Buffer),
+		docId:  docId,
+	}
+	return
+}
+
+func (stream *encryptStream) DocId() string {
+	return stream.docId
+}
+// BUG: for some reason, stream crashes when 0 bytes are
+// available in the stream.
+func (stream *encryptStream) Read(p []byte) (n int, err error) {
+	docID := stream.docId
+	nPreRcvBytes, bufReadErr := stream.readBuffer.Read(p) // drain readBuffer first
+	if bufReadErr != nil && bufReadErr != io.EOF {
+		return 0, fmt.Errorf("readBuffer read err: [%v]", err)
+	}
+	nPostRcvBytes := 0
+	if nPreRcvBytes == len(p) { // p runs out
+		return nPreRcvBytes, nil
+	} else { // if readBuffer has been completely drained
+		svc := *stream.stream
+		res, rcvErr := svc.Recv() // refill it from stream
+		if res != nil && docID != res.GetDocID() {
+			rcvErr = fmt.Errorf("requested document %v, received document %v instead",
+				docID, res.GetDocID())
+		}
+		if rcvErr != nil && rcvErr != io.EOF {
+			return 0, fmt.Errorf("error reading from rpc connection: [%v]", rcvErr)
+		} else if rcvErr == io.EOF && bufReadErr == io.EOF {
+			return 0, io.EOF
+		} else if rcvErr == io.EOF {
+			return nPreRcvBytes, nil
+		}
+		cipherText := res.GetCiphertext()
+		stream.readBuffer.Write(cipherText)
+		nPostRcvBytes, err = stream.readBuffer.Read(p[nPreRcvBytes:]) // read remaining part of readBuffer.
+		if err != nil {
+			return 0, fmt.Errorf("readBuffer read err: [%v]", err)
+		}
+		return nPreRcvBytes + nPostRcvBytes, err
+	}
+}
+
+func (stream *encryptStream) Write(plaintext []byte) (n int, err error) {
+	svc := *stream.stream
+	var blockSize int = 10000
+	for i := 0; i < len(plaintext); i += blockSize {
+		var block []byte
+		if i+blockSize < len(plaintext) {
+			block = plaintext[i : i+blockSize]
+		} else {
+			block = plaintext[i:]
+		}
+		n += len(block)
+		dataReq := &proto.EncryptDocStreamReq{
+			NameOrData: &proto.EncryptDocStreamReq_Plaintext{
+				Plaintext: block,
+			},
+		}
+		if err = svc.Send(dataReq); err != nil {
+			return 0, fmt.Errorf("encryptStream.Write err: [%v]", err)
+		}
+	}
+	return n,nil
+}
+
+type decryptStream struct {
+	stream *proto.StrongDocService_DecryptDocumentStreamClient
+	readBuffer *bytes.Buffer
+	writeBuffer *bytes.Buffer
+	docId string
+}
+
+func DecryptDocumentStream(token string, docId string) (ec decryptStream, err error) {
+	authConn, err := client.ConnectToServerWithAuth(token)
+	if err != nil {
+		log.Fatalf("Can not obtain auth connection %s", err)
+		return
+	}
+	authClient := proto.NewStrongDocServiceClient(authConn)
+
+	stream, err := authClient.DecryptDocumentStream(context.Background())
+	if err != nil {
+		return
+	}
+
+	docIdReq := &proto.DecryptDocStreamReq{
+		IdOrData: &proto.DecryptDocStreamReq_DocID{
+			DocID: docId,
+		},
+	}
+	if err = stream.Send(docIdReq); err != nil {
+		return
+	}
+	res, err := stream.Recv()
+	if err != nil {
+		return
+	} else if res.DocID != docId {
+		err = fmt.Errorf("incorrect docId Recv'd")
+		return
+	}
+
+	ec = decryptStream{
+		stream: &stream,
+		readBuffer: new(bytes.Buffer),
+		docId:  docId,
+	}
+	return
+}
+
+func (stream *decryptStream) DocId() string {
+	return stream.docId
+}
+// BUG: for some reason, stream crashes when 0 bytes are
+// available in the stream.
+func (stream *decryptStream) Read(p []byte) (n int, err error) {
+	docID := stream.docId
+	nPreRcvBytes, bufReadErr := stream.readBuffer.Read(p) // drain readBuffer first
+	if bufReadErr != nil && bufReadErr != io.EOF {
+		return 0, fmt.Errorf("readBuffer read err: [%v]", err)
+	}
+	nPostRcvBytes := 0
+	if nPreRcvBytes == len(p) { // p runs out
+		return nPreRcvBytes, nil
+	} else { // if readBuffer has been completely drained
+		svc := *stream.stream
+		res, rcvErr := svc.Recv() // refill it from stream
+		if res != nil && docID != res.GetDocID() {
+			rcvErr = fmt.Errorf("requested document %v, received document %v instead",
+				docID, res.GetDocID())
+		}
+		if rcvErr != nil && rcvErr != io.EOF {
+			return 0, fmt.Errorf("error reading from rpc connection: [%v]", rcvErr)
+		} else if rcvErr == io.EOF && bufReadErr == io.EOF {
+			return 0, io.EOF
+		} else if rcvErr == io.EOF {
+			return nPreRcvBytes, nil
+		}
+		cipherText := res.GetPlaintext()
+		stream.readBuffer.Write(cipherText)
+		nPostRcvBytes, err = stream.readBuffer.Read(p[nPreRcvBytes:]) // read remaining part of readBuffer.
+		if err != nil {
+			return 0, fmt.Errorf("readBuffer read err: [%v]", err)
+		}
+		return nPreRcvBytes + nPostRcvBytes, err
+	}
+}
+
+func (stream *decryptStream) Write(plaintext []byte) (n int, err error) {
+	svc := *stream.stream
+	var blockSize int = 10000
+	for i := 0; i < len(plaintext); i += blockSize {
+		var block []byte
+		if i+blockSize < len(plaintext) {
+			block = plaintext[i : i+blockSize]
+		} else {
+			block = plaintext[i:]
+		}
+		n += len(block)
+		dataReq := &proto.DecryptDocStreamReq{
+			IdOrData: &proto.DecryptDocStreamReq_Ciphertext{
+				Ciphertext: block,
+			},
+		}
+		if err = svc.Send(dataReq); err != nil {
+			return 0, fmt.Errorf("deryptStream.Write err: [%v]", err)
+		}
+	}
+	return n,nil
+}
+
 
 // DecryptDocument encrypts a document with strongdoc. It requires original ciphertext, since the document is not stored
 func DecryptDocument(token, docID string, ciphertext []byte) (plaintext []byte, err error) {
@@ -517,6 +696,7 @@ func SetMultiLevelSharing(token string, enable bool) (success bool, err error) {
 	return
 }
 
+// GetDocumentsSize returns the size of all the documents of the organization.
 func GetDocumentsSize(token string) (size uint64, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
@@ -533,6 +713,7 @@ func GetDocumentsSize(token string) (size uint64, err error) {
 	return
 }
 
+// GetIndexSize returns the size of all the indexes of the organization.
 func GetIndexSize(token string) (size int64, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {

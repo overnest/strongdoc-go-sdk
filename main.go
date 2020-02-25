@@ -62,22 +62,6 @@ func main() {
 		return
 	}
 
-	//downStream, err := api.DownloadDocumentStream(token, uploadDocID)
-	//if err != nil {
-	//	log.Printf("Can not download document: %s", err)
-	//	return
-	//}
-	//p := make([]byte, 100)
-	//var readingErr error = nil
-	//downBytes := make([]byte, 0)
-	//for readingErr != io.EOF {
-	//	if readingErr != nil {
-	//		return
-	//	}
-	//	_, readingErr = downStream.Read(p)
-	//	p = append(downBytes, p...)
-	//}
-
 	if !bytes.Equal(txtBytes, downBytes) {
 		log.Printf("The downloaded content is different from uploaded")
 		return
@@ -91,6 +75,7 @@ func main() {
 
 	pdfBytes, err := ioutil.ReadFile("/Users/jonathan/strongdoc-go/testDocuments/BedMounts.pdf")
 	fmt.Printf("Printing pdfBytes: [%v]", pdfBytes)
+
 	encryptDocID, ciphertext, err := api.EncryptDocument(token, "BedMounts.pdf", pdfBytes)
 	if err != nil {
 		log.Printf("Can not encrypt document: %s", err)
