@@ -10,12 +10,12 @@ import (
 
 func TestLogout(t *testing.T) {
 
-	pass := api.AdminPassword
-	orgID := api.Organization
-	adminID := api.AdminEmail
+	pass := adminPassword
+	orgID := organization
+	adminID := adminEmail
 	//
-	//orgID, adminID, err := api.RegisterOrganization(api.Organization, "", api.AdminName,
-	//	api.AdminPassword, api.AdminEmail)
+	//orgID, adminID, err := api.RegisterOrganization(organization, "", adminName,
+	//	adminPassword, adminEmail)
 	//if err != nil {
 	//	log.Printf("Failed to register organization: %s", err)
 	//	return

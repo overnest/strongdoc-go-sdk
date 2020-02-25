@@ -20,7 +20,7 @@ func TestEncrypt(t *testing.T) {
 	//	return
 	//}
 
-	token, err := api.Login(api.AdminEmail, api.AdminPassword, api.Organization)
+	token, err := api.Login(adminEmail, adminPassword, organization)
 	if err != nil {
 		log.Printf("Failed to log in: %s", err)
 		return
