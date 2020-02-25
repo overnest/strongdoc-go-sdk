@@ -1,0 +1,24 @@
+# strongdoc-go-sdk
+The API endpoint for Go clients of Strongdoc, implemented with GRPC.
+
+## Important Links
+
+Documentation: [https://godoc.org/github.com/overnest/strongdoc-go-sdk/api](https://godoc.org/github.com/overnest/strongdoc-go-sdk/api "Strongsalt Go API Documentation")
+
+Website: [strongsalt.com](https://www.strongsalt.com "Strongsalt website")
+
+## Installation
+
+The API is available as a Go Module. You must first do:
+
+`go get github.com/overnest/strongdoc-go@v0.1.10`
+
+Then, import it into your files at the top of your files:
+
+```
+import (
+    // other imports
+    "github.com/overnest/strongdoc-go-sdk/api"`
+    // even more imports
+)
+```
