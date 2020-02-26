@@ -297,10 +297,9 @@ type encryptStream struct {
 	docId string
 }
 
-// EncryptDocumentStream returns an object that implements io.Reader and io.Writer.
-// Write your document and Read the
-// returned encrypted ciphertext. No data is ever
-// written to storage on Strongdoc servers
+// EncryptDocumentStream returns an io.Reader.
+// Call Read() on it to get the encrypted data. No data is ever
+// written to storage on Strongdoc servers.
 func EncryptDocumentStream(token string, docName string, plainStream io.Reader) (ec io.ReadWriter, docId string, n int, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
@@ -426,6 +425,9 @@ type decryptStream struct {
 	docId string
 }
 
+// DecryptDocumentStream returns an io.Reader.
+// Call Read() on it to get the decrypted data. No data is ever
+// written to storage on Strongdoc servers.
 func DecryptDocumentStream(token string, docId string, plainStream io.Reader) (ec io.Reader, n int, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
