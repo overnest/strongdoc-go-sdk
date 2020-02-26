@@ -45,7 +45,7 @@ func TestEncryptStream(t *testing.T) {
 	}
 
 	// encrypting plainText
-	eds, docId, uploadedPlaintextLen, err := EncryptDocumentStream(token, fileName, pdf)
+	eds, docId, err := EncryptDocumentStream(token, fileName, pdf)
 	if err != nil {
 		log.Printf("could not create EncryptStream object: %s", err)
 		return
@@ -60,18 +60,14 @@ func TestEncryptStream(t *testing.T) {
 	}
 
 	// decrypting cipherText
-	dds, uploadedCiphertextLen, err := DecryptDocumentStream(token, docId, bytes.NewReader(encryptedBytes))
+	dds, err := DecryptDocumentStream(token, docId, bytes.NewReader(encryptedBytes))
 	if err != nil {
 		log.Printf("Can not decrypt document: %s", err)
 		return
 	}
-	fmt.Printf("Wrote %d bytes to decryptStream\n", uploadedCiphertextLen)
-	if err != nil {
-		return
-	}
 	decryptedBytes := make([]byte,0)
 	for err != io.EOF { // a quick hack, fails if fileSize % blockSize == 0
-		n, readErr := dds.Read(buf);
+		n, readErr := dds.Read(buf)
 		decryptedBytes = append(decryptedBytes, buf[:n]...)
 		if readErr != nil && readErr != io.EOF {
 			return
@@ -80,11 +76,6 @@ func TestEncryptStream(t *testing.T) {
 	}
 
 	// prints and asserts
-	fmt.Printf("len of pdfBytes      : [%d]\n", len(pdfBytes))
-	assert.Equal(t, len(pdfBytes), uploadedPlaintextLen)
-
-	fmt.Printf("len of decryptedBytes: [%d]\n", len(decryptedBytes))
-	assert.Equal(t, len(encryptedBytes), uploadedCiphertextLen)
 
 	fmt.Printf("first 20 btyes of pdfBytes      : [%v]\n", pdfBytes[:20])
 	fmt.Printf("first 20 btyes of decryptedBytes: [%v]\n", decryptedBytes[:20])
