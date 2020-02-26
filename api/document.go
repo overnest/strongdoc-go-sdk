@@ -231,6 +231,7 @@ func DownloadDocumentStream(token string, docID string) (s3stream io.Reader, err
 }
 
 // EncryptDocument encrypts a document with Strongdoc
+// EncryptDocument encrypts a document with Strongdoc
 // and returns the encrypted ciphertext. No data is ever
 // written to storage on Strongdoc servers.
 func EncryptDocument(token string, docName string, plaintext []byte) (docID string, ciphertext []byte, err error) {
@@ -296,7 +297,7 @@ type encryptStream struct {
 	docId string
 }
 
-// EncryptDocument returns an object that implements io.Reader and io.Writer.
+// EncryptDocumentStream returns an object that implements io.Reader and io.Writer.
 // Write your document and Read the
 // returned encrypted ciphertext. No data is ever
 // written to storage on Strongdoc servers
@@ -554,7 +555,7 @@ func (stream *decryptStream) Write(cipherText []byte) (n int, err error) {
 
 // DecryptDocument encrypts a document with Strongdoc.
 // It requires original ciphertext, since the document is not stored
-func DecryptDocument(token, docID string, ciphertext []byte) (plaintext []byte, err error) {
+func DecryptDocument(token, docID string, cipherText []byte) (plaintext []byte, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -587,12 +588,12 @@ func DecryptDocument(token, docID string, ciphertext []byte) (plaintext []byte, 
 	}
 
 	var blockSize int = 10000
-	for i := 0; i < len(ciphertext); i += blockSize {
+	for i := 0; i < len(cipherText); i += blockSize {
 		var block []byte
-		if i+blockSize < len(ciphertext) {
-			block = ciphertext[i : i+blockSize]
+		if i+blockSize < len(cipherText) {
+			block = cipherText[i : i+blockSize]
 		} else {
-			block = ciphertext[i:]
+			block = cipherText[i:]
 		}
 
 		dataReq := &proto.DecryptDocStreamReq{

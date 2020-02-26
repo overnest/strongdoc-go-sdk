@@ -7,17 +7,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
-	"os"
 	"testing"
 )
 
 func TestEncrypt(t *testing.T) {
-	_, _, err := RegisterOrganization(organization, "", adminName,
-		adminPassword, adminEmail)
-	if err != nil {
-		log.Printf("Failed to register organization: %s", err)
-		return
-	}
+	//_, _, err := RegisterOrganization(organization, "", adminName,
+	//	adminPassword, adminEmail)
+	//if err != nil {
+	//	log.Printf("Failed to register organization: %s", err)
+	//	return
+	//}
 
 	token, err := Login(adminEmail, adminPassword, organization)
 	if err != nil {
@@ -36,7 +35,6 @@ func TestEncrypt(t *testing.T) {
 	fileName := "CompanyIntro.txt"
 	filePath, err := utils.FetchFileLoc("/testDocuments/CompanyIntro.txt")
 
-	pdf, err := os.Open(filePath)
 	pdfBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Printf("Failed to open file: %s", err)
@@ -44,48 +42,23 @@ func TestEncrypt(t *testing.T) {
 	}
 
 	// encrypting plainText
-	eds, docId, uploadedPlaintextLen, err := EncryptDocumentStream(token, fileName, pdf)
+	docId, encryptedBytes, err := EncryptDocument(token, fileName, pdfBytes)
 	if err != nil {
 		log.Printf("could not create EncryptStream object: %s", err)
 		return
 	}
-	blockSize := 10000
-	buf := make([]byte, blockSize)
-	encryptedBytes := make([]byte,0)
-	for len(encryptedBytes) % blockSize == 0 { // a quick hack, fails if fileSize % blockSize == 0
-		n, readErr := eds.Read(buf)
-		err = readErr
-		encryptedBytes = append(encryptedBytes, buf[:n]...)
-	}
 
 	// decrypting cipherText
-	dds, uploadedCiphertextLen, err := DecryptDocumentStream(token, docId, bytes.NewReader(encryptedBytes))
+	decryptedBytes, err := DecryptDocument(token, docId, encryptedBytes)
 	if err != nil {
 		log.Printf("Can not decrypt document: %s", err)
 		return
 	}
-	fmt.Printf("Wrote %d bytes to decryptStream\n", uploadedCiphertextLen)
 	if err != nil {
 		return
 	}
-	decryptedBytes := make([]byte,0)
-	fmt.Printf("len(decryptedBytes) mod blockSize is [%d]\n", len(decryptedBytes) % blockSize)
-	n, readErr := dds.Read(buf)
-	err = readErr
-	decryptedBytes = append(decryptedBytes, buf[:n]...)
-	for len(decryptedBytes) % blockSize == 9902 { // a quick hack, fails if fileSize % blockSize == 0
-		n, readErr := dds.Read(buf)
-		err = readErr
-		decryptedBytes = append(decryptedBytes, buf[:n]...)
-		fmt.Printf("len(decryptedBytes) mod blockSize is [%d]\n", len(decryptedBytes) % blockSize)
-	}
 
 	// prints and asserts
-	fmt.Printf("len of pdfBytes      : [%d]\n", len(pdfBytes))
-	assert.Equal(t, len(pdfBytes), uploadedPlaintextLen)
-
-	fmt.Printf("len of decryptedBytes: [%d]\n", len(decryptedBytes))
-	assert.Equal(t, len(encryptedBytes), uploadedCiphertextLen)
 
 	fmt.Printf("first 20 btyes of pdfBytes      : [%v]\n", pdfBytes[:20])
 	fmt.Printf("first 20 btyes of decryptedBytes: [%v]\n", decryptedBytes[:20])
