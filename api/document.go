@@ -209,7 +209,7 @@ func (stream *S3Stream) Read(p []byte) (n int, err error) {
 // the io.Reader interface. It contains a client which maintains a
 // connection to Strongdoc-provided storage. Returns 0, EOF iff
 // the stream has been exhausted.
-func DownloadDocumentStream(token string, docID string) (s3stream S3Stream, err error) {
+func DownloadDocumentStream(token string, docID string) (s3stream io.Reader, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -223,10 +223,10 @@ func DownloadDocumentStream(token string, docID string) (s3stream S3Stream, err 
 	if err != nil {
 		return
 	}
-	s3stream = S3Stream{
-		svc: &stream,
+	s3stream = &S3Stream{
+		svc:    &stream,
 		buffer: new(bytes.Buffer),
-		docID: docID,
+		docID:  docID,
 	}
 
 	return s3stream, nil
@@ -301,8 +301,8 @@ type encryptStream struct {
 // EncryptDocument returns an object that implements io.Reader and io.Writer.
 // Write your document and Read the
 // returned encrypted ciphertext. No data is ever
-// written to storage on Strongdoc servers.
-func EncryptDocumentStream(token string, docName string) (ec encryptStream, err error) {
+// written to storage on Strongdoc servers
+func EncryptDocumentStream(token string, docName string) (ec io.ReadWriter, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -329,7 +329,7 @@ func EncryptDocumentStream(token string, docName string) (ec encryptStream, err 
 
 	docId := res.GetDocID()
 
-	ec = encryptStream{
+	ec = &encryptStream{
 		stream: &stream,
 		readBuffer: new(bytes.Buffer),
 		docId:  docId,
@@ -405,7 +405,7 @@ type decryptStream struct {
 	docId string
 }
 
-func DecryptDocumentStream(token string, docId string) (ec decryptStream, err error) {
+func DecryptDocumentStream(token string, docId string) (ec io.ReadWriter, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -434,7 +434,7 @@ func DecryptDocumentStream(token string, docId string) (ec decryptStream, err er
 		return
 	}
 
-	ec = decryptStream{
+	ec = &decryptStream{
 		stream: &stream,
 		readBuffer: new(bytes.Buffer),
 		docId:  docId,

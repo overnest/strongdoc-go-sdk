@@ -39,12 +39,12 @@ func TestEncrypt(t *testing.T) {
 	filePath, err := utils.FetchFileLoc("/testDocuments/CompanyIntro.txt")
 	pdfBytes, err := ioutil.ReadFile(filePath)
 
-	ecs, err := api.EncryptDocumentStream(token, fileName)
+	eds, err := api.EncryptDocumentStream(token, fileName)
 	if err != nil {
-		log.Printf("Can not encrypt document: %s", err)
+		log.Printf("could not create EncryptStream object: %s", err)
 		return
 	}
-	n, err := ecs.Write(pdfBytes)
+	n, err := eds.Write(pdfBytes)
 	if err != nil {
 		return
 	}
@@ -54,11 +54,11 @@ func TestEncrypt(t *testing.T) {
 	buf := make([]byte, blockSize)
 	encryptedBytes := make([]byte,0)
 	for len(encryptedBytes) % blockSize == 0 { // a quick hack, fails if fileSize % blockSize == 0
-		n, readErr := ecs.Read(buf)
+		n, readErr := eds.Read(buf)
 		err = readErr
 		encryptedBytes = append(encryptedBytes, buf[:n]...)
 	}
-	encryptDocID := ecs.DocId()
+	encryptDocID := eds.DocId()
 
 	//decryptedBytes, err := api.DecryptDocument(token, encryptDocID, encryptedBytes)
 	//if err != nil {
@@ -66,23 +66,23 @@ func TestEncrypt(t *testing.T) {
 	//	return
 	//}
 
-	dcs, err := api.DecryptDocumentStream(token, encryptDocID)
+	dds, err := api.DecryptDocumentStream(token, encryptDocID)
 	if err != nil {
 		log.Printf("Can not decrypt document: %s", err)
 		return
 	}
-	n, err = dcs.Write(encryptedBytes)
+	n, err = dds.Write(encryptedBytes)
 	fmt.Printf("Wrote %d bytes to decryptStream\n", n)
 	if err != nil {
 		return
 	}
 	decryptedBytes := make([]byte,0)
 	fmt.Printf("len(decryptedBytes) mod blockSize is [%d]\n", len(decryptedBytes) % blockSize)
-	n, readErr := dcs.Read(buf)
+	n, readErr := dds.Read(buf)
 	err = readErr
 	decryptedBytes = append(decryptedBytes, buf[:n]...)
 	for len(decryptedBytes) % blockSize == 9902 { // a quick hack, fails if fileSize % blockSize == 0
-		n, readErr := dcs.Read(buf)
+		n, readErr := dds.Read(buf)
 		err = readErr
 		decryptedBytes = append(decryptedBytes, buf[:n]...)
 		fmt.Printf("len(decryptedBytes) mod blockSize is [%d]\n", len(decryptedBytes) % blockSize)
