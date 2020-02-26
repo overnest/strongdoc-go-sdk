@@ -366,8 +366,7 @@ func EncryptDocumentStream(token string, docName string, plainStream io.Reader) 
 func (stream *encryptStream) DocId() string {
 	return stream.docId
 }
-// BUG: stream crashes when 0 bytes are
-// available in the stream.
+
 func (stream *encryptStream) Read(p []byte) (n int, err error) {
 	docID := stream.docId
 	nPreRcvBytes, bufReadErr := stream.readBuffer.Read(p) // drain readBuffer first
