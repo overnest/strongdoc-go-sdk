@@ -7,11 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
+	"os"
 	"testing"
 )
 
 func TestEncrypt(t *testing.T) {
-
 	_, _, err := RegisterOrganization(organization, "", adminName,
 		adminPassword, adminEmail)
 	if err != nil {
@@ -35,18 +35,19 @@ func TestEncrypt(t *testing.T) {
 
 	fileName := "CompanyIntro.txt"
 	filePath, err := utils.FetchFileLoc("/testDocuments/CompanyIntro.txt")
-	pdfBytes, err := ioutil.ReadFile(filePath)
 
-	eds, docId, err := EncryptDocumentStream(token, fileName)
+	pdf, err := os.Open(filePath)
+	pdfBytes, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Printf("Failed to open file: %s", err)
+		return
+	}
+
+	eds, docId, _, err := EncryptDocumentStream(token, fileName, pdf)
 	if err != nil {
 		log.Printf("could not create EncryptStream object: %s", err)
 		return
 	}
-	n, err := eds.Write(pdfBytes)
-	if err != nil {
-		return
-	}
-	fmt.Printf("Wrote %d bytes to encryptStream\n", n)
 
 	blockSize := 10000
 	buf := make([]byte, blockSize)
@@ -63,7 +64,7 @@ func TestEncrypt(t *testing.T) {
 	//	return
 	//}
 
-	dds, err := DecryptDocumentStream(token, docId, bytes.NewReader(encryptedBytes))
+	dds, n, err := DecryptDocumentStream(token, docId, bytes.NewReader(encryptedBytes))
 	if err != nil {
 		log.Printf("Can not decrypt document: %s", err)
 		return

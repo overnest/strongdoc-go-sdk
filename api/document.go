@@ -302,7 +302,7 @@ type encryptStream struct {
 // Write your document and Read the
 // returned encrypted ciphertext. No data is ever
 // written to storage on Strongdoc servers
-func EncryptDocumentStream(token string, docName string) (ec io.ReadWriter, docId string, err error) {
+func EncryptDocumentStream(token string, docName string, plainStream io.Reader) (ec io.ReadWriter, docId string, n int, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -328,6 +328,28 @@ func EncryptDocumentStream(token string, docName string) (ec io.ReadWriter, docI
 	}
 
 	docId = res.GetDocID()
+
+	blockSize := 10000
+	for err != io.EOF {
+		block := make([]byte, blockSize)
+		numRead, readErr := plainStream.Read(block)
+		block = block[:numRead]
+		dataReq := &proto.EncryptDocStreamReq{
+			NameOrData: &proto.EncryptDocStreamReq_Plaintext{
+				Plaintext: block,
+			},
+		}
+		if err = stream.Send(dataReq); err != nil {
+			err = fmt.Errorf("send() err: [%v]", err)
+			return
+		}
+		err = readErr
+		n += numRead
+	}
+	if err != nil && err != io.EOF {
+		return
+	}
+	err = nil
 
 	ec = &encryptStream{
 		stream: &stream,
@@ -405,7 +427,7 @@ type decryptStream struct {
 	docId string
 }
 
-func DecryptDocumentStream(token string, docId string, plainStream io.Reader) (ec io.Reader, err error) {
+func DecryptDocumentStream(token string, docId string, plainStream io.Reader) (ec io.Reader, n int, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -436,12 +458,10 @@ func DecryptDocumentStream(token string, docId string, plainStream io.Reader) (e
 
 	// send contents of stream
 	blockSize := 10000
-	var readErr error = nil
-	for readErr != io.EOF {
+	for err != io.EOF {
 		block := make([]byte, blockSize)
-		var n int
-		n, readErr = plainStream.Read(block)
-		block = block[:n]
+		numRead, readErr := plainStream.Read(block)
+		block = block[:numRead]
 		dataReq := &proto.DecryptDocStreamReq{
 			IdOrData: &proto.DecryptDocStreamReq_Ciphertext{
 				Ciphertext: block,
@@ -451,7 +471,13 @@ func DecryptDocumentStream(token string, docId string, plainStream io.Reader) (e
 			err = fmt.Errorf("send() err: [%v]", err)
 			return
 		}
+		err = readErr
+		n += numRead
 	}
+	if err != nil && err != io.EOF {
+		return
+	}
+	err = nil
 
 	ec = &decryptStream{
 		stream: &stream,
