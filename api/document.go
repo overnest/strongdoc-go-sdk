@@ -302,7 +302,7 @@ type encryptStream struct {
 // Write your document and Read the
 // returned encrypted ciphertext. No data is ever
 // written to storage on Strongdoc servers
-func EncryptDocumentStream(token string, docName string) (ec io.ReadWriter, err error) {
+func EncryptDocumentStream(token string, docName string) (ec io.ReadWriter, docId string, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -327,7 +327,7 @@ func EncryptDocumentStream(token string, docName string) (ec io.ReadWriter, err 
 		return
 	}
 
-	docId := res.GetDocID()
+	docId = res.GetDocID()
 
 	ec = &encryptStream{
 		stream: &stream,
@@ -405,7 +405,7 @@ type decryptStream struct {
 	docId string
 }
 
-func DecryptDocumentStream(token string, docId string) (ec io.ReadWriter, err error) {
+func DecryptDocumentStream(token string, docId string, plainStream io.Reader) (ec io.Reader, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -432,6 +432,25 @@ func DecryptDocumentStream(token string, docId string) (ec io.ReadWriter, err er
 	} else if res.DocID != docId {
 		err = fmt.Errorf("incorrect docId Recv'd")
 		return
+	}
+
+	// send contents of stream
+	blockSize := 10000
+	var readErr error = nil
+	for readErr != io.EOF {
+		block := make([]byte, blockSize)
+		var n int
+		n, readErr = plainStream.Read(block)
+		block = block[:n]
+		dataReq := &proto.DecryptDocStreamReq{
+			IdOrData: &proto.DecryptDocStreamReq_Ciphertext{
+				Ciphertext: block,
+			},
+		}
+		if err = stream.Send(dataReq); err != nil {
+			err = fmt.Errorf("send() err: [%v]", err)
+			return
+		}
 	}
 
 	ec = &decryptStream{

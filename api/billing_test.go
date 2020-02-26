@@ -1,8 +1,7 @@
-package testing
+package api
 
 import (
 	"fmt"
-	"github.com/overnest/strongdoc-go/api"
 	"github.com/stretchr/testify/assert"
 	"log"
 	"testing"
@@ -10,28 +9,28 @@ import (
 
 func _TestGetBillingDetails(t *testing.T) {
 
-	_, _, err := api.RegisterOrganization(organization, "", adminName,
+	_, _, err := RegisterOrganization(organization, "", adminName,
 		adminPassword, adminEmail)
 	if err != nil {
 		log.Printf("Failed to register organization: %s", err)
 		return
 	}
 
-	token, err := api.Login(adminEmail, adminPassword, organization)
+	token, err := Login(adminEmail, adminPassword, organization)
 	if err != nil {
 		log.Printf("Failed to log in: %s", err)
 		return
 	}
 
 	defer func() {
-		_, err = api.RemoveOrganization(token)
+		_, err = RemoveOrganization(token)
 		if err != nil {
 			log.Printf("Failed to log in: %s", err)
 			return
 		}
 	}()
 	
-	billingDetails := api.Billing(token)
+	billingDetails := Billing(token)
 	tr, err := billingDetails.Traffic()
 	assert.NotNil(t, err)
 	fmt.Println(tr.Cost())

@@ -1,11 +1,9 @@
-package testing
+package api
 
 import (
 	"bytes"
 	"fmt"
 	"github.com/overnest/strongdoc-go-sdk/utils"
-	"github.com/overnest/strongdoc-go/api"
-
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
@@ -14,21 +12,21 @@ import (
 
 func TestEncrypt(t *testing.T) {
 
-	_, _, err := api.RegisterOrganization(organization, "", adminName,
+	_, _, err := RegisterOrganization(organization, "", adminName,
 		adminPassword, adminEmail)
 	if err != nil {
 		log.Printf("Failed to register organization: %s", err)
 		return
 	}
 
-	token, err := api.Login(adminEmail, adminPassword, organization)
+	token, err := Login(adminEmail, adminPassword, organization)
 	if err != nil {
 		log.Printf("Failed to log in: %s", err)
 		return
 	}
 
 	defer func() {
-		_, err = api.RemoveOrganization(token)
+		_, err = RemoveOrganization(token)
 		if err != nil {
 			log.Printf("Failed to log in: %s", err)
 			return
@@ -39,7 +37,7 @@ func TestEncrypt(t *testing.T) {
 	filePath, err := utils.FetchFileLoc("/testDocuments/CompanyIntro.txt")
 	pdfBytes, err := ioutil.ReadFile(filePath)
 
-	eds, err := api.EncryptDocumentStream(token, fileName)
+	eds, docId, err := EncryptDocumentStream(token, fileName)
 	if err != nil {
 		log.Printf("could not create EncryptStream object: %s", err)
 		return
@@ -58,20 +56,18 @@ func TestEncrypt(t *testing.T) {
 		err = readErr
 		encryptedBytes = append(encryptedBytes, buf[:n]...)
 	}
-	encryptDocID := eds.DocId()
 
-	//decryptedBytes, err := api.DecryptDocument(token, encryptDocID, encryptedBytes)
+	//decryptedBytes, err := DecryptDocument(token, encryptDocID, encryptedBytes)
 	//if err != nil {
 	//	log.Printf("Can not decrypt document: %s", err)
 	//	return
 	//}
 
-	dds, err := api.DecryptDocumentStream(token, encryptDocID)
+	dds, err := DecryptDocumentStream(token, docId, bytes.NewReader(encryptedBytes))
 	if err != nil {
 		log.Printf("Can not decrypt document: %s", err)
 		return
 	}
-	n, err = dds.Write(encryptedBytes)
 	fmt.Printf("Wrote %d bytes to decryptStream\n", n)
 	if err != nil {
 		return
@@ -89,13 +85,13 @@ func TestEncrypt(t *testing.T) {
 	}
 	fmt.Printf("len of pdfBytes      : [%d]\n", len(pdfBytes))
 	fmt.Printf("len of decryptedBytes: [%d]\n", len(decryptedBytes))
-	fmt.Printf("first 50 btyes of pdfBytes      : [%v]\n", pdfBytes)
-	fmt.Printf("first 50 btyes of decryptedBytes: [%v]\n", decryptedBytes)
-	fmt.Printf("last 50 btyes of pdfBytes       : [%v]\n", pdfBytes[len(pdfBytes)-50:])
-	fmt.Printf("last 50 btyes of decryptedBytes : [%v]\n", decryptedBytes[len(decryptedBytes)-50:])
+	fmt.Printf("first 20 btyes of pdfBytes      : [%v]\n", pdfBytes[:20])
+	fmt.Printf("first 20 btyes of decryptedBytes: [%v]\n", decryptedBytes[:20])
+	fmt.Printf("last 20 btyes of pdfBytes       : [%v]\n", pdfBytes[len(pdfBytes)-20:])
+	fmt.Printf("last 20 btyes of decryptedBytes : [%v]\n", decryptedBytes[len(decryptedBytes)-20:])
 	assert.True(t, bytes.Equal(pdfBytes, decryptedBytes))
 
-	err = api.RemoveDocument(token, encryptDocID)
+	err = RemoveDocument(token, docId)
 	if err != nil {
 		log.Printf("Can not remove document: %s", err)
 		return

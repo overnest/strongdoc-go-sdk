@@ -1,4 +1,4 @@
-package testing
+package api
 
 const (
 	adminName     = "adminUserName"

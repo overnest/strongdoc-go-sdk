@@ -1,10 +1,9 @@
-package testing
+package api
 
 import (
 	"bytes"
 	"fmt"
 	"github.com/overnest/strongdoc-go-sdk/utils"
-	"github.com/overnest/strongdoc-go/api"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
@@ -12,21 +11,21 @@ import (
 )
 
 func TestRcv(t *testing.T) {
-	_, _, err := api.RegisterOrganization(organization, "", adminName,
+	_, _, err := RegisterOrganization(organization, "", adminName,
 		adminPassword, adminEmail)
 	if err != nil {
 		log.Printf("Failed to register organization: %s", err)
 		return
 	}
 
-	token, err := api.Login(adminEmail, adminPassword, organization)
+	token, err := Login(adminEmail, adminPassword, organization)
 	if err != nil {
 		log.Printf("Failed to log in: %s", err)
 		return
 	}
 
 	defer func() {
-		_, err = api.RemoveOrganization(token)
+		_, err = RemoveOrganization(token)
 		if err != nil {
 			log.Printf("Failed to log in: %s", err)
 			return
@@ -37,17 +36,17 @@ func TestRcv(t *testing.T) {
 	txtBytes, err := ioutil.ReadFile(filePath)
 	fmt.Printf("Printing txtBytes: [%v]\n", txtBytes)
 
-	uploadDocID, err := api.UploadDocumentStream(token, "CompanyIntro.txt", bytes.NewReader(txtBytes))
+	uploadDocID, err := UploadDocumentStream(token, "CompanyIntro.txt", bytes.NewReader(txtBytes))
 	if err != nil {
 		log.Printf("Can not upload document: %s", err)
 		return
 	}
 
-	downDocBytesNoStream, err := api.DownloadDocument(token, uploadDocID)
+	downDocBytesNoStream, err := DownloadDocument(token, uploadDocID)
 	assert.Nil(t, err)
 	fmt.Printf("%s\n", string(downDocBytesNoStream))
 
-	s, err := api.DownloadDocumentStream(token, uploadDocID)
+	s, err := DownloadDocumentStream(token, uploadDocID)
 	buf := make([]byte, 10)
 	downDocBytesStream := make([]byte,0)
 	for err == nil {
@@ -62,7 +61,7 @@ func TestRcv(t *testing.T) {
 	assert.True(t, bytes.Equal(downDocBytesStream, txtBytes))
 	assert.True(t, bytes.Equal(downDocBytesStream, downDocBytesNoStream))
 
-	err = api.RemoveDocument(token, uploadDocID)
+	err = RemoveDocument(token, uploadDocID)
 	if err != nil {
 		log.Printf("Can not remove document: %s", err)
 		return
