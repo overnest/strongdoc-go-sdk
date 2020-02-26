@@ -43,12 +43,12 @@ func TestEncrypt(t *testing.T) {
 		return
 	}
 
-	eds, docId, _, err := EncryptDocumentStream(token, fileName, pdf)
+	// encrypting plainText
+	eds, docId, uploadedPlaintextLen, err := EncryptDocumentStream(token, fileName, pdf)
 	if err != nil {
 		log.Printf("could not create EncryptStream object: %s", err)
 		return
 	}
-
 	blockSize := 10000
 	buf := make([]byte, blockSize)
 	encryptedBytes := make([]byte,0)
@@ -58,18 +58,13 @@ func TestEncrypt(t *testing.T) {
 		encryptedBytes = append(encryptedBytes, buf[:n]...)
 	}
 
-	//decryptedBytes, err := DecryptDocument(token, encryptDocID, encryptedBytes)
-	//if err != nil {
-	//	log.Printf("Can not decrypt document: %s", err)
-	//	return
-	//}
-
-	dds, n, err := DecryptDocumentStream(token, docId, bytes.NewReader(encryptedBytes))
+	// decrypting cipherText
+	dds, uploadedCiphertextLen, err := DecryptDocumentStream(token, docId, bytes.NewReader(encryptedBytes))
 	if err != nil {
 		log.Printf("Can not decrypt document: %s", err)
 		return
 	}
-	fmt.Printf("Wrote %d bytes to decryptStream\n", n)
+	fmt.Printf("Wrote %d bytes to decryptStream\n", uploadedCiphertextLen)
 	if err != nil {
 		return
 	}
@@ -84,8 +79,14 @@ func TestEncrypt(t *testing.T) {
 		decryptedBytes = append(decryptedBytes, buf[:n]...)
 		fmt.Printf("len(decryptedBytes) mod blockSize is [%d]\n", len(decryptedBytes) % blockSize)
 	}
+
+	// prints and asserts
 	fmt.Printf("len of pdfBytes      : [%d]\n", len(pdfBytes))
+	assert.Equal(t, len(pdfBytes), uploadedPlaintextLen)
+
 	fmt.Printf("len of decryptedBytes: [%d]\n", len(decryptedBytes))
+	assert.Equal(t, len(encryptedBytes), uploadedCiphertextLen)
+
 	fmt.Printf("first 20 btyes of pdfBytes      : [%v]\n", pdfBytes[:20])
 	fmt.Printf("first 20 btyes of decryptedBytes: [%v]\n", decryptedBytes[:20])
 	fmt.Printf("last 20 btyes of pdfBytes       : [%v]\n", pdfBytes[len(pdfBytes)-20:])
