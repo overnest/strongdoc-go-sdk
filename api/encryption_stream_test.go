@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	"github.com/stretchr/testify/assert"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -52,7 +53,7 @@ func TestEncryptStream(t *testing.T) {
 	blockSize := 10000
 	buf := make([]byte, blockSize)
 	encryptedBytes := make([]byte,0)
-	for len(encryptedBytes) % blockSize == 0 { // a quick hack, fails if fileSize % blockSize == 0
+	for err != io.EOF { // a quick hack, fails if fileSize % blockSize == 0
 		n, readErr := eds.Read(buf)
 		err = readErr
 		encryptedBytes = append(encryptedBytes, buf[:n]...)
@@ -69,15 +70,13 @@ func TestEncryptStream(t *testing.T) {
 		return
 	}
 	decryptedBytes := make([]byte,0)
-	fmt.Printf("len(decryptedBytes) mod blockSize is [%d]\n", len(decryptedBytes) % blockSize)
-	n, readErr := dds.Read(buf)
-	err = readErr
-	decryptedBytes = append(decryptedBytes, buf[:n]...)
-	for len(decryptedBytes) % blockSize == 9902 { // a quick hack, fails if fileSize % blockSize == 0
-		n, readErr := dds.Read(buf)
-		err = readErr
+	for err != io.EOF { // a quick hack, fails if fileSize % blockSize == 0
+		n, readErr := dds.Read(buf);
 		decryptedBytes = append(decryptedBytes, buf[:n]...)
-		fmt.Printf("len(decryptedBytes) mod blockSize is [%d]\n", len(decryptedBytes) % blockSize)
+		if readErr != nil && readErr != io.EOF {
+			return
+		}
+		err = readErr
 	}
 
 	// prints and asserts

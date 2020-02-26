@@ -34,7 +34,6 @@ func TestRcv(t *testing.T) {
 
 	filePath, err := utils.FetchFileLoc("/testDocuments/CompanyIntro.txt")
 	txtBytes, err := ioutil.ReadFile(filePath)
-	fmt.Printf("Printing txtBytes: [%v]\n", txtBytes)
 
 	uploadDocID, err := UploadDocumentStream(token, "CompanyIntro.txt", bytes.NewReader(txtBytes))
 	if err != nil {

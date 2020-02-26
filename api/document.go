@@ -300,7 +300,7 @@ type encryptStream struct {
 // EncryptDocumentStream returns an io.Reader.
 // Call Read() on it to get the encrypted data. No data is ever
 // written to storage on Strongdoc servers.
-func EncryptDocumentStream(token string, docName string, plainStream io.Reader) (ec io.ReadWriter, docId string, n int, err error) {
+func EncryptDocumentStream(token string, docName string, plainStream io.Reader) (ec io.Reader, docId string, n int, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -348,6 +348,12 @@ func EncryptDocumentStream(token string, docName string, plainStream io.Reader) 
 		return
 	}
 	err = nil
+
+	// close stream here
+	err = stream.CloseSend()
+	if err != nil {
+		return
+	}
 
 	ec = &encryptStream{
 		stream: &stream,
@@ -418,6 +424,10 @@ func (stream *encryptStream) Write(plaintext []byte) (n int, err error) {
 	return n,nil
 }
 
+//func (stream *encryptStream) Close() (err error) {
+//	svc := *stream.
+//}
+
 type decryptStream struct {
 	stream *proto.StrongDocService_DecryptDocumentStreamClient
 	readBuffer *bytes.Buffer
@@ -480,6 +490,12 @@ func DecryptDocumentStream(token string, docId string, plainStream io.Reader) (e
 	}
 	err = nil
 
+	// close stream here
+	err = stream.CloseSend()
+	if err != nil {
+		return
+	}
+
 	ec = &decryptStream{
 		stream: &stream,
 		readBuffer: new(bytes.Buffer),
@@ -522,8 +538,8 @@ func (stream *decryptStream) Read(p []byte) (n int, err error) {
 		}
 		cipherText := res.GetPlaintext()
 		stream.readBuffer.Write(cipherText)
-		nPostRcvBytes, err = stream.readBuffer.Read(p[nPreRcvBytes:]) // read remaining part of readBuffer.
-		if err != nil {
+		nPostRcvBytes, bufReadErr = stream.readBuffer.Read(p[nPreRcvBytes:]) // read remaining part of readBuffer.
+		if bufReadErr != nil && bufReadErr != io.EOF {
 			return 0, fmt.Errorf("readBuffer read err: [%v]", err)
 		}
 		return nPreRcvBytes + nPostRcvBytes, err
@@ -552,6 +568,12 @@ func (stream *decryptStream) Write(cipherText []byte) (n int, err error) {
 		}
 	}
 	return n,nil
+}
+
+func (stream *decryptStream) Close() (err error) {
+	svc := *stream.stream
+	err = svc.CloseSend()
+	return
 }
 
 
