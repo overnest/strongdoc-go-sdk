@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"time"
 
 	"github.com/overnest/strongdoc-go/client"
 	"github.com/overnest/strongdoc-go/proto"
@@ -67,7 +66,7 @@ func UploadDocument(token string, docName string, plaintext []byte) (docID strin
 
 // UploadDocumentStream accepts a reader and reads from it until it
 // ends. Incomplete downloads will not be completed.
-func UploadDocumentStream(token string, docName string, reader *bytes.Reader) (docID string, err error) {
+func UploadDocumentStream(token string, docName string, plainStream io.Reader) (docID string, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -92,7 +91,7 @@ func UploadDocumentStream(token string, docName string, reader *bytes.Reader) (d
 	var blockSize = 10000
 	for {
 		block := make([]byte, blockSize)
-		n, err := reader.Read(block)
+		n, err := plainStream.Read(block)
 		if err != nil && err == io.EOF {
 			dataReq := &proto.UploadDocStreamReq{
 				NameOrData: &proto.UploadDocStreamReq_Plaintext{
@@ -111,7 +110,6 @@ func UploadDocumentStream(token string, docName string, reader *bytes.Reader) (d
 				return "", err
 			}
 		}
-		time.Sleep(time.Second)
 	}
 
 	if err = stream.CloseSend(); err != nil {
@@ -162,7 +160,7 @@ func DownloadDocument(token string, docID string) (plaintext []byte, err error) 
 	return
 }
 
-type S3Stream struct {
+type s3Stream struct {
 	svc *proto.StrongDocService_DownloadDocumentStreamClient
 	buffer *bytes.Buffer
 	docID string
@@ -172,7 +170,7 @@ type S3Stream struct {
 // Read reads the length of the stream. It assumes that
 // the stream from server still has data or that the internal
 // buffer still has some data in it.
-func (stream *S3Stream) Read(p []byte) (n int, err error) {
+func (stream *s3Stream) Read(p []byte) (n int, err error) {
 	docID := stream.docID
 	nPreRcvBytes, bufReadErr := stream.buffer.Read(p) // drain buffer first
 	if bufReadErr != nil && bufReadErr != io.EOF {
@@ -205,7 +203,7 @@ func (stream *S3Stream) Read(p []byte) (n int, err error) {
 	}
 }
 
-// DownloadDocumentStream generates an S3Stream object, which implements
+// DownloadDocumentStream generates an s3Stream object, which implements
 // the io.Reader interface. It contains a client which maintains a
 // connection to Strongdoc-provided storage. Returns 0, EOF iff
 // the stream has been exhausted.
@@ -223,7 +221,7 @@ func DownloadDocumentStream(token string, docID string) (s3stream io.Reader, err
 	if err != nil {
 		return
 	}
-	s3stream = &S3Stream{
+	s3stream = &s3Stream{
 		svc:    &stream,
 		buffer: new(bytes.Buffer),
 		docID:  docID,
