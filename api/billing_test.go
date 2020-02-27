@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"log"
+	"strings"
 	"testing"
 )
 
@@ -11,7 +12,8 @@ func _TestGetBillingDetails(t *testing.T) {
 
 	_, _, err := RegisterOrganization(organization, "", adminName,
 		adminPassword, adminEmail)
-	if err != nil {
+
+	if err != nil && !strings.Contains(err.Error(), "already exists") {
 		log.Printf("Failed to register organization: %s", err)
 		return
 	}

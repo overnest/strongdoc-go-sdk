@@ -18,8 +18,8 @@ func RegisterOrganization(orgName, orgAddr, adminName, adminPassword, adminEmail
 	}
 	defer noAuthConn.Close()
 
-	noauthClient := proto.NewStrongDocServiceClient(noAuthConn)
-	resp, err := noauthClient.RegisterOrganization(context.Background(), &proto.RegisterOrganizationRequest{
+	noAuthClient := proto.NewStrongDocServiceClient(noAuthConn)
+	resp, err := noAuthClient.RegisterOrganization(context.Background(), &proto.RegisterOrganizationRequest{
 		OrgName:         orgName,
 		OrgAddr:         orgAddr,
 		UserName:        adminName,
@@ -138,7 +138,6 @@ func RegisterUser(token, user, pass, email string, admin bool) (userId string, e
 // their former organization.
 //
 // Requires administrator privileges.
-
 func RemoveUser(token, user string) (count int64, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
