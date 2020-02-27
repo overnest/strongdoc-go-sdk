@@ -3,19 +3,20 @@ package client
 import (
 	"context"
 	"flag"
+	"log"
+	"time"
+
 	"github.com/overnest/strongdoc-go/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"log"
-	"time"
 )
 
 var (
-	//addr = flag.String("addr", "api.strongsalt.com", "The StrongSalt API server")
 	port = flag.String("port", "9090", "The port to connect to")
-	//cert = flag.String("cert", "../ssca.cert.pem", "The root certificate used to connect to the server")
-	addr = flag.String("addr", "localhost", "The address of the server to connect to")
-	cert = flag.String("cert", "./localhost.crt", "The root certificate used to connect to the server")
+	addr = flag.String("addr", "api.strongsalt.com", "The StrongSalt API server")
+	cert = flag.String("cert", "./certs/ssca.cert.pem", "The root certificate used to connect to the server")
+	//addr = flag.String("addr", "localhost", "The address of the server to connect to")
+	//cert = flag.String("cert", "./certs/localhost.crt", "The root certificate used to connect to the server")
 )
 
 // TokenAuth is the auth token used to call gRPC APIs that requires auth

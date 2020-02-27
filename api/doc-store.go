@@ -70,7 +70,7 @@ func UploadDocument(token string, docName string, plaintext []byte) (docID strin
 // It accepts an io.Reader (which should
 // contain the plaintext) and the document name.
 //
-// It then returns a docId that uniquely
+// It then returns a docID that uniquely
 // identifies the document.
 func UploadDocumentStream(token string, docName string, plainStream io.Reader) (docID string, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
@@ -131,8 +131,8 @@ func UploadDocumentStream(token string, docName string, plainStream io.Reader) (
 }
 
 // DownloadDocument downloads a document stored in Strongdoc-provided
-// storage. You must provide it with its docId.
-func DownloadDocument(token string, docId string) (plaintext []byte, err error) {
+// storage. You must provide it with its docID.
+func DownloadDocument(token string, docID string) (plaintext []byte, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -141,7 +141,7 @@ func DownloadDocument(token string, docId string) (plaintext []byte, err error) 
 	defer authConn.Close()
 	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	req := &proto.DownloadDocStreamReq{DocID: docId}
+	req := &proto.DownloadDocStreamReq{DocID: docID}
 	stream, err := authClient.DownloadDocumentStream(context.Background(), req)
 	if err != nil {
 		return
@@ -149,9 +149,9 @@ func DownloadDocument(token string, docId string) (plaintext []byte, err error) 
 
 	for err == nil {
 		resp, rcverr := stream.Recv()
-		if resp != nil && docId != resp.GetDocID() {
+		if resp != nil && docID != resp.GetDocID() {
 			err = fmt.Errorf("Requested document %v, received document %v instead",
-				docId, resp.GetDocID())
+				docID, resp.GetDocID())
 			return
 		}
 		plaintext = append(plaintext, resp.GetPlaintext()...)
@@ -171,7 +171,7 @@ func DownloadDocument(token string, docId string) (plaintext []byte, err error) 
 //
 // It then returns an io.Reader object that contains the plaintext of
 // the requested document.
-func DownloadDocumentStream(token string, docId string) (downloadStream io.Reader, err error) {
+func DownloadDocumentStream(token string, docID string) (plainStream io.Reader, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -180,59 +180,62 @@ func DownloadDocumentStream(token string, docId string) (downloadStream io.Reade
 	//defer authConn.Close()
 	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	req := &proto.DownloadDocStreamReq{DocID: docId}
+	req := &proto.DownloadDocStreamReq{DocID: docID}
 	stream, err := authClient.DownloadDocumentStream(context.Background(), req)
 	if err != nil {
 		return
 	}
-	downloadStream = &storeStream{
-		svc:    &stream,
-		buffer: new(bytes.Buffer),
-		docID:  docId,
+	plainStream = &downloadStream{
+		grpcStream: &stream,
+		grpcEOF:    false,
+		buffer:     new(bytes.Buffer),
+		docID:      docID,
 	}
 	return
 }
 
-type storeStream struct {
-	svc *proto.StrongDocService_DownloadDocumentStreamClient
-	buffer *bytes.Buffer
-	docID string
+type downloadStream struct {
+	grpcStream *proto.StrongDocService_DownloadDocumentStreamClient
+	grpcEOF    bool
+	buffer     *bytes.Buffer
+	docID      string
 }
 
 // Read reads the length of the stream. It assumes that
 // the stream from server still has data or that the internal
 // buffer still has some data in it.
-func (stream *storeStream) Read(p []byte) (n int, err error) {
-	docID := stream.docID
-	nPreRcvBytes, bufReadErr := stream.buffer.Read(p) // drain buffer first
-	if bufReadErr != nil && bufReadErr != io.EOF {
-		return 0, fmt.Errorf("buffer read err: [%v]", err)
+func (stream *downloadStream) Read(p []byte) (n int, err error) {
+	if stream.buffer.Len() > 0 {
+		return stream.buffer.Read(p)
 	}
-	nPostRcvBytes := 0
-	if nPreRcvBytes == len(p) { // p runs out
-		return nPreRcvBytes, nil
-	} else { // if buffer has been completely drained
-		svc := *stream.svc
-		res, rcvErr := svc.Recv() // refill it from stream
-		if res != nil && docID != res.GetDocID() {
-			rcvErr = fmt.Errorf("requested document %v, received document %v instead",
-				docID, res.GetDocID())
-		}
-		if rcvErr != nil && rcvErr != io.EOF {
-			return 0, fmt.Errorf("error reading from rpc connection: [%v]", rcvErr)
-		} else if rcvErr == io.EOF && bufReadErr == io.EOF {
-			return 0, io.EOF
-		} else if rcvErr == io.EOF {
-			return nPreRcvBytes, nil
-		}
-		plaintext := res.GetPlaintext()
-		stream.buffer.Write(plaintext)
-		nPostRcvBytes, err = stream.buffer.Read(p[nPreRcvBytes:]) // read remaining part of buffer.
-		if err != nil {
-			return 0, fmt.Errorf("buffer read err: [%v]", err)
-		}
-		return nPreRcvBytes + nPostRcvBytes, err
+
+	if stream.grpcEOF {
+		return 0, io.EOF
 	}
+
+	resp, err := (*stream.grpcStream).Recv()
+	if resp != nil && stream.docID != resp.GetDocID() {
+		return 0, fmt.Errorf("Requested document %v, received document %v instead",
+			stream.docID, resp.GetDocID())
+	}
+
+	if err != nil {
+		if err != io.EOF {
+			return 0, err
+		}
+		stream.grpcEOF = true
+	}
+
+	if resp != nil {
+		plaintext := resp.GetPlaintext()
+		copied := copy(p, plaintext)
+		if copied < len(plaintext) {
+			stream.buffer.Write(plaintext[copied:])
+		}
+		return copied, nil
+	}
+
+	return 0, nil
 }
 
 // RemoveDocument deletes a document from Strongdoc-provided
@@ -265,8 +268,8 @@ func ShareDocument(token, docId, userId string) (success bool, err error) {
 	authClient := proto.NewStrongDocServiceClient(authConn)
 
 	req := &proto.ShareDocumentRequest{
-		DocID:                docId,
-		UserID:               userId,
+		DocID:  docId,
+		UserID: userId,
 	}
 	res, err := authClient.ShareDocument(context.Background(), req)
 
@@ -286,8 +289,8 @@ func UnshareDocument(token, docId, userId string) (count int64, err error) {
 	authClient := proto.NewStrongDocServiceClient(authConn)
 
 	req := &proto.UnshareDocumentRequest{
-		DocID:                docId,
-		UserID:               userId,
+		DocID:  docId,
+		UserID: userId,
 	}
 	res, err := authClient.UnshareDocument(context.Background(), req)
 
@@ -331,7 +334,7 @@ func AddSharableOrg(token, orgId string) (success bool, err error) {
 	authClient := proto.NewStrongDocServiceClient(authConn)
 
 	req := &proto.AddSharableOrgRequest{
-		NewOrgID:             orgId,
+		NewOrgID: orgId,
 	}
 	res, err := authClient.AddSharableOrg(context.Background(), req)
 
@@ -350,7 +353,7 @@ func RemoveSharableOrg(token, orgId string) (success bool, err error) {
 	authClient := proto.NewStrongDocServiceClient(authConn)
 
 	req := &proto.RemoveSharableOrgRequest{
-		RemoveOrgID:          orgId,
+		RemoveOrgID: orgId,
 	}
 	res, err := authClient.RemoveSharableOrg(context.Background(), req)
 
@@ -369,7 +372,7 @@ func SetMultiLevelSharing(token string, enable bool) (success bool, err error) {
 	authClient := proto.NewStrongDocServiceClient(authConn)
 
 	req := &proto.SetMultiLevelSharingRequest{
-		Enable:               enable,
+		Enable: enable,
 	}
 	res, err := authClient.SetMultiLevelSharing(context.Background(), req)
 

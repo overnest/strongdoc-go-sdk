@@ -76,9 +76,9 @@ func EncryptDocument(token string, docName string, plaintext []byte) (docID stri
 // contain the plaintext) and the document name.
 //
 // It then returns an io.Reader object that contains the ciphertext of
-// the requested document, and a docId that uniquely
+// the requested document, and a docID that uniquely
 // identifies the document.
-func EncryptDocumentStream(token string, docName string, plainStream io.Reader) (downloadStream io.Reader, docId string, err error) {
+func EncryptDocumentStream(token string, docName string, plainStream io.Reader) (cipherStream io.Reader, docID string, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -103,38 +103,15 @@ func EncryptDocumentStream(token string, docName string, plainStream io.Reader) 
 		return
 	}
 
-	docId = res.GetDocID()
+	docID = res.GetDocID()
 
-	for err != io.EOF {
-		block := make([]byte, blockSize)
-		numRead, readErr := plainStream.Read(block)
-		block = block[:numRead]
-		dataReq := &proto.EncryptDocStreamReq{
-			NameOrData: &proto.EncryptDocStreamReq_Plaintext{
-				Plaintext: block,
-			},
-		}
-		if err = stream.Send(dataReq); err != nil {
-			err = fmt.Errorf("send() err: [%v]", err)
-			return
-		}
-		err = readErr
-	}
-	if err != nil && err != io.EOF {
-		return
-	}
-	err = nil
-
-	// close stream here
-	err = stream.CloseSend()
-	if err != nil {
-		return
-	}
-
-	downloadStream = &encryptStream{
-		stream: &stream,
-		readBuffer: new(bytes.Buffer),
-		docId:  docId,
+	cipherStream = &encryptStream{
+		grpcStream:  &stream,
+		plainStream: plainStream,
+		grpcEOF:     false,
+		plainEOF:    false,
+		buffer:      new(bytes.Buffer),
+		docID:       docID,
 	}
 	return
 }
@@ -204,11 +181,11 @@ func DecryptDocument(token, docID string, cipherText []byte) (plaintext []byte, 
 // DecryptDocumentStream decrypts any document previously decrypted with Strongdoc
 // and makes the plaintext available via an io.Reader interface.
 // It accepts an io.Reader, which should
-// contain the ciphertext, and you must also pass in its docId.
+// contain the ciphertext, and you must also pass in its docID.
 //
 // It then returns an io.Reader object that contains the plaintext of
 // the requested document.
-func DecryptDocumentStream(token string, docId string, cipherStream io.Reader) (downloadStream io.Reader, err error) {
+func DecryptDocumentStream(token string, docID string, cipherStream io.Reader) (plainStream io.Reader, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -221,190 +198,176 @@ func DecryptDocumentStream(token string, docId string, cipherStream io.Reader) (
 		return
 	}
 
-	docIdReq := &proto.DecryptDocStreamReq{
+	docIDReq := &proto.DecryptDocStreamReq{
 		IdOrData: &proto.DecryptDocStreamReq_DocID{
-			DocID: docId,
+			DocID: docID,
 		},
 	}
-	if err = stream.Send(docIdReq); err != nil {
+	if err = stream.Send(docIDReq); err != nil {
 		return
 	}
 	res, err := stream.Recv()
 	if err != nil {
 		return
-	} else if res.DocID != docId {
+	} else if res.DocID != docID {
 		err = fmt.Errorf("incorrect docId Recv'd")
 		return
 	}
 
-	// send contents of stream
-	for err != io.EOF {
-		block := make([]byte, blockSize)
-		numRead, readErr := cipherStream.Read(block)
-		block = block[:numRead]
-		dataReq := &proto.DecryptDocStreamReq{
-			IdOrData: &proto.DecryptDocStreamReq_Ciphertext{
-				Ciphertext: block,
-			},
-		}
-		if err = stream.Send(dataReq); err != nil {
-			err = fmt.Errorf("send() err: [%v]", err)
-			return
-		}
-		err = readErr
-	}
-	if err != nil && err != io.EOF {
-		return
-	}
-	err = nil
-
-	// close stream here
-	err = stream.CloseSend()
-	if err != nil {
-		return
-	}
-
-	downloadStream = &decryptStream{
-		stream: &stream,
-		readBuffer: new(bytes.Buffer),
-		docId:  docId,
+	plainStream = &decryptStream{
+		grpcStream:   &stream,
+		cipherStream: cipherStream,
+		grpcEOF:      false,
+		cipherEOF:    false,
+		buffer:       new(bytes.Buffer),
+		docID:        docID,
 	}
 	return
 }
 
 type encryptStream struct {
-	stream *proto.StrongDocService_EncryptDocumentStreamClient
-	readBuffer *bytes.Buffer
-	docId string
+	grpcStream  *proto.StrongDocService_EncryptDocumentStreamClient
+	plainStream io.Reader
+	grpcEOF     bool
+	plainEOF    bool
+	buffer      *bytes.Buffer
+	docID       string
 }
 
 func (stream *encryptStream) Read(p []byte) (n int, err error) {
-	docID := stream.docId
-	nPreRcvBytes, bufReadErr := stream.readBuffer.Read(p) // drain readBuffer first
-	if bufReadErr != nil && bufReadErr != io.EOF {
-		return 0, fmt.Errorf("readBuffer read err: [%v]", err)
+	if stream.buffer.Len() > 0 {
+		return stream.buffer.Read(p)
 	}
-	nPostRcvBytes := 0
-	if nPreRcvBytes == len(p) { // p runs out
-		return nPreRcvBytes, nil
-	} else { // if readBuffer has been completely drained
-		svc := *stream.stream
-		res, rcvErr := svc.Recv() // refill it from stream
-		if res != nil && docID != res.GetDocID() {
-			rcvErr = fmt.Errorf("requested document %v, received document %v instead",
-				docID, res.GetDocID())
-		}
-		if rcvErr != nil && rcvErr != io.EOF {
-			return 0, fmt.Errorf("error reading from rpc connection: [%v]", rcvErr)
-		} else if rcvErr == io.EOF && bufReadErr == io.EOF {
-			return 0, io.EOF
-		} else if rcvErr == io.EOF {
-			return nPreRcvBytes, nil
-		}
-		cipherText := res.GetCiphertext()
-		stream.readBuffer.Write(cipherText)
-		nPostRcvBytes, err = stream.readBuffer.Read(p[nPreRcvBytes:]) // read remaining part of readBuffer.
-		if err != nil {
-			return 0, fmt.Errorf("readBuffer read err: [%v]", err)
-		}
-		return nPreRcvBytes + nPostRcvBytes, err
-	}
-}
 
-func (stream *encryptStream) Write(plaintext []byte) (n int, err error) {
-	svc := *stream.stream
-	for i := 0; i < len(plaintext); i += blockSize {
-		var block []byte
-		if i+blockSize < len(plaintext) {
-			block = plaintext[i : i+blockSize]
-			block = plaintext[i : i+blockSize]
-		} else {
-			block = plaintext[i:]
+	if stream.plainEOF && stream.grpcEOF {
+		return 0, io.EOF
+	}
+
+	if !stream.plainEOF {
+		plaintext := make([]byte, blockSize)
+		n, err = stream.plainStream.Read(plaintext)
+		if err != nil {
+			if err != io.EOF {
+				(*stream.grpcStream).CloseSend()
+				return
+			}
+			stream.plainEOF = true
 		}
-		n += len(block)
+
+		plaintext = plaintext[:n]
 		dataReq := &proto.EncryptDocStreamReq{
 			NameOrData: &proto.EncryptDocStreamReq_Plaintext{
-				Plaintext: block,
+				Plaintext: plaintext,
 			},
 		}
-		if err = svc.Send(dataReq); err != nil {
-			return 0, fmt.Errorf("encryptStream.Write err: [%v]", err)
+		if err = (*stream.grpcStream).Send(dataReq); err != nil {
+			err = fmt.Errorf("send() err: [%v]", err)
+			(*stream.grpcStream).CloseSend()
+			return
+		}
+
+		if stream.plainEOF {
+			err = (*stream.grpcStream).CloseSend()
 		}
 	}
-	return n,nil
-}
 
-func (stream *encryptStream) DocId() string {
-	return stream.docId
+	resp, err := (*stream.grpcStream).Recv()
+	if resp != nil && stream.docID != resp.GetDocID() {
+		(*stream.grpcStream).CloseSend()
+		return 0, fmt.Errorf("Requested document %v, received document %v instead",
+			stream.docID, resp.GetDocID())
+	}
+
+	if err != nil {
+		if err != io.EOF {
+			return 0, err
+		}
+		stream.grpcEOF = true
+	}
+
+	if resp != nil {
+		ciphertext := resp.GetCiphertext()
+		n = copy(p, ciphertext)
+		if n < len(ciphertext) {
+			stream.buffer.Write(ciphertext[n:])
+		}
+		return n, nil
+	}
+
+	return 0, nil
 }
 
 type decryptStream struct {
-	stream *proto.StrongDocService_DecryptDocumentStreamClient
-	readBuffer *bytes.Buffer
-	docId string
+	grpcStream   *proto.StrongDocService_DecryptDocumentStreamClient
+	cipherStream io.Reader
+	grpcEOF      bool
+	cipherEOF    bool
+	buffer       *bytes.Buffer
+	docID        string
 }
 
+// Read reads the length of the stream. It assumes that
+// the stream from server still has data or that the internal
+// buffer still has some data in it.
 func (stream *decryptStream) Read(p []byte) (n int, err error) {
-	docID := stream.docId
-	nPreRcvBytes, bufReadErr := stream.readBuffer.Read(p) // drain readBuffer first
-	if bufReadErr != nil && bufReadErr != io.EOF {
-		return 0, fmt.Errorf("readBuffer read err: [%v]", err)
+	if stream.buffer.Len() > 0 {
+		return stream.buffer.Read(p)
 	}
-	nPostRcvBytes := 0
-	if nPreRcvBytes == len(p) { // p runs out
-		return nPreRcvBytes, nil
-	} else { // if readBuffer has been completely drained
-		svc := *stream.stream
-		res, rcvErr := svc.Recv() // refill it from stream
-		if res != nil && docID != res.GetDocID() {
-			rcvErr = fmt.Errorf("requested document %v, received document %v instead",
-				docID, res.GetDocID())
-		}
-		if rcvErr != nil && rcvErr != io.EOF {
-			return 0, fmt.Errorf("error reading from rpc connection: [%v]", rcvErr)
-		} else if rcvErr == io.EOF && bufReadErr == io.EOF {
-			return 0, io.EOF
-		} else if rcvErr == io.EOF {
-			return nPreRcvBytes, nil
-		}
-		cipherText := res.GetPlaintext()
-		stream.readBuffer.Write(cipherText)
-		nPostRcvBytes, bufReadErr = stream.readBuffer.Read(p[nPreRcvBytes:]) // read remaining part of readBuffer.
-		if bufReadErr != nil && bufReadErr != io.EOF {
-			return 0, fmt.Errorf("readBuffer read err: [%v]", err)
-		}
-		return nPreRcvBytes + nPostRcvBytes, err
-	}
-}
 
-func (stream *decryptStream) Write(cipherText []byte) (n int, err error) {
-	svc := *stream.stream
-	for i := 0; i < len(cipherText); i += blockSize {
-		var block []byte
-		if i+blockSize < len(cipherText) {
-			block = cipherText[i : i+blockSize]
-		} else {
-			block = cipherText[i:]
+	if stream.cipherEOF && stream.grpcEOF {
+		return 0, io.EOF
+	}
+
+	if !stream.cipherEOF {
+		ciphertext := make([]byte, blockSize)
+		n, err = stream.cipherStream.Read(ciphertext)
+		if err != nil {
+			if err != io.EOF {
+				(*stream.grpcStream).CloseSend()
+				return
+			}
+			stream.cipherEOF = true
 		}
-		n += len(block)
+
+		ciphertext = ciphertext[:n]
 		dataReq := &proto.DecryptDocStreamReq{
 			IdOrData: &proto.DecryptDocStreamReq_Ciphertext{
-				Ciphertext: block,
+				Ciphertext: ciphertext,
 			},
 		}
-		if err = svc.Send(dataReq); err != nil {
-			return 0, fmt.Errorf("deryptStream.Write err: [%v]", err)
+		if err = (*stream.grpcStream).Send(dataReq); err != nil {
+			err = fmt.Errorf("send() err: [%v]", err)
+			(*stream.grpcStream).CloseSend()
+			return
+		}
+
+		if stream.cipherEOF {
+			err = (*stream.grpcStream).CloseSend()
 		}
 	}
-	return n,nil
-}
 
-func (stream *decryptStream) Close() (err error) {
-	svc := *stream.stream
-	err = svc.CloseSend()
-	return
-}
+	resp, err := (*stream.grpcStream).Recv()
+	if resp != nil && stream.docID != resp.GetDocID() {
+		(*stream.grpcStream).CloseSend()
+		return 0, fmt.Errorf("Requested document %v, received document %v instead",
+			stream.docID, resp.GetDocID())
+	}
 
-func (stream *decryptStream) DocId() string {
-	return stream.docId
+	if err != nil {
+		if err != io.EOF {
+			return 0, err
+		}
+		stream.grpcEOF = true
+	}
+
+	if resp != nil {
+		plaintext := resp.GetPlaintext()
+		n = copy(p, plaintext)
+		if n < len(plaintext) {
+			stream.buffer.Write(plaintext[n:])
+		}
+		return n, nil
+	}
+
+	return 0, nil
 }
