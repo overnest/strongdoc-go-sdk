@@ -2,7 +2,7 @@ package api
 
 import (
 	"bytes"
-	"github.com/overnest/strongdoc-go-sdk/internal/utils"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"

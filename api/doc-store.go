@@ -272,7 +272,10 @@ func ShareDocument(token, docId, userId string) (success bool, err error) {
 		UserID: userId,
 	}
 	res, err := authClient.ShareDocument(context.Background(), req)
-
+	if err != nil {
+		fmt.Printf("Failed to share: %v", err)
+		return
+	}
 	success = res.Success
 	return
 }
