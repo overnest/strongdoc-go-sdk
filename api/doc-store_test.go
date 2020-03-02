@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
@@ -25,7 +26,7 @@ func TestDocStore(t *testing.T) {
 	}
 
 	defer func() {
-		_, err = RemoveOrganization(token)
+		_, err = RemoveOrganization(token, true)
 		if err != nil {
 			log.Printf("Failed to log in: %s", err)
 			return
@@ -40,6 +41,25 @@ func TestDocStore(t *testing.T) {
 		log.Printf("Can not upload document: %s", err)
 		return
 	}
+
+	results, err:= Search(token, "bed")
+	if err != nil {
+		log.Printf("search failed: %s", err)
+		return
+	}
+	for _, res := range results {
+		fmt.Printf("docID: %s, score: %f\n", res.DocID, res.Score)
+	}
+
+	docs, err := ListDocuments(token)
+	if err != nil {
+		log.Printf("ListDocuments: %s", err)
+		return
+	}
+	for i, doc := range docs {
+		fmt.Printf("%d | DocName: [%s], DocID: [%s], Size: [%d]\n--------\n", i, doc.DocName, doc.DocID, doc.Size)
+	}
+
 
 	downDocBytes, err := DownloadDocument(token, uploadDocID)
 	assert.Nil(t, err)
@@ -68,7 +88,7 @@ func TestDocStoreStream(t *testing.T) {
 	}
 
 	defer func() {
-		_, err = RemoveOrganization(token)
+		_, err = RemoveOrganization(token, true)
 		if err != nil {
 			log.Printf("Failed to log in: %s", err)
 			return

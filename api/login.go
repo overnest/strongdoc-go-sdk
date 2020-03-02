@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/overnest/strongdoc-go/client"
@@ -11,11 +12,11 @@ import (
 // Login logs the user in, returning a Bearer Token.
 // This token must henceforth be sent with all requests
 // in the same session.
-func Login(userID, password, orgID string) (string, error) {
+func Login(userID, password, orgID string) (token string, err error) {
 	noAuthConn, err := client.ConnectToServerNoAuth()
 	if err != nil {
 		log.Fatalf("Can not obtain no auth connection %s", err)
-		return "", err
+		return
 	}
 	defer noAuthConn.Close()
 
@@ -23,10 +24,12 @@ func Login(userID, password, orgID string) (string, error) {
 	res, err := noauthClient.Login(context.Background(), &proto.LoginRequest{
 		UserID: userID, Password: password, OrgID: orgID})
 	if err != nil {
-		return "", err
+		err = fmt.Errorf("Login err: [%v]\n", err)
+		return
 	}
 
-	return res.Token, nil
+	token = res.Token
+	return token, nil
 }
 
 // Logout retires the Bearer token in use, ending the session.

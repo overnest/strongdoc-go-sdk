@@ -129,3 +129,17 @@ func Billing(token string) (bd BillingDetails) {
 	return BillingDetails{res}
 }
 
+//func BillingPeriodList(token string) (bd BillingDetails) {
+//	authConn, err := client.ConnectToServerWithAuth(token)
+//	if err != nil {
+//		log.Fatalf("Can not obtain auth connection %s", err)
+//		return
+//	}
+//	defer authConn.Close()
+//	authClient := proto.NewStrongDocServiceClient(authConn)
+//	req := &proto.GetBillingPeriodRequest{}
+//	res, err := authClient.GetBillingPeriod(context.Background(), req)
+//	//authClient.GetBilling
+//	return BillingDetails{res}
+//}
+//

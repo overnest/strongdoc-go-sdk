@@ -25,6 +25,7 @@ func UploadDocument(token string, docName string, plaintext []byte) (docID strin
 
 	stream, err := authClient.UploadDocumentStream(context.Background())
 	if err != nil {
+		err = fmt.Errorf("UploadDocument err: [%v]", err)
 		return
 	}
 
@@ -33,6 +34,7 @@ func UploadDocument(token string, docName string, plaintext []byte) (docID strin
 			DocName: docName},
 	}
 	if err = stream.Send(docNameReq); err != nil {
+		err = fmt.Errorf("UploadDocument err: [%v]", err)
 		return
 	}
 
@@ -48,20 +50,27 @@ func UploadDocument(token string, docName string, plaintext []byte) (docID strin
 			NameOrData: &proto.UploadDocStreamReq_Plaintext{
 				Plaintext: block}}
 		if err = stream.Send(dataReq); err != nil {
+			err = fmt.Errorf("UploadDocument err: [%v]", err)
 			return
 		}
 	}
 
 	if err = stream.CloseSend(); err != nil {
+		err = fmt.Errorf("UploadDocument err: [%v]", err)
 		return
 	}
 
-	resp, err := stream.CloseAndRecv()
+	res, err := stream.CloseAndRecv()
 	if err != nil {
+		err = fmt.Errorf("UploadDocument err: [%v]", err)
+		return
+	}
+	if res == nil {
+		err = fmt.Errorf("UploadDocument response is nil: [%v]", err)
 		return
 	}
 
-	docID = resp.GetDocID()
+	docID = res.GetDocID()
 	return
 }
 
@@ -148,13 +157,13 @@ func DownloadDocument(token string, docID string) (plaintext []byte, err error) 
 	}
 
 	for err == nil {
-		resp, rcverr := stream.Recv()
-		if resp != nil && docID != resp.GetDocID() {
+		res, rcverr := stream.Recv()
+		if res != nil && docID != res.GetDocID() {
 			err = fmt.Errorf("Requested document %v, received document %v instead",
-				docID, resp.GetDocID())
+				docID, res.GetDocID())
 			return
 		}
-		plaintext = append(plaintext, resp.GetPlaintext()...)
+		plaintext = append(plaintext, res.GetPlaintext()...)
 		err = rcverr
 	}
 
@@ -301,13 +310,28 @@ func UnshareDocument(token, docId, userId string) (count int64, err error) {
 	return
 }
 
-type Documents struct {
-	protoDocs *[]*proto.ListDocumentsResponse_Document
+type Document struct {
+	DocName string
+	DocID string
+	Size uint64
+}
+
+// convertListDocumentsResponse_Document strips
+func convertListDocumentsResponse_Document(protoDocs []*proto.ListDocumentsResponse_Document) (docs []Document) {
+	for _, protoDoc := range protoDocs {
+		doc := Document{
+			DocName: protoDoc.DocName,
+			DocID:   protoDoc.DocID,
+			Size:    protoDoc.Size,
+		}
+		docs = append(docs, doc)
+	}
+	return docs
 }
 
 // ListDocuments returns a slice of Document objects, representing
 // the documents accessible by the user.
-func ListDocuments(token string) (docs Documents, err error) {
+func ListDocuments(token string) (docs []Document, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -321,65 +345,7 @@ func ListDocuments(token string) (docs Documents, err error) {
 	if err != nil {
 		return
 	}
-
-	docs = Documents{&res.Documents}
-	return
-}
-
-// AddSharableOrg adds a sharable Organization.
-func AddSharableOrg(token, orgId string) (success bool, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
-	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
-		return
-	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
-
-	req := &proto.AddSharableOrgRequest{
-		NewOrgID: orgId,
-	}
-	res, err := authClient.AddSharableOrg(context.Background(), req)
-
-	success = res.Success
-	return
-}
-
-// RemoveSharableOrg removes a sharable Organization.
-func RemoveSharableOrg(token, orgId string) (success bool, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
-	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
-		return
-	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
-
-	req := &proto.RemoveSharableOrgRequest{
-		RemoveOrgID: orgId,
-	}
-	res, err := authClient.RemoveSharableOrg(context.Background(), req)
-
-	success = res.Success
-	return
-}
-
-// SetMultiLevelSharing sets MultiLevel Sharing.
-func SetMultiLevelSharing(token string, enable bool) (success bool, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
-	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
-		return
-	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
-
-	req := &proto.SetMultiLevelSharingRequest{
-		Enable: enable,
-	}
-	res, err := authClient.SetMultiLevelSharing(context.Background(), req)
-
-	success = res.Success
+	docs = convertListDocumentsResponse_Document(res.Documents)
 	return
 }
 

@@ -29,7 +29,7 @@ func TestEncrypt(t *testing.T) {
 	}
 
 	defer func() {
-		_, err = RemoveOrganization(token)
+		_, err = RemoveOrganization(token, true)
 		if err != nil {
 			log.Printf("Failed to log in: %s", err)
 			return
@@ -39,7 +39,8 @@ func TestEncrypt(t *testing.T) {
 	fileName := "CompanyIntro.txt"
 	filePath, err := utils.FetchFileLoc("/testDocuments/CompanyIntro.txt")
 
-	pdfBytes, err := ioutil.ReadFile(filePath)
+	var pdfBytes []byte
+	pdfBytes, err = ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Printf("Failed to open file: %s", err)
 		return
@@ -92,7 +93,7 @@ func TestEncryptStream(t *testing.T) {
 	}
 
 	defer func() {
-		_, err = RemoveOrganization(token)
+		_, err = RemoveOrganization(token, true)
 		if err != nil {
 			log.Printf("Failed to log in: %s", err)
 			return

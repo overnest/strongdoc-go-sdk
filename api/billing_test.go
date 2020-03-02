@@ -25,7 +25,7 @@ func _TestGetBillingDetails(t *testing.T) {
 	}
 
 	defer func() {
-		_, err = RemoveOrganization(token)
+		_, err = RemoveOrganization(token, true)
 		if err != nil {
 			log.Printf("Failed to log in: %s", err)
 			return

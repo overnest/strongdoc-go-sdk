@@ -39,7 +39,7 @@ func RegisterOrganization(orgName, orgAddr, adminName, adminPassword, adminEmail
 // users, documents, and other data that it owns.
 //
 // Requires administrator privileges.
-func RemoveOrganization(token string) (success bool, err error) {
+func RemoveOrganization(token string, force bool) (success bool, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
 		log.Fatalf("Can not obtain auth connection %s", err)
@@ -49,7 +49,7 @@ func RemoveOrganization(token string) (success bool, err error) {
 
 	authClient := proto.NewStrongDocServiceClient(authConn)
 	resp, err := authClient.RemoveOrganization(context.Background(), &proto.RemoveOrganizationRequest{
-		Force: true,
+		Force: force,
 	})
 	if err != nil {
 		return
@@ -158,4 +158,92 @@ func RemoveUser(token, user string) (count int64, err error) {
 	return
 }
 
+type User struct {
+	UserName string
+	UserID string
+	IsAdmin bool
+}
+
+func ListUsers(token string) (users []User, err error) {
+	authConn, err := client.ConnectToServerWithAuth(token)
+	if err != nil {
+		log.Fatalf("Can not obtain auth connection %s", err)
+		return
+	}
+	defer authConn.Close()
+
+	authClient := proto.NewStrongDocServiceClient(authConn)
+	req := &proto.ListUsersRequest{}
+	res, err := authClient.ListUsers(context.Background(), req)
+	if err != nil {
+		return
+	}
+	users = make([]User, 0)
+	for _, protoUser := range res.OrgUsers {
+		user := User{
+			protoUser.UserName,
+			protoUser.UserID,
+			protoUser.IsAdmin,
+		}
+		users = append(users, user)
+	}
+	return
+}
+
+// AddSharableOrg adds a sharable Organization.
+func AddSharableOrg(token, orgID string) (success bool, err error) {
+	authConn, err := client.ConnectToServerWithAuth(token)
+	if err != nil {
+		log.Fatalf("Can not obtain auth connection %s", err)
+		return
+	}
+	defer authConn.Close()
+	authClient := proto.NewStrongDocServiceClient(authConn)
+
+	req := &proto.AddSharableOrgRequest{
+		NewOrgID: orgID,
+	}
+	res, err := authClient.AddSharableOrg(context.Background(), req)
+
+	success = res.Success
+	return
+}
+
+// RemoveSharableOrg removes a sharable Organization.
+func RemoveSharableOrg(token, orgID string) (success bool, err error) {
+	authConn, err := client.ConnectToServerWithAuth(token)
+	if err != nil {
+		log.Fatalf("Can not obtain auth connection %s", err)
+		return
+	}
+	defer authConn.Close()
+	authClient := proto.NewStrongDocServiceClient(authConn)
+
+	req := &proto.RemoveSharableOrgRequest{
+		RemoveOrgID: orgID,
+	}
+	res, err := authClient.RemoveSharableOrg(context.Background(), req)
+
+	success = res.Success
+	return
+}
+
+// SetMultiLevelSharing sets MultiLevel Sharing.
+func SetMultiLevelSharing(token string, enable bool) (success bool, err error) {
+	authConn, err := client.ConnectToServerWithAuth(token)
+	if err != nil {
+		log.Fatalf("Can not obtain auth connection %s", err)
+		return
+	}
+	defer authConn.Close()
+	authClient := proto.NewStrongDocServiceClient(authConn)
+
+	req := &proto.SetMultiLevelSharingRequest{
+		Enable: enable,
+	}
+	res, err := authClient.SetMultiLevelSharing(context.Background(), req)
+
+	success = res.Success
+	return
+}
 
