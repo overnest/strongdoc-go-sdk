@@ -8,10 +8,10 @@ import (
 	"testing"
 )
 
-func _TestGetBillingDetails(t *testing.T) {
+func TestGetBillingDetails(t *testing.T) {
 
 	_, _, err := RegisterOrganization(organization, "", adminName,
-		adminPassword, adminEmail)
+		adminPassword, adminEmail, testSource, testSourceData)
 
 	if err != nil && !strings.Contains(err.Error(), "already exists") {
 		log.Printf("Failed to register organization: %s", err)
@@ -34,7 +34,7 @@ func _TestGetBillingDetails(t *testing.T) {
 	
 	billingDetails := Billing(token)
 	tr, err := billingDetails.Traffic()
-	assert.NotNil(t, err)
+	assert.Nil(t, err)
 	fmt.Println(tr.Cost())
 
 }

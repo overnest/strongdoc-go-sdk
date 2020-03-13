@@ -13,7 +13,7 @@ import (
 
 func TestDocStore(t *testing.T) {
 	_, _, err := RegisterOrganization(organization, "", adminName,
-		adminPassword, adminEmail)
+		adminPassword, adminEmail, testSource, testSourceData)
 
 	if err != nil && !strings.Contains(err.Error(), "already exists") {
 		log.Printf("Failed to register organization: %s", err)
@@ -41,6 +41,9 @@ func TestDocStore(t *testing.T) {
 		log.Printf("Can not upload document: %s", err)
 		return
 	}
+
+	//size, err := GetDocumentsSize(token)
+	//fmt.Printf("size: [%d]", size)
 
 	results, err:= Search(token, "bed")
 	if err != nil {
@@ -75,7 +78,7 @@ func TestDocStore(t *testing.T) {
 
 func TestDocStoreStream(t *testing.T) {
 	_, _, err := RegisterOrganization(organization, "", adminName,
-		adminPassword, adminEmail)
+		adminPassword, adminEmail, testSource, testSourceData)
 	if err != nil {
 		log.Printf("Failed to register organization: %s", err)
 		return

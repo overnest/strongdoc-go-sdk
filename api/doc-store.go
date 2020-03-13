@@ -267,6 +267,8 @@ func RemoveDocument(token, docID string) error {
 }
 
 // ShareDocument shares the document with other users.
+// Note that the user that you are sharing with be be in an organization
+// that has been declared available for sharing with the Add Sharable Organizations function.
 func ShareDocument(token, docId, userId string) (success bool, err error) {
 	authConn, err := client.ConnectToServerWithAuth(token)
 	if err != nil {
@@ -361,6 +363,9 @@ func GetDocumentsSize(token string) (size uint64, err error) {
 
 	req := &proto.GetDocumentsSizeRequest{}
 	res, err := authClient.GetDocumentsSize(context.Background(), req)
+	if err != nil {
+		return
+	}
 
 	size = res.Size
 	return

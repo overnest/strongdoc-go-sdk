@@ -10,7 +10,7 @@ import (
 
 // RegisterOrganization creates an organization. The user who
 // created the organization is automatically an administrator.
-func RegisterOrganization(orgName, orgAddr, adminName, adminPassword, adminEmail string) (orgID, adminID string, err error) {
+func RegisterOrganization(orgName, orgAddr, adminName, adminPassword, adminEmail, source, sourceData string) (orgID, adminID string, err error) {
 	noAuthConn, err := client.ConnectToServerNoAuth()
 	if err != nil {
 		log.Fatalf("Can not obtain no auth connection %s", err)
@@ -27,6 +27,8 @@ func RegisterOrganization(orgName, orgAddr, adminName, adminPassword, adminEmail
 		Email:           adminEmail,
 		SharableOrgs:    nil,
 		MultiLevelShare: false,
+		Source: 		 source,
+		SourceData: 	sourceData,
 	})
 	if err != nil {
 		return

@@ -14,7 +14,7 @@ func TestListUsers(t *testing.T) {
 	adminID := adminEmail
 
 	_, _, err := RegisterOrganization(organization, "", adminName,
-		adminPassword, adminEmail)
+		adminPassword, adminEmail, testSource, testSourceData)
 
 	if err != nil && !strings.Contains(err.Error(), "already exists") {
 		log.Printf("Failed to register organization: %s", err)
@@ -69,7 +69,7 @@ func TestLogout(t *testing.T) {
 
 
 	_, _, err := RegisterOrganization(organization, "", adminName,
-		adminPassword, adminEmail)
+		adminPassword, adminEmail, testSource, testSourceData)
 
 	if err != nil && !strings.Contains(err.Error(), "already exists") {
 		log.Printf("Failed to register organization: %s", err)
