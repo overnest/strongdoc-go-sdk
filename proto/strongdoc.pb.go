@@ -7,7 +7,6 @@ import (
 	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
-	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	_ "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger/options"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
@@ -27,512 +26,6 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-type TimeInterval int32
-
-const (
-	TimeInterval_UNDEFINED TimeInterval = 0
-	TimeInterval_MONTH     TimeInterval = 1
-	TimeInterval_YEAR      TimeInterval = 2
-)
-
-var TimeInterval_name = map[int32]string{
-	0: "UNDEFINED",
-	1: "MONTH",
-	2: "YEAR",
-}
-
-var TimeInterval_value = map[string]int32{
-	"UNDEFINED": 0,
-	"MONTH":     1,
-	"YEAR":      2,
-}
-
-func (x TimeInterval) String() string {
-	return proto.EnumName(TimeInterval_name, int32(x))
-}
-
-func (TimeInterval) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_d003557e9d9c9339, []int{0}
-}
-
-type GetBillingDetailsRequest struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *GetBillingDetailsRequest) Reset()         { *m = GetBillingDetailsRequest{} }
-func (m *GetBillingDetailsRequest) String() string { return proto.CompactTextString(m) }
-func (*GetBillingDetailsRequest) ProtoMessage()    {}
-func (*GetBillingDetailsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d003557e9d9c9339, []int{0}
-}
-
-func (m *GetBillingDetailsRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetBillingDetailsRequest.Unmarshal(m, b)
-}
-func (m *GetBillingDetailsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetBillingDetailsRequest.Marshal(b, m, deterministic)
-}
-func (m *GetBillingDetailsRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetBillingDetailsRequest.Merge(m, src)
-}
-func (m *GetBillingDetailsRequest) XXX_Size() int {
-	return xxx_messageInfo_GetBillingDetailsRequest.Size(m)
-}
-func (m *GetBillingDetailsRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetBillingDetailsRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_GetBillingDetailsRequest proto.InternalMessageInfo
-
-type GetBillingDetailsResponse struct {
-	CurrentPeriod        *BillingPeriod `protobuf:"bytes,1,opt,name=currentPeriod,proto3" json:"currentPeriod,omitempty"`
-	TotalCost            int32          `protobuf:"varint,2,opt,name=totalCost,proto3" json:"totalCost,omitempty"`
-	Documents            *Documents     `protobuf:"bytes,3,opt,name=documents,proto3" json:"documents,omitempty"`
-	Index                *Index         `protobuf:"bytes,4,opt,name=index,proto3" json:"index,omitempty"`
-	Traffic              *Traffic       `protobuf:"bytes,5,opt,name=traffic,proto3" json:"traffic,omitempty"`
-	NextPeriod           *BillingPeriod `protobuf:"bytes,6,opt,name=nextPeriod,proto3" json:"nextPeriod,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
-	XXX_unrecognized     []byte         `json:"-"`
-	XXX_sizecache        int32          `json:"-"`
-}
-
-func (m *GetBillingDetailsResponse) Reset()         { *m = GetBillingDetailsResponse{} }
-func (m *GetBillingDetailsResponse) String() string { return proto.CompactTextString(m) }
-func (*GetBillingDetailsResponse) ProtoMessage()    {}
-func (*GetBillingDetailsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d003557e9d9c9339, []int{1}
-}
-
-func (m *GetBillingDetailsResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetBillingDetailsResponse.Unmarshal(m, b)
-}
-func (m *GetBillingDetailsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetBillingDetailsResponse.Marshal(b, m, deterministic)
-}
-func (m *GetBillingDetailsResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetBillingDetailsResponse.Merge(m, src)
-}
-func (m *GetBillingDetailsResponse) XXX_Size() int {
-	return xxx_messageInfo_GetBillingDetailsResponse.Size(m)
-}
-func (m *GetBillingDetailsResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetBillingDetailsResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_GetBillingDetailsResponse proto.InternalMessageInfo
-
-func (m *GetBillingDetailsResponse) GetCurrentPeriod() *BillingPeriod {
-	if m != nil {
-		return m.CurrentPeriod
-	}
-	return nil
-}
-
-func (m *GetBillingDetailsResponse) GetTotalCost() int32 {
-	if m != nil {
-		return m.TotalCost
-	}
-	return 0
-}
-
-func (m *GetBillingDetailsResponse) GetDocuments() *Documents {
-	if m != nil {
-		return m.Documents
-	}
-	return nil
-}
-
-func (m *GetBillingDetailsResponse) GetIndex() *Index {
-	if m != nil {
-		return m.Index
-	}
-	return nil
-}
-
-func (m *GetBillingDetailsResponse) GetTraffic() *Traffic {
-	if m != nil {
-		return m.Traffic
-	}
-	return nil
-}
-
-func (m *GetBillingDetailsResponse) GetNextPeriod() *BillingPeriod {
-	if m != nil {
-		return m.NextPeriod
-	}
-	return nil
-}
-
-type BillingPeriod struct {
-	Frequency            TimeInterval         `protobuf:"varint,1,opt,name=frequency,proto3,enum=proto.TimeInterval" json:"frequency,omitempty"`
-	PeriodStart          *timestamp.Timestamp `protobuf:"bytes,2,opt,name=periodStart,proto3" json:"periodStart,omitempty"`
-	PeriodEnd            *timestamp.Timestamp `protobuf:"bytes,3,opt,name=periodEnd,proto3" json:"periodEnd,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
-	XXX_unrecognized     []byte               `json:"-"`
-	XXX_sizecache        int32                `json:"-"`
-}
-
-func (m *BillingPeriod) Reset()         { *m = BillingPeriod{} }
-func (m *BillingPeriod) String() string { return proto.CompactTextString(m) }
-func (*BillingPeriod) ProtoMessage()    {}
-func (*BillingPeriod) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d003557e9d9c9339, []int{2}
-}
-
-func (m *BillingPeriod) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_BillingPeriod.Unmarshal(m, b)
-}
-func (m *BillingPeriod) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_BillingPeriod.Marshal(b, m, deterministic)
-}
-func (m *BillingPeriod) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BillingPeriod.Merge(m, src)
-}
-func (m *BillingPeriod) XXX_Size() int {
-	return xxx_messageInfo_BillingPeriod.Size(m)
-}
-func (m *BillingPeriod) XXX_DiscardUnknown() {
-	xxx_messageInfo_BillingPeriod.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BillingPeriod proto.InternalMessageInfo
-
-func (m *BillingPeriod) GetFrequency() TimeInterval {
-	if m != nil {
-		return m.Frequency
-	}
-	return TimeInterval_UNDEFINED
-}
-
-func (m *BillingPeriod) GetPeriodStart() *timestamp.Timestamp {
-	if m != nil {
-		return m.PeriodStart
-	}
-	return nil
-}
-
-func (m *BillingPeriod) GetPeriodEnd() *timestamp.Timestamp {
-	if m != nil {
-		return m.PeriodEnd
-	}
-	return nil
-}
-
-type Documents struct {
-	Cost                 int32    `protobuf:"varint,1,opt,name=cost,proto3" json:"cost,omitempty"`
-	Size                 float64  `protobuf:"fixed64,2,opt,name=size,proto3" json:"size,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *Documents) Reset()         { *m = Documents{} }
-func (m *Documents) String() string { return proto.CompactTextString(m) }
-func (*Documents) ProtoMessage()    {}
-func (*Documents) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d003557e9d9c9339, []int{3}
-}
-
-func (m *Documents) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Documents.Unmarshal(m, b)
-}
-func (m *Documents) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Documents.Marshal(b, m, deterministic)
-}
-func (m *Documents) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Documents.Merge(m, src)
-}
-func (m *Documents) XXX_Size() int {
-	return xxx_messageInfo_Documents.Size(m)
-}
-func (m *Documents) XXX_DiscardUnknown() {
-	xxx_messageInfo_Documents.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Documents proto.InternalMessageInfo
-
-func (m *Documents) GetCost() int32 {
-	if m != nil {
-		return m.Cost
-	}
-	return 0
-}
-
-func (m *Documents) GetSize() float64 {
-	if m != nil {
-		return m.Size
-	}
-	return 0
-}
-
-type Index struct {
-	Cost                 int32    `protobuf:"varint,1,opt,name=cost,proto3" json:"cost,omitempty"`
-	Size                 int64    `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *Index) Reset()         { *m = Index{} }
-func (m *Index) String() string { return proto.CompactTextString(m) }
-func (*Index) ProtoMessage()    {}
-func (*Index) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d003557e9d9c9339, []int{4}
-}
-
-func (m *Index) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Index.Unmarshal(m, b)
-}
-func (m *Index) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Index.Marshal(b, m, deterministic)
-}
-func (m *Index) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Index.Merge(m, src)
-}
-func (m *Index) XXX_Size() int {
-	return xxx_messageInfo_Index.Size(m)
-}
-func (m *Index) XXX_DiscardUnknown() {
-	xxx_messageInfo_Index.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Index proto.InternalMessageInfo
-
-func (m *Index) GetCost() int32 {
-	if m != nil {
-		return m.Cost
-	}
-	return 0
-}
-
-func (m *Index) GetSize() int64 {
-	if m != nil {
-		return m.Size
-	}
-	return 0
-}
-
-type Traffic struct {
-	Cost                 int32    `protobuf:"varint,1,opt,name=cost,proto3" json:"cost,omitempty"`
-	Incoming             float64  `protobuf:"fixed64,2,opt,name=incoming,proto3" json:"incoming,omitempty"`
-	Outgoing             float64  `protobuf:"fixed64,3,opt,name=outgoing,proto3" json:"outgoing,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *Traffic) Reset()         { *m = Traffic{} }
-func (m *Traffic) String() string { return proto.CompactTextString(m) }
-func (*Traffic) ProtoMessage()    {}
-func (*Traffic) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d003557e9d9c9339, []int{5}
-}
-
-func (m *Traffic) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Traffic.Unmarshal(m, b)
-}
-func (m *Traffic) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Traffic.Marshal(b, m, deterministic)
-}
-func (m *Traffic) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Traffic.Merge(m, src)
-}
-func (m *Traffic) XXX_Size() int {
-	return xxx_messageInfo_Traffic.Size(m)
-}
-func (m *Traffic) XXX_DiscardUnknown() {
-	xxx_messageInfo_Traffic.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Traffic proto.InternalMessageInfo
-
-func (m *Traffic) GetCost() int32 {
-	if m != nil {
-		return m.Cost
-	}
-	return 0
-}
-
-func (m *Traffic) GetIncoming() float64 {
-	if m != nil {
-		return m.Incoming
-	}
-	return 0
-}
-
-func (m *Traffic) GetOutgoing() float64 {
-	if m != nil {
-		return m.Outgoing
-	}
-	return 0
-}
-
-type GetBillingPeriodRequest struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *GetBillingPeriodRequest) Reset()         { *m = GetBillingPeriodRequest{} }
-func (m *GetBillingPeriodRequest) String() string { return proto.CompactTextString(m) }
-func (*GetBillingPeriodRequest) ProtoMessage()    {}
-func (*GetBillingPeriodRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d003557e9d9c9339, []int{6}
-}
-
-func (m *GetBillingPeriodRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetBillingPeriodRequest.Unmarshal(m, b)
-}
-func (m *GetBillingPeriodRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetBillingPeriodRequest.Marshal(b, m, deterministic)
-}
-func (m *GetBillingPeriodRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetBillingPeriodRequest.Merge(m, src)
-}
-func (m *GetBillingPeriodRequest) XXX_Size() int {
-	return xxx_messageInfo_GetBillingPeriodRequest.Size(m)
-}
-func (m *GetBillingPeriodRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetBillingPeriodRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_GetBillingPeriodRequest proto.InternalMessageInfo
-
-type GetBillingPeriodResponse struct {
-	CurrentPeriod        *BillingPeriod `protobuf:"bytes,1,opt,name=currentPeriod,proto3" json:"currentPeriod,omitempty"`
-	NextPeriod           *BillingPeriod `protobuf:"bytes,2,opt,name=nextPeriod,proto3" json:"nextPeriod,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
-	XXX_unrecognized     []byte         `json:"-"`
-	XXX_sizecache        int32          `json:"-"`
-}
-
-func (m *GetBillingPeriodResponse) Reset()         { *m = GetBillingPeriodResponse{} }
-func (m *GetBillingPeriodResponse) String() string { return proto.CompactTextString(m) }
-func (*GetBillingPeriodResponse) ProtoMessage()    {}
-func (*GetBillingPeriodResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d003557e9d9c9339, []int{7}
-}
-
-func (m *GetBillingPeriodResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_GetBillingPeriodResponse.Unmarshal(m, b)
-}
-func (m *GetBillingPeriodResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_GetBillingPeriodResponse.Marshal(b, m, deterministic)
-}
-func (m *GetBillingPeriodResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetBillingPeriodResponse.Merge(m, src)
-}
-func (m *GetBillingPeriodResponse) XXX_Size() int {
-	return xxx_messageInfo_GetBillingPeriodResponse.Size(m)
-}
-func (m *GetBillingPeriodResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetBillingPeriodResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_GetBillingPeriodResponse proto.InternalMessageInfo
-
-func (m *GetBillingPeriodResponse) GetCurrentPeriod() *BillingPeriod {
-	if m != nil {
-		return m.CurrentPeriod
-	}
-	return nil
-}
-
-func (m *GetBillingPeriodResponse) GetNextPeriod() *BillingPeriod {
-	if m != nil {
-		return m.NextPeriod
-	}
-	return nil
-}
-
-type SetBillingPeriodRequest struct {
-	Frequency            TimeInterval `protobuf:"varint,1,opt,name=frequency,proto3,enum=proto.TimeInterval" json:"frequency,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
-	XXX_unrecognized     []byte       `json:"-"`
-	XXX_sizecache        int32        `json:"-"`
-}
-
-func (m *SetBillingPeriodRequest) Reset()         { *m = SetBillingPeriodRequest{} }
-func (m *SetBillingPeriodRequest) String() string { return proto.CompactTextString(m) }
-func (*SetBillingPeriodRequest) ProtoMessage()    {}
-func (*SetBillingPeriodRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d003557e9d9c9339, []int{8}
-}
-
-func (m *SetBillingPeriodRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SetBillingPeriodRequest.Unmarshal(m, b)
-}
-func (m *SetBillingPeriodRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SetBillingPeriodRequest.Marshal(b, m, deterministic)
-}
-func (m *SetBillingPeriodRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SetBillingPeriodRequest.Merge(m, src)
-}
-func (m *SetBillingPeriodRequest) XXX_Size() int {
-	return xxx_messageInfo_SetBillingPeriodRequest.Size(m)
-}
-func (m *SetBillingPeriodRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_SetBillingPeriodRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SetBillingPeriodRequest proto.InternalMessageInfo
-
-func (m *SetBillingPeriodRequest) GetFrequency() TimeInterval {
-	if m != nil {
-		return m.Frequency
-	}
-	return TimeInterval_UNDEFINED
-}
-
-type SetBillingPeriodResponse struct {
-	CurrentPeriod        *BillingPeriod `protobuf:"bytes,1,opt,name=currentPeriod,proto3" json:"currentPeriod,omitempty"`
-	NextPeriod           *BillingPeriod `protobuf:"bytes,2,opt,name=nextPeriod,proto3" json:"nextPeriod,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
-	XXX_unrecognized     []byte         `json:"-"`
-	XXX_sizecache        int32          `json:"-"`
-}
-
-func (m *SetBillingPeriodResponse) Reset()         { *m = SetBillingPeriodResponse{} }
-func (m *SetBillingPeriodResponse) String() string { return proto.CompactTextString(m) }
-func (*SetBillingPeriodResponse) ProtoMessage()    {}
-func (*SetBillingPeriodResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d003557e9d9c9339, []int{9}
-}
-
-func (m *SetBillingPeriodResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SetBillingPeriodResponse.Unmarshal(m, b)
-}
-func (m *SetBillingPeriodResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SetBillingPeriodResponse.Marshal(b, m, deterministic)
-}
-func (m *SetBillingPeriodResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SetBillingPeriodResponse.Merge(m, src)
-}
-func (m *SetBillingPeriodResponse) XXX_Size() int {
-	return xxx_messageInfo_SetBillingPeriodResponse.Size(m)
-}
-func (m *SetBillingPeriodResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_SetBillingPeriodResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SetBillingPeriodResponse proto.InternalMessageInfo
-
-func (m *SetBillingPeriodResponse) GetCurrentPeriod() *BillingPeriod {
-	if m != nil {
-		return m.CurrentPeriod
-	}
-	return nil
-}
-
-func (m *SetBillingPeriodResponse) GetNextPeriod() *BillingPeriod {
-	if m != nil {
-		return m.NextPeriod
-	}
-	return nil
-}
-
 type GetConfigurationReq struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -543,7 +36,7 @@ func (m *GetConfigurationReq) Reset()         { *m = GetConfigurationReq{} }
 func (m *GetConfigurationReq) String() string { return proto.CompactTextString(m) }
 func (*GetConfigurationReq) ProtoMessage()    {}
 func (*GetConfigurationReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d003557e9d9c9339, []int{10}
+	return fileDescriptor_d003557e9d9c9339, []int{0}
 }
 
 func (m *GetConfigurationReq) XXX_Unmarshal(b []byte) error {
@@ -575,7 +68,7 @@ func (m *GetConfigurationResp) Reset()         { *m = GetConfigurationResp{} }
 func (m *GetConfigurationResp) String() string { return proto.CompactTextString(m) }
 func (*GetConfigurationResp) ProtoMessage()    {}
 func (*GetConfigurationResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d003557e9d9c9339, []int{11}
+	return fileDescriptor_d003557e9d9c9339, []int{1}
 }
 
 func (m *GetConfigurationResp) XXX_Unmarshal(b []byte) error {
@@ -604,17 +97,6 @@ func (m *GetConfigurationResp) GetConfiguration() string {
 }
 
 func init() {
-	proto.RegisterEnum("proto.TimeInterval", TimeInterval_name, TimeInterval_value)
-	proto.RegisterType((*GetBillingDetailsRequest)(nil), "proto.GetBillingDetailsRequest")
-	proto.RegisterType((*GetBillingDetailsResponse)(nil), "proto.GetBillingDetailsResponse")
-	proto.RegisterType((*BillingPeriod)(nil), "proto.BillingPeriod")
-	proto.RegisterType((*Documents)(nil), "proto.Documents")
-	proto.RegisterType((*Index)(nil), "proto.Index")
-	proto.RegisterType((*Traffic)(nil), "proto.Traffic")
-	proto.RegisterType((*GetBillingPeriodRequest)(nil), "proto.GetBillingPeriodRequest")
-	proto.RegisterType((*GetBillingPeriodResponse)(nil), "proto.GetBillingPeriodResponse")
-	proto.RegisterType((*SetBillingPeriodRequest)(nil), "proto.SetBillingPeriodRequest")
-	proto.RegisterType((*SetBillingPeriodResponse)(nil), "proto.SetBillingPeriodResponse")
 	proto.RegisterType((*GetConfigurationReq)(nil), "proto.GetConfigurationReq")
 	proto.RegisterType((*GetConfigurationResp)(nil), "proto.GetConfigurationResp")
 }
@@ -622,119 +104,96 @@ func init() {
 func init() { proto.RegisterFile("strongdoc.proto", fileDescriptor_d003557e9d9c9339) }
 
 var fileDescriptor_d003557e9d9c9339 = []byte{
-	// 1791 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x58, 0xdd, 0x6e, 0x1b, 0xc7,
-	0xf5, 0xf7, 0xd2, 0x96, 0x63, 0x1e, 0x4b, 0x14, 0x3d, 0x22, 0x25, 0x6a, 0x25, 0x47, 0x9b, 0xfd,
-	0xff, 0x53, 0x0b, 0xae, 0xc5, 0xb5, 0xe9, 0xb4, 0x09, 0x84, 0x14, 0x88, 0x6c, 0x2a, 0xaa, 0x50,
-	0xd9, 0x51, 0x49, 0x2b, 0x45, 0x7b, 0xd1, 0x62, 0xb5, 0x1c, 0xad, 0x36, 0x59, 0xee, 0xac, 0x66,
-	0x87, 0xb2, 0x69, 0xd7, 0x17, 0x09, 0x0a, 0x34, 0x2d, 0x02, 0x14, 0x48, 0xd1, 0xdb, 0x02, 0xbd,
-	0xec, 0x03, 0xf4, 0xa6, 0xaf, 0xd1, 0x57, 0xe8, 0x55, 0xd1, 0x87, 0x28, 0x66, 0x76, 0x66, 0xbf,
-	0xb8, 0xcb, 0xb8, 0x45, 0x2f, 0x7a, 0x45, 0xce, 0xf9, 0x9d, 0x8f, 0xdf, 0x39, 0x67, 0x76, 0x66,
-	0xcf, 0xc2, 0x72, 0xc4, 0x28, 0x09, 0xdc, 0x11, 0x71, 0xba, 0x21, 0x25, 0x8c, 0xa0, 0x05, 0xf1,
-	0xa3, 0x6f, 0xba, 0x84, 0xb8, 0x3e, 0xb6, 0xec, 0xd0, 0xb3, 0xec, 0x20, 0x20, 0xcc, 0x66, 0x1e,
-	0x09, 0xa2, 0x58, 0x49, 0xbf, 0x27, 0x7e, 0x9c, 0x1d, 0x17, 0x07, 0x3b, 0xd1, 0x73, 0xdb, 0x75,
-	0x31, 0xb5, 0x48, 0x28, 0x34, 0x4a, 0xb4, 0x1b, 0x23, 0xe2, 0x4c, 0xc6, 0x38, 0x60, 0x72, 0xdd,
-	0x56, 0xeb, 0xa7, 0x64, 0xc8, 0x08, 0xc5, 0x52, 0xbc, 0x18, 0x61, 0x9b, 0x3a, 0xe7, 0xca, 0xc8,
-	0x76, 0x1c, 0x32, 0x09, 0x98, 0x72, 0xb2, 0x25, 0x09, 0x89, 0xd5, 0xe9, 0xe4, 0xcc, 0x62, 0xde,
-	0x18, 0x47, 0xcc, 0x1e, 0x87, 0xb1, 0x82, 0xa9, 0x43, 0xe7, 0x00, 0xb3, 0x47, 0x9e, 0xef, 0x7b,
-	0x81, 0xdb, 0xc7, 0xcc, 0xf6, 0xfc, 0x68, 0x80, 0x2f, 0x26, 0x38, 0x62, 0xe6, 0x9f, 0x6b, 0xb0,
-	0x5e, 0x02, 0x46, 0x21, 0x09, 0x22, 0x8c, 0x76, 0x61, 0xc9, 0x99, 0x50, 0x8a, 0x03, 0x76, 0x8c,
-	0xa9, 0x47, 0x46, 0x1d, 0xcd, 0xd0, 0xb6, 0x6f, 0xf6, 0x5a, 0xb1, 0xe3, 0xae, 0xb4, 0x8a, 0xb1,
-	0x41, 0x5e, 0x15, 0x6d, 0x42, 0x9d, 0x11, 0x66, 0xfb, 0x8f, 0x49, 0xc4, 0x3a, 0x35, 0x43, 0xdb,
-	0x5e, 0x18, 0xa4, 0x02, 0xd4, 0x85, 0xba, 0xca, 0x35, 0xea, 0x5c, 0x15, 0x5e, 0x9b, 0xd2, 0x6b,
-	0x5f, 0xc9, 0x07, 0xa9, 0x0a, 0x32, 0x61, 0xc1, 0x0b, 0x46, 0xf8, 0x45, 0xe7, 0x9a, 0xd0, 0x5d,
-	0x94, 0xba, 0x87, 0x5c, 0x36, 0x88, 0x21, 0xb4, 0x0d, 0x6f, 0x31, 0x6a, 0x9f, 0x9d, 0x79, 0x4e,
-	0x67, 0x41, 0x68, 0x35, 0xa4, 0xd6, 0xb3, 0x58, 0x3a, 0x50, 0x30, 0x7a, 0x0f, 0x20, 0xc0, 0x2f,
-	0x54, 0x52, 0xd7, 0xe7, 0x24, 0x95, 0xd1, 0x33, 0xff, 0xaa, 0xc1, 0x52, 0x0e, 0x45, 0x0f, 0xa0,
-	0x7e, 0x46, 0x79, 0x25, 0x03, 0x67, 0x2a, 0x6a, 0xd3, 0xe8, 0xad, 0xa8, 0x98, 0xde, 0x18, 0x1f,
-	0x06, 0x0c, 0xd3, 0x4b, 0xdb, 0x1f, 0xa4, 0x5a, 0xe8, 0x43, 0xb8, 0x19, 0x0a, 0xe3, 0x21, 0xb3,
-	0x69, 0x5c, 0x98, 0x9b, 0x3d, 0xbd, 0x1b, 0xf7, 0xb0, 0xab, 0x7a, 0x28, 0xcc, 0x45, 0x0f, 0x07,
-	0x59, 0x75, 0xf4, 0x01, 0xd4, 0xe3, 0xe5, 0x7e, 0x30, 0x92, 0x65, 0x9b, 0x67, 0x9b, 0x2a, 0x9b,
-	0x0f, 0xa1, 0x9e, 0x14, 0x16, 0x21, 0xb8, 0xe6, 0xf0, 0xb6, 0x68, 0xa2, 0x2d, 0xe2, 0x3f, 0x97,
-	0x45, 0xde, 0x4b, 0x2c, 0x18, 0x69, 0x03, 0xf1, 0xdf, 0xb4, 0x60, 0x41, 0x54, 0xf8, 0x5b, 0x0d,
-	0xae, 0x4a, 0x83, 0x13, 0x78, 0x4b, 0x16, 0xbb, 0xd4, 0x44, 0x87, 0x1b, 0x5e, 0xe0, 0x90, 0xb1,
-	0x17, 0xb8, 0x32, 0x4e, 0xb2, 0xe6, 0x18, 0x99, 0x30, 0x97, 0x70, 0xec, 0x6a, 0x8c, 0xa9, 0xb5,
-	0xb9, 0x0e, 0x6b, 0xe9, 0x26, 0x95, 0x9d, 0x91, 0x1b, 0xf8, 0x6b, 0x2d, 0xbb, 0xbb, 0x15, 0xf6,
-	0x5f, 0xd8, 0xbf, 0xf9, 0x3d, 0x52, 0x7b, 0xc3, 0x3d, 0x72, 0x04, 0x6b, 0xc3, 0x72, 0xa6, 0xff,
-	0xc1, 0x66, 0x11, 0xc9, 0x0d, 0xff, 0x77, 0x92, 0x6b, 0xc3, 0xca, 0x01, 0x66, 0x8f, 0x49, 0x70,
-	0xe6, 0xb9, 0x13, 0x2a, 0x4e, 0xb2, 0x01, 0xbe, 0x30, 0x3f, 0x84, 0xd6, 0xac, 0x38, 0x0a, 0xd1,
-	0xff, 0xc3, 0x92, 0x93, 0x15, 0x0a, 0x82, 0xf5, 0x41, 0x5e, 0x78, 0xb7, 0x07, 0x8b, 0xd9, 0xf4,
-	0xd1, 0x12, 0xd4, 0x4f, 0x9e, 0xf6, 0xf7, 0x3f, 0x3e, 0x7c, 0xba, 0xdf, 0x6f, 0x5e, 0x41, 0x75,
-	0x58, 0x78, 0xf2, 0xc9, 0xd3, 0x67, 0x3f, 0x6c, 0x6a, 0xe8, 0x06, 0x5c, 0xfb, 0xe9, 0xfe, 0xde,
-	0xa0, 0x59, 0xeb, 0xfd, 0xe3, 0x36, 0x34, 0x87, 0xe2, 0x78, 0xee, 0x13, 0x67, 0x88, 0xe9, 0xa5,
-	0xe7, 0x60, 0xf4, 0xb5, 0x06, 0xad, 0x01, 0x76, 0xbd, 0x88, 0x61, 0xfa, 0x09, 0x75, 0xed, 0xc0,
-	0x7b, 0x29, 0x22, 0x20, 0x53, 0x26, 0x56, 0x06, 0xca, 0xe6, 0xe8, 0xff, 0x37, 0x57, 0x27, 0xae,
-	0xb8, 0xf9, 0xdd, 0x2f, 0xff, 0xf6, 0xf7, 0xdf, 0xd7, 0xde, 0x35, 0x0d, 0xeb, 0xf2, 0x81, 0x25,
-	0x4f, 0x61, 0x8b, 0x96, 0x58, 0xec, 0x6a, 0x77, 0xd1, 0x1f, 0x35, 0x40, 0x03, 0x3c, 0x26, 0x97,
-	0x38, 0x47, 0xc6, 0x48, 0x02, 0x15, 0x21, 0x45, 0xe5, 0x9d, 0x39, 0x1a, 0x92, 0xc8, 0xe3, 0x6f,
-	0xf6, 0xd0, 0x69, 0x13, 0x1a, 0x00, 0x7b, 0xa1, 0xf7, 0x23, 0x3c, 0xdd, 0x9b, 0xb0, 0x73, 0x74,
-	0x45, 0xb0, 0xdb, 0xbe, 0xfb, 0x9d, 0x3c, 0xbb, 0xa2, 0x13, 0xeb, 0xd5, 0x19, 0xa1, 0x0e, 0x7e,
-	0x8d, 0xbe, 0xd0, 0x60, 0x51, 0xa5, 0x7b, 0x12, 0x61, 0x8a, 0xf4, 0x42, 0x0d, 0xb8, 0x50, 0x91,
-	0xda, 0x28, 0xc5, 0x24, 0x9d, 0x0f, 0xaa, 0xe9, 0xdc, 0x36, 0x3b, 0x65, 0xc5, 0xe2, 0xe6, 0xbc,
-	0x48, 0x14, 0xea, 0x47, 0x5e, 0xc4, 0xf8, 0x32, 0x42, 0x6b, 0x32, 0x46, 0x22, 0x51, 0xc1, 0x3b,
-	0xb3, 0x80, 0x8c, 0xdc, 0xab, 0x8e, 0xbc, 0x86, 0xda, 0xd9, 0xc8, 0x7e, 0x12, 0x66, 0x0a, 0x10,
-	0x97, 0x56, 0x24, 0xdd, 0xc9, 0x55, 0x3b, 0x9b, 0xf2, 0x7a, 0x09, 0x22, 0xc3, 0x7e, 0xbf, 0x3a,
-	0xec, 0x86, 0xb9, 0x3a, 0x5b, 0x7f, 0x95, 0xee, 0x6b, 0xb8, 0x79, 0x4c, 0xc9, 0x98, 0xb0, 0x38,
-	0xb6, 0x8a, 0x90, 0x91, 0xa9, 0xe0, 0x7a, 0x19, 0x24, 0xa3, 0xbf, 0x5f, 0x1d, 0x7d, 0xd3, 0x5c,
-	0xcb, 0x46, 0x0f, 0x53, 0x6b, 0x1e, 0x7e, 0x0a, 0xd0, 0xc7, 0x49, 0x74, 0x95, 0x79, 0x2a, 0x2a,
-	0x66, 0x9e, 0x45, 0xfe, 0xed, 0xcc, 0x47, 0x38, 0x1f, 0x7a, 0x89, 0x77, 0x2f, 0xbd, 0x82, 0x36,
-	0x32, 0x3d, 0x4d, 0x6f, 0x7c, 0x49, 0x60, 0xb3, 0x1c, 0x94, 0x1c, 0x76, 0xaa, 0x39, 0x20, 0xd4,
-	0xe4, 0x1c, 0x46, 0xc4, 0x11, 0x0d, 0xef, 0x13, 0x27, 0x42, 0x5f, 0x6a, 0xd0, 0x88, 0x7b, 0xa8,
-	0x5c, 0xa1, 0xcd, 0x5c, 0x6b, 0x95, 0x58, 0x45, 0xbf, 0x5d, 0x81, 0xca, 0xf0, 0x0f, 0xab, 0xc3,
-	0x77, 0xee, 0xae, 0xaa, 0xf0, 0x71, 0xe3, 0xad, 0x57, 0x23, 0xe2, 0x1c, 0xf6, 0x5f, 0xa3, 0x1f,
-	0x43, 0xeb, 0x24, 0xf4, 0x89, 0x3d, 0x52, 0xee, 0x86, 0x8c, 0x62, 0x7b, 0x9c, 0x6c, 0x81, 0x04,
-	0x8c, 0xe5, 0x03, 0x7c, 0x91, 0x6c, 0x81, 0x19, 0x28, 0x0a, 0xcd, 0x2b, 0xdb, 0x1a, 0xfa, 0x1c,
-	0x1a, 0x79, 0x97, 0x68, 0xa5, 0x68, 0xc1, 0xdd, 0xb4, 0x66, 0x85, 0x51, 0x68, 0x76, 0xab, 0x93,
-	0x58, 0x31, 0x1b, 0x2a, 0x89, 0x89, 0xb0, 0xe1, 0xfd, 0xfb, 0x09, 0xac, 0xf6, 0xc9, 0xf3, 0xa0,
-	0x24, 0x83, 0x8d, 0xe4, 0xb5, 0x2d, 0x81, 0xd3, 0x1c, 0x36, 0xab, 0x41, 0x9e, 0xc5, 0x7d, 0x0d,
-	0xbd, 0x80, 0x66, 0xd1, 0x31, 0x6a, 0xcf, 0x5a, 0x71, 0x67, 0xab, 0x65, 0xe2, 0x28, 0x34, 0xbf,
-	0x57, 0x9d, 0x8b, 0x8e, 0x3a, 0x2a, 0x97, 0x91, 0xb4, 0x4a, 0x5a, 0xf2, 0x29, 0xb4, 0xf7, 0x03,
-	0x87, 0x4e, 0x43, 0x56, 0xc8, 0x48, 0x15, 0x3e, 0x45, 0xd3, 0x84, 0x36, 0x2a, 0xb1, 0xb8, 0x2b,
-	0xf7, 0x35, 0x44, 0x60, 0xb9, 0xe0, 0x17, 0xb5, 0x66, 0xac, 0xb8, 0xaf, 0x76, 0x89, 0x34, 0x0a,
-	0x4d, 0xab, 0x3a, 0x9d, 0x96, 0xb9, 0xac, 0xd2, 0xc1, 0xb1, 0x11, 0xef, 0xcd, 0xa7, 0xd0, 0xee,
-	0xe3, 0x79, 0x89, 0xa4, 0xe8, 0x6c, 0x22, 0xb3, 0x58, 0x92, 0x08, 0x83, 0xe5, 0x82, 0xdf, 0x24,
-	0x91, 0x54, 0x9e, 0x4d, 0x24, 0x2b, 0x8d, 0x42, 0xf3, 0xbd, 0xea, 0x44, 0xd6, 0xd1, 0x5a, 0xd2,
-	0x97, 0xd8, 0x28, 0x69, 0xcb, 0x2f, 0x61, 0x69, 0x78, 0x6e, 0xd3, 0xf4, 0x61, 0x55, 0x4c, 0x73,
-	0xd2, 0xe2, 0x49, 0x51, 0x00, 0xe5, 0xa3, 0x7a, 0xbf, 0x9a, 0x41, 0xdb, 0x4c, 0x4e, 0x8a, 0x48,
-	0xda, 0xf2, 0x5a, 0xfe, 0x4a, 0x83, 0xe5, 0x93, 0x20, 0xca, 0x11, 0x50, 0xe7, 0x41, 0x41, 0xae,
-	0x28, 0xbc, 0x5d, 0x05, 0xbf, 0xc1, 0x1d, 0x65, 0xa2, 0xe4, 0x51, 0x0b, 0xb2, 0x34, 0xbe, 0xd0,
-	0xa0, 0x79, 0x80, 0xd3, 0xb3, 0x6f, 0xe8, 0xbd, 0xc4, 0x48, 0x05, 0x2a, 0x02, 0x8a, 0xc8, 0x56,
-	0x25, 0x2e, 0x99, 0xdc, 0xab, 0x66, 0x72, 0x0b, 0x25, 0x3b, 0xcb, 0xc5, 0x4c, 0x84, 0x7b, 0x02,
-	0x0b, 0x47, 0xc4, 0xf5, 0x82, 0xe4, 0x58, 0x11, 0x2b, 0x15, 0xac, 0x95, 0x17, 0xca, 0x08, 0xeb,
-	0xd9, 0x13, 0xc4, 0x9e, 0xb0, 0x73, 0xcb, 0xe7, 0x38, 0x4f, 0xe9, 0xe7, 0x70, 0xfd, 0x88, 0xb8,
-	0x64, 0x92, 0x6e, 0xa2, 0x78, 0xa9, 0x1c, 0xb6, 0x0b, 0x52, 0xe9, 0xf1, 0x4e, 0x35, 0xe7, 0x45,
-	0x13, 0x78, 0x18, 0x3f, 0xf6, 0xfa, 0x19, 0x5c, 0x1f, 0x8a, 0x31, 0x39, 0xf1, 0x1f, 0x2f, 0x8b,
-	0xfe, 0x95, 0xf4, 0x0d, 0x4e, 0x73, 0x94, 0x9c, 0xe6, 0xf1, 0x00, 0x6e, 0xbd, 0xba, 0x98, 0x60,
-	0x3a, 0x7d, 0x8d, 0x5e, 0xc2, 0xe2, 0x01, 0x66, 0x62, 0x34, 0x12, 0xa5, 0xd2, 0xd3, 0xca, 0x27,
-	0xc2, 0xe2, 0x9b, 0x53, 0x1e, 0x93, 0xd1, 0x1f, 0x54, 0x47, 0x5f, 0x45, 0xad, 0x4c, 0x47, 0xd2,
-	0x58, 0xbf, 0xd1, 0xa0, 0xb1, 0x37, 0x1a, 0xf1, 0x0d, 0x6f, 0x9f, 0xfa, 0xfc, 0xd5, 0x2e, 0xb9,
-	0xce, 0xf2, 0xe2, 0xe2, 0x75, 0x56, 0x44, 0x25, 0x85, 0xdd, 0x6a, 0x0a, 0x5b, 0x3d, 0x3d, 0x7b,
-	0xa3, 0xdb, 0x39, 0x07, 0xbc, 0xa7, 0x7f, 0xd0, 0xe0, 0x56, 0x7c, 0x4b, 0x66, 0xe9, 0x6c, 0xe5,
-	0xee, 0xcf, 0x12, 0x46, 0x46, 0xb5, 0x82, 0x24, 0xf5, 0x83, 0x6a, 0x52, 0x66, 0xef, 0xf6, 0xec,
-	0x0b, 0x56, 0x81, 0xd7, 0x9f, 0x34, 0x68, 0x0d, 0x31, 0x7b, 0x32, 0xf1, 0x99, 0x77, 0x84, 0x2f,
-	0xb1, 0xcf, 0x71, 0x3e, 0x64, 0x9a, 0xc9, 0x26, 0x98, 0x05, 0x8b, 0xa3, 0x40, 0xb9, 0x8e, 0x24,
-	0xf8, 0x51, 0x35, 0xc1, 0x77, 0xf5, 0xdc, 0x7c, 0x10, 0x95, 0xb8, 0xe1, 0x1c, 0xbf, 0xd2, 0xe0,
-	0xd6, 0xcc, 0x97, 0x17, 0x94, 0x79, 0x86, 0x4b, 0x3f, 0xd8, 0x24, 0xb5, 0xab, 0xfc, 0x68, 0x33,
-	0xf7, 0xd0, 0x43, 0x2b, 0x59, 0x6a, 0xa7, 0xb1, 0x03, 0x3e, 0x39, 0x35, 0x8b, 0x33, 0x74, 0xf6,
-	0xb4, 0x29, 0x1b, 0x67, 0xf5, 0xad, 0x4a, 0xfc, 0x0d, 0x5e, 0x53, 0x91, 0x5e, 0xc2, 0xc3, 0x8a,
-	0xbf, 0x56, 0xa0, 0xdf, 0x69, 0xd0, 0x1c, 0x56, 0xd1, 0x19, 0x7e, 0x0b, 0x9d, 0xaa, 0x71, 0x79,
-	0xee, 0x3e, 0xd7, 0xe7, 0xd0, 0xe1, 0xbd, 0x7a, 0x25, 0xea, 0x93, 0x9b, 0x70, 0xb3, 0xcf, 0x7c,
-	0x71, 0x22, 0xce, 0x3e, 0xf3, 0x33, 0x63, 0xf1, 0xdc, 0x57, 0x2f, 0x74, 0x8b, 0x13, 0xc9, 0x0d,
-	0xc8, 0x8f, 0xfe, 0x59, 0xfb, 0x66, 0xef, 0x2f, 0x35, 0xf4, 0x3e, 0x2c, 0x25, 0x23, 0xaf, 0xb1,
-	0x77, 0x7c, 0x68, 0xbe, 0x03, 0x10, 0x0b, 0x86, 0xb6, 0xcf, 0xf4, 0x15, 0x2f, 0x38, 0x23, 0x1f,
-	0xc5, 0xdf, 0x2c, 0x23, 0xdb, 0x67, 0x5d, 0x87, 0x8c, 0x7b, 0x57, 0x1f, 0x74, 0xef, 0xf7, 0x9a,
-	0x76, 0x18, 0xfa, 0x9e, 0x13, 0x0f, 0x7f, 0x9f, 0x45, 0x24, 0xd8, 0x9d, 0x91, 0xfc, 0xec, 0xb7,
-	0x1a, 0xfc, 0x5a, 0xcb, 0x11, 0x9a, 0xde, 0xa8, 0xa1, 0xd1, 0xb3, 0x73, 0x6c, 0x3c, 0x27, 0x74,
-	0x64, 0xdc, 0x79, 0x84, 0x6d, 0x8a, 0xe9, 0x1d, 0xc3, 0x0e, 0x46, 0x86, 0x6d, 0x44, 0xa1, 0xed,
-	0x60, 0xc3, 0x8b, 0x0c, 0x8a, 0x2f, 0x26, 0x1e, 0xc5, 0x23, 0xe3, 0x14, 0x9f, 0x11, 0x8a, 0x0d,
-	0x76, 0x8e, 0x0d, 0x46, 0x3e, 0xc7, 0x41, 0x17, 0x3e, 0x26, 0xd4, 0xc0, 0x2f, 0xec, 0x71, 0xe8,
-	0xe3, 0x7b, 0x10, 0x9b, 0x1b, 0xfc, 0x46, 0xc0, 0x01, 0x93, 0xa1, 0x7f, 0x21, 0x34, 0xf5, 0x25,
-	0x1e, 0x8f, 0x50, 0x39, 0x9e, 0x1a, 0x35, 0x7a, 0x08, 0x6b, 0x4f, 0xb8, 0x33, 0xfb, 0x94, 0x4c,
-	0x98, 0xe1, 0x0e, 0x8e, 0x1f, 0xef, 0x1c, 0xd8, 0x0c, 0x3f, 0xb7, 0xa7, 0xa8, 0x7b, 0xce, 0x58,
-	0x18, 0xed, 0x5a, 0x96, 0xeb, 0xb1, 0xf3, 0xc9, 0x29, 0x4f, 0xd2, 0x72, 0x69, 0xe8, 0xec, 0x60,
-	0x87, 0x44, 0xd3, 0x88, 0x61, 0xb9, 0x74, 0x63, 0x7d, 0x78, 0xdb, 0x21, 0xe3, 0x6e, 0xa6, 0x28,
-	0x85, 0x6f, 0xba, 0x8f, 0x1a, 0x49, 0x49, 0x8f, 0xf9, 0xfa, 0x2b, 0x4d, 0x3b, 0xbd, 0x2e, 0x90,
-	0x87, 0xff, 0x0a, 0x00, 0x00, 0xff, 0xff, 0x22, 0x7e, 0x59, 0x81, 0x00, 0x16, 0x00, 0x00,
+	// 1419 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x58, 0xdd, 0x6e, 0xdb, 0x36,
+	0x1b, 0xae, 0xf2, 0xa1, 0xc5, 0x57, 0xb6, 0xb1, 0x53, 0xc6, 0x8e, 0x53, 0x27, 0xf9, 0xaa, 0x12,
+	0x5f, 0xd7, 0xa0, 0x6b, 0xac, 0x34, 0xdd, 0xd6, 0x21, 0xd8, 0x80, 0x3a, 0x75, 0x1b, 0x04, 0x4b,
+	0xbb, 0x2c, 0x6e, 0x3b, 0x60, 0x27, 0x83, 0x2c, 0xd1, 0xb2, 0x1a, 0x59, 0x64, 0x48, 0x2a, 0xa9,
+	0xdb, 0x15, 0xfb, 0xc1, 0x80, 0x0d, 0x03, 0x76, 0xd2, 0x01, 0x03, 0x06, 0x0c, 0xd8, 0x55, 0xec,
+	0x4a, 0x76, 0xb4, 0xf3, 0x5d, 0xc0, 0x2e, 0x61, 0xa0, 0x64, 0xd1, 0x94, 0x2c, 0x25, 0xdd, 0x91,
+	0xc1, 0xe7, 0x21, 0xdf, 0xe7, 0x7d, 0xf8, 0x8a, 0xd4, 0x2b, 0x83, 0x2a, 0x17, 0x8c, 0x84, 0x9e,
+	0x4b, 0x9c, 0x16, 0x65, 0x44, 0x10, 0x78, 0x36, 0xfe, 0x69, 0x2e, 0x7b, 0x84, 0x78, 0x01, 0xb6,
+	0x6c, 0xea, 0x5b, 0x76, 0x18, 0x12, 0x61, 0x0b, 0x9f, 0x84, 0x3c, 0x99, 0xd4, 0xbc, 0x19, 0xff,
+	0x38, 0x6b, 0x1e, 0x0e, 0xd7, 0xf8, 0xb1, 0xed, 0x79, 0x98, 0x59, 0x84, 0xc6, 0x33, 0x0a, 0x66,
+	0x57, 0x5c, 0xe2, 0x44, 0x43, 0x1c, 0x8a, 0xf1, 0xb8, 0x9e, 0x8e, 0x1f, 0x91, 0xae, 0x20, 0x0c,
+	0x8f, 0xe1, 0x8b, 0x1c, 0xdb, 0xcc, 0x19, 0xa4, 0x8b, 0x6c, 0xc7, 0x21, 0x51, 0x28, 0xd2, 0x20,
+	0xb3, 0x3d, 0x3f, 0x08, 0xfc, 0xd0, 0x4b, 0x86, 0xa8, 0x0e, 0xe6, 0xb7, 0xb1, 0xb8, 0x47, 0xc2,
+	0xbe, 0xef, 0x45, 0x2c, 0x96, 0xdb, 0xc7, 0x87, 0xe8, 0x03, 0x50, 0x9b, 0x86, 0x39, 0x85, 0xff,
+	0x07, 0xb3, 0x8e, 0x0e, 0x2e, 0x1a, 0xa6, 0xb1, 0x7a, 0x7e, 0x3f, 0x0b, 0x6e, 0xfc, 0xb9, 0x0c,
+	0xe6, 0xba, 0xf1, 0x7e, 0x74, 0x88, 0xd3, 0xc5, 0xec, 0xc8, 0x77, 0x30, 0xfc, 0xd6, 0x00, 0xb5,
+	0x7d, 0xec, 0xf9, 0x5c, 0x60, 0xf6, 0x31, 0xf3, 0xec, 0xd0, 0x7f, 0x11, 0xcf, 0x86, 0xff, 0x4b,
+	0x52, 0x69, 0x15, 0x91, 0xfb, 0xf8, 0xb0, 0x79, 0xe5, 0x44, 0x9e, 0x53, 0xf4, 0xf6, 0x37, 0x7f,
+	0xfc, 0xf5, 0xd3, 0xcc, 0x35, 0x64, 0x5a, 0x47, 0xb7, 0xac, 0xb1, 0x5d, 0x8b, 0x15, 0xcc, 0xde,
+	0x34, 0x6e, 0xc0, 0x9f, 0x0d, 0x00, 0xf7, 0xf1, 0x90, 0x1c, 0xe1, 0x4c, 0x12, 0xcb, 0x4a, 0x24,
+	0x4f, 0xc9, 0x14, 0x56, 0x4e, 0x60, 0x39, 0x45, 0xf7, 0x5e, 0xb7, 0x61, 0x6f, 0x0e, 0x54, 0x00,
+	0x68, 0x53, 0xff, 0x23, 0x3c, 0x6a, 0x47, 0x62, 0x00, 0xcf, 0xc4, 0x59, 0xad, 0xde, 0x78, 0x2b,
+	0x9b, 0x55, 0x3e, 0x80, 0xf5, 0xb2, 0x4f, 0x98, 0x83, 0x5f, 0xc1, 0x11, 0xb8, 0x98, 0x3a, 0x7c,
+	0xc2, 0x31, 0x83, 0x0b, 0x39, 0xdb, 0x12, 0x94, 0xb9, 0x34, 0x0a, 0x71, 0x4e, 0xd1, 0xfb, 0xe5,
+	0x59, 0xac, 0xa0, 0xc5, 0xa2, 0xbd, 0x91, 0x4b, 0xe5, 0x9e, 0x3c, 0x03, 0xe7, 0x77, 0x7d, 0x2e,
+	0xe4, 0x90, 0xc3, 0xf9, 0x71, 0x7c, 0x85, 0x48, 0xd1, 0xda, 0x34, 0xc8, 0x29, 0xda, 0x28, 0x57,
+	0x6c, 0xc0, 0xba, 0xae, 0x18, 0xa8, 0xf0, 0x87, 0x00, 0x24, 0xbb, 0x18, 0x9b, 0xac, 0x65, 0x36,
+	0x36, 0xb5, 0x58, 0x2f, 0x40, 0x39, 0x45, 0xef, 0x95, 0xcb, 0x2d, 0xa1, 0x85, 0xe9, 0x6d, 0x4e,
+	0xed, 0x45, 0xe0, 0xc2, 0x1e, 0x23, 0x43, 0x22, 0x12, 0xcd, 0x34, 0xba, 0x86, 0x49, 0xd1, 0x85,
+	0x22, 0x98, 0x53, 0x74, 0xa7, 0x5c, 0x75, 0x19, 0x35, 0x74, 0x55, 0x3a, 0x59, 0x29, 0x65, 0x0f,
+	0x01, 0xe8, 0x60, 0xa5, 0x9a, 0x3a, 0x9d, 0x40, 0xba, 0x53, 0x1d, 0xfd, 0x57, 0x4e, 0x5d, 0x9c,
+	0x95, 0x9c, 0x95, 0x15, 0xea, 0x8c, 0xef, 0x05, 0x0e, 0x1b, 0x5a, 0xdd, 0x14, 0x2a, 0x85, 0x17,
+	0x8b, 0x09, 0x4e, 0xd1, 0x5a, 0xb9, 0x36, 0x84, 0x73, 0x52, 0xdb, 0x25, 0x4e, 0x5c, 0xd0, 0x0e,
+	0x71, 0x38, 0x7c, 0x01, 0x2a, 0x49, 0x99, 0xd2, 0x28, 0x70, 0x31, 0x53, 0xbd, 0x14, 0x96, 0xa2,
+	0x97, 0x4b, 0x18, 0x4e, 0xd1, 0xed, 0x72, 0xd5, 0xc5, 0x1b, 0x0b, 0xa9, 0x6a, 0x52, 0x57, 0xeb,
+	0xa5, 0x4b, 0x9c, 0x9d, 0xce, 0x2b, 0xf8, 0x09, 0xa8, 0x3d, 0xa1, 0x01, 0xb1, 0xdd, 0x34, 0x54,
+	0x57, 0x30, 0x6c, 0x0f, 0x61, 0xaa, 0xa3, 0xc8, 0x04, 0x97, 0x29, 0x34, 0xcb, 0x28, 0x4e, 0xd1,
+	0x99, 0x55, 0x03, 0x1e, 0x80, 0x4a, 0x36, 0xa4, 0x3a, 0x0f, 0x0a, 0xd6, 0xcf, 0x83, 0x06, 0x72,
+	0x8a, 0x5a, 0xe5, 0x26, 0xe6, 0x51, 0x25, 0x35, 0x11, 0xc5, 0x6b, 0x64, 0xb9, 0x3e, 0x05, 0x0b,
+	0x1d, 0x72, 0x1c, 0x16, 0x38, 0x58, 0x4a, 0x9f, 0x8b, 0x09, 0x3d, 0xf1, 0xb0, 0x5c, 0x4e, 0x4a,
+	0x17, 0xeb, 0x06, 0x7c, 0x0e, 0xe6, 0xf2, 0x81, 0xd5, 0x63, 0xaf, 0x11, 0xfa, 0x63, 0x9f, 0x81,
+	0x39, 0x45, 0xef, 0x96, 0x7b, 0x69, 0xc2, 0xc5, 0xd4, 0x8b, 0x3b, 0x5e, 0xa5, 0x4a, 0xf2, 0x14,
+	0xd4, 0xef, 0x87, 0x0e, 0x1b, 0x51, 0x91, 0x73, 0x94, 0x6e, 0xfc, 0x84, 0x9d, 0x18, 0x5a, 0x2a,
+	0xe5, 0x92, 0xaa, 0xac, 0x1b, 0x90, 0x80, 0x6a, 0x2e, 0xae, 0x3a, 0x51, 0x13, 0x5c, 0x3f, 0x51,
+	0x3a, 0xca, 0x29, 0xb2, 0xca, 0xed, 0xd4, 0x50, 0x35, 0xb5, 0x83, 0x93, 0x45, 0xb2, 0x36, 0x4f,
+	0x41, 0xbd, 0x83, 0x4f, 0x32, 0x32, 0x61, 0xa7, 0x8d, 0x4c, 0x73, 0xca, 0x88, 0x00, 0xd5, 0x5c,
+	0x5c, 0xed, 0x6a, 0x28, 0x32, 0xa2, 0xa3, 0x9c, 0xa2, 0x77, 0xca, 0x8d, 0x5c, 0x86, 0x0d, 0x55,
+	0x97, 0x64, 0x91, 0x2a, 0x8b, 0x00, 0xb3, 0xdd, 0x81, 0xcd, 0x26, 0x87, 0x34, 0xbd, 0x18, 0x32,
+	0xa8, 0x7e, 0x31, 0xe4, 0x08, 0x4e, 0xd1, 0x7a, 0xb9, 0x72, 0x1d, 0xa9, 0x8b, 0x81, 0x8f, 0xd7,
+	0xc9, 0x3d, 0xfc, 0x02, 0x54, 0x9f, 0x84, 0x3c, 0xa3, 0xab, 0x8e, 0x66, 0x16, 0xcf, 0x1c, 0xcd,
+	0x3c, 0x75, 0xca, 0x9b, 0x06, 0x41, 0x75, 0xb2, 0x42, 0x5d, 0xfd, 0x3e, 0x38, 0xbb, 0x4b, 0x3c,
+	0x3f, 0x84, 0xd5, 0xf4, 0xae, 0x93, 0x23, 0xa9, 0x34, 0x97, 0x05, 0x38, 0x45, 0x97, 0xf5, 0x43,
+	0x6a, 0x47, 0x62, 0x60, 0x05, 0x92, 0x4b, 0x1e, 0x84, 0x73, 0xbb, 0xc4, 0x23, 0x91, 0x80, 0xda,
+	0x32, 0x12, 0xc5, 0x29, 0x5f, 0xca, 0x21, 0x9c, 0xa2, 0xeb, 0xe5, 0x99, 0x5e, 0x44, 0x40, 0x86,
+	0x0f, 0x92, 0x68, 0x3d, 0x70, 0xae, 0x1b, 0x37, 0x6a, 0x2a, 0x6e, 0x32, 0xd4, 0xe3, 0xa6, 0xc8,
+	0x29, 0x17, 0x24, 0x54, 0x17, 0x64, 0xd2, 0xfa, 0x59, 0x2f, 0x0f, 0x23, 0xcc, 0x46, 0xaf, 0xe0,
+	0xd7, 0x06, 0xa8, 0xb4, 0x5d, 0x57, 0xd6, 0xd2, 0xee, 0x05, 0xb2, 0xef, 0x50, 0xb7, 0x73, 0x16,
+	0xd6, 0x6f, 0xe7, 0x3c, 0xc3, 0x29, 0xda, 0x2c, 0x17, 0xbf, 0xb2, 0xd1, 0xd4, 0xdf, 0x47, 0x76,
+	0x66, 0xb1, 0xdc, 0xbf, 0x1f, 0x0d, 0x70, 0x29, 0xb9, 0xf0, 0xf5, 0x34, 0x96, 0x32, 0xaf, 0x82,
+	0x5c, 0x26, 0xcb, 0xe5, 0x24, 0xa7, 0xe8, 0xc3, 0xf2, 0x64, 0xd0, 0xc6, 0xca, 0x74, 0x1b, 0x90,
+	0xcb, 0xe7, 0x17, 0x03, 0xd4, 0xba, 0x58, 0x3c, 0x8c, 0x02, 0xe1, 0xef, 0xe2, 0x23, 0x1c, 0x48,
+	0xde, 0x0f, 0x3d, 0xd5, 0x87, 0x16, 0x91, 0x7a, 0x1f, 0x5a, 0xcc, 0x73, 0x8a, 0xee, 0x96, 0x27,
+	0x76, 0xad, 0x99, 0x69, 0x4e, 0x79, 0x41, 0x08, 0x99, 0xdb, 0x57, 0x06, 0xb8, 0xb4, 0x8d, 0xc5,
+	0x56, 0xd2, 0xa2, 0x77, 0xb0, 0xb0, 0xfd, 0x80, 0xab, 0xbd, 0x9a, 0x62, 0xf4, 0xbd, 0x2a, 0x20,
+	0x4f, 0x39, 0xb3, 0x70, 0x5e, 0x4f, 0x69, 0xfc, 0x59, 0x00, 0x7f, 0x35, 0x40, 0x63, 0x12, 0xeb,
+	0x01, 0xc3, 0x87, 0x11, 0x0e, 0x9d, 0x91, 0xec, 0x13, 0xe0, 0xd5, 0x29, 0xad, 0x0c, 0x2f, 0xd3,
+	0x41, 0xa7, 0x4d, 0x39, 0xe5, 0x69, 0x82, 0x2b, 0x05, 0x49, 0x59, 0xfd, 0x34, 0x06, 0xfc, 0xcd,
+	0x00, 0x8d, 0x2e, 0x16, 0x8f, 0xf0, 0xf3, 0xa9, 0xf8, 0x2a, 0xbd, 0x12, 0x5e, 0x4f, 0xaf, 0x74,
+	0xca, 0x29, 0xcf, 0x57, 0xf3, 0xe4, 0xf4, 0x64, 0x0d, 0xbf, 0x04, 0xd5, 0x6d, 0x2c, 0x76, 0x6d,
+	0xe6, 0xe1, 0xc7, 0xcc, 0xee, 0xf7, 0x7d, 0x47, 0x5d, 0x7a, 0x39, 0x5c, 0xbf, 0xf4, 0xa6, 0xa8,
+	0x37, 0x7a, 0x05, 0xab, 0xf6, 0x5a, 0x57, 0x23, 0xa0, 0xb2, 0x8d, 0x45, 0x3b, 0xa1, 0x76, 0xc2,
+	0x3e, 0x51, 0x67, 0x3e, 0x0b, 0xeb, 0x67, 0x3e, 0xcf, 0x70, 0x8a, 0x56, 0xcb, 0xd5, 0x67, 0xe1,
+	0x05, 0x4d, 0x1d, 0x1e, 0x80, 0x0b, 0xdb, 0x38, 0x6e, 0xef, 0x63, 0xb5, 0xfa, 0x24, 0x66, 0x8a,
+	0xe9, 0x8d, 0x46, 0x06, 0x7e, 0xa3, 0x7e, 0x33, 0x75, 0x19, 0x71, 0xcc, 0xb6, 0xfe, 0x9e, 0x79,
+	0xdd, 0xfe, 0x7d, 0x06, 0xde, 0x01, 0xb3, 0xea, 0x0b, 0xd3, 0x6c, 0xef, 0xed, 0xa0, 0xab, 0x00,
+	0x24, 0x40, 0xd7, 0x0e, 0x44, 0x73, 0xde, 0x0f, 0xfb, 0xe4, 0x6e, 0xf2, 0x4d, 0xce, 0xed, 0x40,
+	0xb4, 0x1c, 0x32, 0xdc, 0xf8, 0xcf, 0xad, 0xd6, 0xfa, 0xc6, 0x9c, 0x4d, 0x69, 0xe0, 0x3b, 0xc9,
+	0xb7, 0xd7, 0x33, 0x4e, 0xc2, 0xcd, 0x29, 0xe4, 0xb3, 0x1f, 0x0c, 0xf0, 0x9d, 0x91, 0xc9, 0x67,
+	0xf4, 0xdf, 0x19, 0xe8, 0x3e, 0x1e, 0x60, 0xf3, 0x98, 0x30, 0xd7, 0xbc, 0xbe, 0x85, 0x6d, 0x86,
+	0xd9, 0x75, 0xd3, 0x0e, 0x5d, 0xd3, 0x36, 0x39, 0xb5, 0x1d, 0x6c, 0xfa, 0xdc, 0x94, 0x8f, 0x81,
+	0xcf, 0xb0, 0x6b, 0xf6, 0x70, 0x9f, 0x30, 0x6c, 0x8a, 0x01, 0x36, 0x05, 0x39, 0xc0, 0x61, 0x0b,
+	0x3c, 0x20, 0xcc, 0xc4, 0xcf, 0xed, 0x21, 0x0d, 0xf0, 0x4d, 0x90, 0x2c, 0x37, 0xe5, 0x7b, 0x06,
+	0x87, 0x62, 0x2c, 0xfd, 0x79, 0x3c, 0xb3, 0x39, 0x2b, 0xf5, 0x08, 0x1b, 0x7f, 0x1d, 0x9a, 0x33,
+	0x6c, 0x07, 0x34, 0x1e, 0xca, 0x60, 0x76, 0x8f, 0x44, 0xc2, 0xf4, 0xf6, 0xf7, 0xee, 0xad, 0x6d,
+	0xdb, 0x02, 0x1f, 0xdb, 0x23, 0xd8, 0x1a, 0x08, 0x41, 0xf9, 0xa6, 0x65, 0x79, 0xbe, 0x18, 0x44,
+	0x3d, 0x69, 0xd2, 0xf2, 0x18, 0x75, 0xd6, 0xb0, 0x43, 0xf8, 0x88, 0x0b, 0x3c, 0x1e, 0x7a, 0xc9,
+	0x7c, 0x80, 0x1c, 0x32, 0x6c, 0x69, 0x9b, 0x32, 0xf9, 0xcf, 0x82, 0xbb, 0x07, 0x49, 0x79, 0xb6,
+	0x2a, 0x6a, 0x5b, 0xf7, 0xe4, 0xf8, 0x7b, 0xc3, 0xe8, 0x9d, 0x8b, 0x99, 0xdb, 0xff, 0x04, 0x00,
+	0x00, 0xff, 0xff, 0xe3, 0xcf, 0xba, 0x6f, 0xe4, 0x10, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -754,53 +213,53 @@ type StrongDocServiceClient interface {
 	// The user who created the organization is automatically an administrator
 	//
 	// Does not require Login
-	RegisterOrganization(ctx context.Context, in *RegisterOrganizationRequest, opts ...grpc.CallOption) (*RegisterOrganizationResponse, error)
+	RegisterOrganization(ctx context.Context, in *RegisterOrganizationReq, opts ...grpc.CallOption) (*RegisterOrganizationResp, error)
 	// Remove an organization and its search indexes
 	//
 	// Requires Administrator privilege. Only an administrator can remove the whole organization
 	//
 	// Requires Login
-	RemoveOrganization(ctx context.Context, in *RemoveOrganizationRequest, opts ...grpc.CallOption) (*RemoveOrganizationResponse, error)
+	RemoveOrganization(ctx context.Context, in *RemoveOrganizationReq, opts ...grpc.CallOption) (*RemoveOrganizationResp, error)
 	// Register new user
 	//
 	// Creates new user if it doesn't already exist. If the user already exist, and
 	// error is thrown
 	//
 	// Requires administrator privilege
-	RegisterUser(ctx context.Context, in *RegisterUserRequest, opts ...grpc.CallOption) (*RegisterUserResponse, error)
+	RegisterUser(ctx context.Context, in *RegisterUserReq, opts ...grpc.CallOption) (*RegisterUserResp, error)
 	// List the users of the organization
 	//
 	// Requires Login
-	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error)
+	ListUsers(ctx context.Context, in *ListUsersReq, opts ...grpc.CallOption) (*ListUsersResp, error)
 	// Remove user from organization
 	//
 	// Removes the user from the organization. The users documents still exists,
 	// but belong to the organization, only accessible by organization admin.
 	//
 	// Requires administrator privilege.
-	RemoveUser(ctx context.Context, in *RemoveUserRequest, opts ...grpc.CallOption) (*RemoveUserResponse, error)
+	RemoveUser(ctx context.Context, in *RemoveUserReq, opts ...grpc.CallOption) (*RemoveUserResp, error)
 	// Promote a regular user to administrator at the organization
 	//
 	// Requires administrator privilege.
-	PromoteUser(ctx context.Context, in *PromoteUserRequest, opts ...grpc.CallOption) (*PromoteUserResponse, error)
+	PromoteUser(ctx context.Context, in *PromoteUserReq, opts ...grpc.CallOption) (*PromoteUserResp, error)
 	// Demote administrator to regular user at the organization. Attempting to
 	// demote the last administrator of an organization will fail
 	//
 	// Requires administrator privilege.
-	DemoteUser(ctx context.Context, in *DemoteUserRequest, opts ...grpc.CallOption) (*DemoteUserResponse, error)
+	DemoteUser(ctx context.Context, in *DemoteUserReq, opts ...grpc.CallOption) (*DemoteUserResp, error)
 	// List the documents the user can access
 	//
 	// Administrators can see all documents belonging to the organization
 	//
 	// Requires Login
-	ListDocuments(ctx context.Context, in *ListDocumentsRequest, opts ...grpc.CallOption) (*ListDocumentsResponse, error)
+	ListDocuments(ctx context.Context, in *ListDocumentsReq, opts ...grpc.CallOption) (*ListDocumentsResp, error)
 	// Remove document the user can access
 	//
 	// Admin user can remove document for the whole organization
 	// Regular user only can remove document for him/herself
 	//
 	// Requires Login
-	RemoveDocument(ctx context.Context, in *RemoveDocumentRequest, opts ...grpc.CallOption) (*RemoveDocumentResponse, error)
+	RemoveDocument(ctx context.Context, in *RemoveDocumentReq, opts ...grpc.CallOption) (*RemoveDocumentResp, error)
 	// Upload document
 	//
 	// User can upload document to the organization for storage
@@ -846,72 +305,71 @@ type StrongDocServiceClient interface {
 	// Share a document to another user
 	//
 	// Requires Login
-	ShareDocument(ctx context.Context, in *ShareDocumentRequest, opts ...grpc.CallOption) (*ShareDocumentResponse, error)
+	ShareDocument(ctx context.Context, in *ShareDocumentReq, opts ...grpc.CallOption) (*ShareDocumentResp, error)
 	// Unshare a document that had previously been shared to a user
 	//
 	// Requires Login
-	UnshareDocument(ctx context.Context, in *UnshareDocumentRequest, opts ...grpc.CallOption) (*UnshareDocumentResponse, error)
-	// Obtain the size of the user's stored documents
-	//
-	// Admin user can see the size of the documents which belong to the company
-	//
-	// Requires Login
-	GetDocumentsSize(ctx context.Context, in *GetDocumentsSizeRequest, opts ...grpc.CallOption) (*GetDocumentsSizeResponse, error)
+	UnshareDocument(ctx context.Context, in *UnshareDocumentReq, opts ...grpc.CallOption) (*UnshareDocumentResp, error)
 	// Obtain an authentication token to be used with other APIs
 	//
 	// An authentication token will be returned after user has been validated
 	// The returned token will be used as a Bearer Token and need to be set in
 	// the request header
-	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	Login(ctx context.Context, in *LoginReq, opts ...grpc.CallOption) (*LoginResp, error)
 	// Logout current user
 	//
 	// Requires Login
-	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
+	Logout(ctx context.Context, in *LogoutReq, opts ...grpc.CallOption) (*LogoutResp, error)
 	// Search within a list of user's accessible documents
 	//
 	// The response will include a list document id and its score when matches are found
 	//
 	// Requires Login
-	Search(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error)
-	// Obtain size of the organization's indexes
-	//
-	// Requires Login
-	GetIndexSize(ctx context.Context, in *GetIndexSizeRequest, opts ...grpc.CallOption) (*GetIndexSizeResponse, error)
+	Search(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResp, error)
 	//Add a sharable organization to the user's organization.
 	//
 	//Requires Administrator privilege.
 	//Requires Login
-	AddSharableOrg(ctx context.Context, in *AddSharableOrgRequest, opts ...grpc.CallOption) (*AddSharableOrgResponse, error)
+	AddSharableOrg(ctx context.Context, in *AddSharableOrgReq, opts ...grpc.CallOption) (*AddSharableOrgResp, error)
 	//Remove a sharable organization from the user's organization.
 	//
 	//Requires Administrator privilege.
 	//Requires Login
-	RemoveSharableOrg(ctx context.Context, in *RemoveSharableOrgRequest, opts ...grpc.CallOption) (*RemoveSharableOrgResponse, error)
+	RemoveSharableOrg(ctx context.Context, in *RemoveSharableOrgReq, opts ...grpc.CallOption) (*RemoveSharableOrgResp, error)
 	//Update the organization's multi-level sharing setting
 	//
 	//Requires Administrator privilege.
 	//Requires Login
-	SetMultiLevelSharing(ctx context.Context, in *SetMultiLevelSharingRequest, opts ...grpc.CallOption) (*SetMultiLevelSharingResponse, error)
-	//List all items of the cost breakdown and also other details such as the billing period
+	SetMultiLevelSharing(ctx context.Context, in *SetMultiLevelSharingReq, opts ...grpc.CallOption) (*SetMultiLevelSharingResp, error)
+	//List all items of the cost breakdown and also other details such as the billing frequency
 	//
 	//Requires Administrator privilege
 	//Requires Login
-	GetBillingDetails(ctx context.Context, in *GetBillingDetailsRequest, opts ...grpc.CallOption) (*GetBillingDetailsResponse, error)
-	//Obtain the billing period
+	GetBillingDetails(ctx context.Context, in *GetBillingDetailsReq, opts ...grpc.CallOption) (*GetBillingDetailsResp, error)
+	//Obtain the list of billing frequencies (past, current and future)
 	//
 	//Requires Administrator privilege
 	//Requires Login
-	GetBillingPeriod(ctx context.Context, in *GetBillingPeriodRequest, opts ...grpc.CallOption) (*GetBillingPeriodResponse, error)
-	//Change the billing period
+	GetBillingFrequencyList(ctx context.Context, in *GetBillingFrequencyListReq, opts ...grpc.CallOption) (*GetBillingFrequencyListResp, error)
+	//Change the next billing frequency
 	//
 	//Requires Administrator privilege
 	//Requires Login
-	SetBillingPeriod(ctx context.Context, in *SetBillingPeriodRequest, opts ...grpc.CallOption) (*SetBillingPeriodResponse, error)
-	//Show current server configuration
+	SetNextBillingFrequency(ctx context.Context, in *SetNextBillingFrequencyReq, opts ...grpc.CallOption) (*SetNextBillingFrequencyResp, error)
+	//Obtain the list of large traffic usages
 	//
-	//Requires Administrator privilege. Only an administrator can see server configuration
+	//Requires Administrator privilege
 	//Requires Login
-	GetConfiguration(ctx context.Context, in *GetConfigurationReq, opts ...grpc.CallOption) (*GetConfigurationResp, error)
+	GetLargeTraffic(ctx context.Context, in *GetLargeTrafficReq, opts ...grpc.CallOption) (*GetLargeTrafficResp, error)
+	//Obtain information about the account
+	//
+	//Requires Administrator privilege
+	//Requires Login
+	GetAccountInfo(ctx context.Context, in *GetAccountInfoReq, opts ...grpc.CallOption) (*GetAccountInfoResp, error)
+	// Obtain information about logged user
+	//
+	// Requires Login
+	GetUserInfo(ctx context.Context, in *GetUserInfoReq, opts ...grpc.CallOption) (*GetUserInfoResp, error)
 }
 
 type strongDocServiceClient struct {
@@ -922,8 +380,8 @@ func NewStrongDocServiceClient(cc *grpc.ClientConn) StrongDocServiceClient {
 	return &strongDocServiceClient{cc}
 }
 
-func (c *strongDocServiceClient) RegisterOrganization(ctx context.Context, in *RegisterOrganizationRequest, opts ...grpc.CallOption) (*RegisterOrganizationResponse, error) {
-	out := new(RegisterOrganizationResponse)
+func (c *strongDocServiceClient) RegisterOrganization(ctx context.Context, in *RegisterOrganizationReq, opts ...grpc.CallOption) (*RegisterOrganizationResp, error) {
+	out := new(RegisterOrganizationResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/RegisterOrganization", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -931,8 +389,8 @@ func (c *strongDocServiceClient) RegisterOrganization(ctx context.Context, in *R
 	return out, nil
 }
 
-func (c *strongDocServiceClient) RemoveOrganization(ctx context.Context, in *RemoveOrganizationRequest, opts ...grpc.CallOption) (*RemoveOrganizationResponse, error) {
-	out := new(RemoveOrganizationResponse)
+func (c *strongDocServiceClient) RemoveOrganization(ctx context.Context, in *RemoveOrganizationReq, opts ...grpc.CallOption) (*RemoveOrganizationResp, error) {
+	out := new(RemoveOrganizationResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/RemoveOrganization", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -940,8 +398,8 @@ func (c *strongDocServiceClient) RemoveOrganization(ctx context.Context, in *Rem
 	return out, nil
 }
 
-func (c *strongDocServiceClient) RegisterUser(ctx context.Context, in *RegisterUserRequest, opts ...grpc.CallOption) (*RegisterUserResponse, error) {
-	out := new(RegisterUserResponse)
+func (c *strongDocServiceClient) RegisterUser(ctx context.Context, in *RegisterUserReq, opts ...grpc.CallOption) (*RegisterUserResp, error) {
+	out := new(RegisterUserResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/RegisterUser", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -949,8 +407,8 @@ func (c *strongDocServiceClient) RegisterUser(ctx context.Context, in *RegisterU
 	return out, nil
 }
 
-func (c *strongDocServiceClient) ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error) {
-	out := new(ListUsersResponse)
+func (c *strongDocServiceClient) ListUsers(ctx context.Context, in *ListUsersReq, opts ...grpc.CallOption) (*ListUsersResp, error) {
+	out := new(ListUsersResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/ListUsers", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -958,8 +416,8 @@ func (c *strongDocServiceClient) ListUsers(ctx context.Context, in *ListUsersReq
 	return out, nil
 }
 
-func (c *strongDocServiceClient) RemoveUser(ctx context.Context, in *RemoveUserRequest, opts ...grpc.CallOption) (*RemoveUserResponse, error) {
-	out := new(RemoveUserResponse)
+func (c *strongDocServiceClient) RemoveUser(ctx context.Context, in *RemoveUserReq, opts ...grpc.CallOption) (*RemoveUserResp, error) {
+	out := new(RemoveUserResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/RemoveUser", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -967,8 +425,8 @@ func (c *strongDocServiceClient) RemoveUser(ctx context.Context, in *RemoveUserR
 	return out, nil
 }
 
-func (c *strongDocServiceClient) PromoteUser(ctx context.Context, in *PromoteUserRequest, opts ...grpc.CallOption) (*PromoteUserResponse, error) {
-	out := new(PromoteUserResponse)
+func (c *strongDocServiceClient) PromoteUser(ctx context.Context, in *PromoteUserReq, opts ...grpc.CallOption) (*PromoteUserResp, error) {
+	out := new(PromoteUserResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/PromoteUser", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -976,8 +434,8 @@ func (c *strongDocServiceClient) PromoteUser(ctx context.Context, in *PromoteUse
 	return out, nil
 }
 
-func (c *strongDocServiceClient) DemoteUser(ctx context.Context, in *DemoteUserRequest, opts ...grpc.CallOption) (*DemoteUserResponse, error) {
-	out := new(DemoteUserResponse)
+func (c *strongDocServiceClient) DemoteUser(ctx context.Context, in *DemoteUserReq, opts ...grpc.CallOption) (*DemoteUserResp, error) {
+	out := new(DemoteUserResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/DemoteUser", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -985,8 +443,8 @@ func (c *strongDocServiceClient) DemoteUser(ctx context.Context, in *DemoteUserR
 	return out, nil
 }
 
-func (c *strongDocServiceClient) ListDocuments(ctx context.Context, in *ListDocumentsRequest, opts ...grpc.CallOption) (*ListDocumentsResponse, error) {
-	out := new(ListDocumentsResponse)
+func (c *strongDocServiceClient) ListDocuments(ctx context.Context, in *ListDocumentsReq, opts ...grpc.CallOption) (*ListDocumentsResp, error) {
+	out := new(ListDocumentsResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/ListDocuments", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -994,8 +452,8 @@ func (c *strongDocServiceClient) ListDocuments(ctx context.Context, in *ListDocu
 	return out, nil
 }
 
-func (c *strongDocServiceClient) RemoveDocument(ctx context.Context, in *RemoveDocumentRequest, opts ...grpc.CallOption) (*RemoveDocumentResponse, error) {
-	out := new(RemoveDocumentResponse)
+func (c *strongDocServiceClient) RemoveDocument(ctx context.Context, in *RemoveDocumentReq, opts ...grpc.CallOption) (*RemoveDocumentResp, error) {
+	out := new(RemoveDocumentResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/RemoveDocument", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1167,8 +625,8 @@ func (c *strongDocServiceClient) DecryptDocument(ctx context.Context, in *Decryp
 	return out, nil
 }
 
-func (c *strongDocServiceClient) ShareDocument(ctx context.Context, in *ShareDocumentRequest, opts ...grpc.CallOption) (*ShareDocumentResponse, error) {
-	out := new(ShareDocumentResponse)
+func (c *strongDocServiceClient) ShareDocument(ctx context.Context, in *ShareDocumentReq, opts ...grpc.CallOption) (*ShareDocumentResp, error) {
+	out := new(ShareDocumentResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/ShareDocument", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1176,8 +634,8 @@ func (c *strongDocServiceClient) ShareDocument(ctx context.Context, in *ShareDoc
 	return out, nil
 }
 
-func (c *strongDocServiceClient) UnshareDocument(ctx context.Context, in *UnshareDocumentRequest, opts ...grpc.CallOption) (*UnshareDocumentResponse, error) {
-	out := new(UnshareDocumentResponse)
+func (c *strongDocServiceClient) UnshareDocument(ctx context.Context, in *UnshareDocumentReq, opts ...grpc.CallOption) (*UnshareDocumentResp, error) {
+	out := new(UnshareDocumentResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/UnshareDocument", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1185,17 +643,8 @@ func (c *strongDocServiceClient) UnshareDocument(ctx context.Context, in *Unshar
 	return out, nil
 }
 
-func (c *strongDocServiceClient) GetDocumentsSize(ctx context.Context, in *GetDocumentsSizeRequest, opts ...grpc.CallOption) (*GetDocumentsSizeResponse, error) {
-	out := new(GetDocumentsSizeResponse)
-	err := c.cc.Invoke(ctx, "/proto.StrongDocService/GetDocumentsSize", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *strongDocServiceClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
-	out := new(LoginResponse)
+func (c *strongDocServiceClient) Login(ctx context.Context, in *LoginReq, opts ...grpc.CallOption) (*LoginResp, error) {
+	out := new(LoginResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/Login", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1203,8 +652,8 @@ func (c *strongDocServiceClient) Login(ctx context.Context, in *LoginRequest, op
 	return out, nil
 }
 
-func (c *strongDocServiceClient) Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
-	out := new(LogoutResponse)
+func (c *strongDocServiceClient) Logout(ctx context.Context, in *LogoutReq, opts ...grpc.CallOption) (*LogoutResp, error) {
+	out := new(LogoutResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/Logout", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1212,8 +661,8 @@ func (c *strongDocServiceClient) Logout(ctx context.Context, in *LogoutRequest, 
 	return out, nil
 }
 
-func (c *strongDocServiceClient) Search(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error) {
-	out := new(SearchResponse)
+func (c *strongDocServiceClient) Search(ctx context.Context, in *SearchReq, opts ...grpc.CallOption) (*SearchResp, error) {
+	out := new(SearchResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/Search", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1221,17 +670,8 @@ func (c *strongDocServiceClient) Search(ctx context.Context, in *SearchRequest, 
 	return out, nil
 }
 
-func (c *strongDocServiceClient) GetIndexSize(ctx context.Context, in *GetIndexSizeRequest, opts ...grpc.CallOption) (*GetIndexSizeResponse, error) {
-	out := new(GetIndexSizeResponse)
-	err := c.cc.Invoke(ctx, "/proto.StrongDocService/GetIndexSize", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *strongDocServiceClient) AddSharableOrg(ctx context.Context, in *AddSharableOrgRequest, opts ...grpc.CallOption) (*AddSharableOrgResponse, error) {
-	out := new(AddSharableOrgResponse)
+func (c *strongDocServiceClient) AddSharableOrg(ctx context.Context, in *AddSharableOrgReq, opts ...grpc.CallOption) (*AddSharableOrgResp, error) {
+	out := new(AddSharableOrgResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/AddSharableOrg", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1239,8 +679,8 @@ func (c *strongDocServiceClient) AddSharableOrg(ctx context.Context, in *AddShar
 	return out, nil
 }
 
-func (c *strongDocServiceClient) RemoveSharableOrg(ctx context.Context, in *RemoveSharableOrgRequest, opts ...grpc.CallOption) (*RemoveSharableOrgResponse, error) {
-	out := new(RemoveSharableOrgResponse)
+func (c *strongDocServiceClient) RemoveSharableOrg(ctx context.Context, in *RemoveSharableOrgReq, opts ...grpc.CallOption) (*RemoveSharableOrgResp, error) {
+	out := new(RemoveSharableOrgResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/RemoveSharableOrg", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1248,8 +688,8 @@ func (c *strongDocServiceClient) RemoveSharableOrg(ctx context.Context, in *Remo
 	return out, nil
 }
 
-func (c *strongDocServiceClient) SetMultiLevelSharing(ctx context.Context, in *SetMultiLevelSharingRequest, opts ...grpc.CallOption) (*SetMultiLevelSharingResponse, error) {
-	out := new(SetMultiLevelSharingResponse)
+func (c *strongDocServiceClient) SetMultiLevelSharing(ctx context.Context, in *SetMultiLevelSharingReq, opts ...grpc.CallOption) (*SetMultiLevelSharingResp, error) {
+	out := new(SetMultiLevelSharingResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/SetMultiLevelSharing", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1257,8 +697,8 @@ func (c *strongDocServiceClient) SetMultiLevelSharing(ctx context.Context, in *S
 	return out, nil
 }
 
-func (c *strongDocServiceClient) GetBillingDetails(ctx context.Context, in *GetBillingDetailsRequest, opts ...grpc.CallOption) (*GetBillingDetailsResponse, error) {
-	out := new(GetBillingDetailsResponse)
+func (c *strongDocServiceClient) GetBillingDetails(ctx context.Context, in *GetBillingDetailsReq, opts ...grpc.CallOption) (*GetBillingDetailsResp, error) {
+	out := new(GetBillingDetailsResp)
 	err := c.cc.Invoke(ctx, "/proto.StrongDocService/GetBillingDetails", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1266,27 +706,45 @@ func (c *strongDocServiceClient) GetBillingDetails(ctx context.Context, in *GetB
 	return out, nil
 }
 
-func (c *strongDocServiceClient) GetBillingPeriod(ctx context.Context, in *GetBillingPeriodRequest, opts ...grpc.CallOption) (*GetBillingPeriodResponse, error) {
-	out := new(GetBillingPeriodResponse)
-	err := c.cc.Invoke(ctx, "/proto.StrongDocService/GetBillingPeriod", in, out, opts...)
+func (c *strongDocServiceClient) GetBillingFrequencyList(ctx context.Context, in *GetBillingFrequencyListReq, opts ...grpc.CallOption) (*GetBillingFrequencyListResp, error) {
+	out := new(GetBillingFrequencyListResp)
+	err := c.cc.Invoke(ctx, "/proto.StrongDocService/GetBillingFrequencyList", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *strongDocServiceClient) SetBillingPeriod(ctx context.Context, in *SetBillingPeriodRequest, opts ...grpc.CallOption) (*SetBillingPeriodResponse, error) {
-	out := new(SetBillingPeriodResponse)
-	err := c.cc.Invoke(ctx, "/proto.StrongDocService/SetBillingPeriod", in, out, opts...)
+func (c *strongDocServiceClient) SetNextBillingFrequency(ctx context.Context, in *SetNextBillingFrequencyReq, opts ...grpc.CallOption) (*SetNextBillingFrequencyResp, error) {
+	out := new(SetNextBillingFrequencyResp)
+	err := c.cc.Invoke(ctx, "/proto.StrongDocService/SetNextBillingFrequency", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *strongDocServiceClient) GetConfiguration(ctx context.Context, in *GetConfigurationReq, opts ...grpc.CallOption) (*GetConfigurationResp, error) {
-	out := new(GetConfigurationResp)
-	err := c.cc.Invoke(ctx, "/proto.StrongDocService/GetConfiguration", in, out, opts...)
+func (c *strongDocServiceClient) GetLargeTraffic(ctx context.Context, in *GetLargeTrafficReq, opts ...grpc.CallOption) (*GetLargeTrafficResp, error) {
+	out := new(GetLargeTrafficResp)
+	err := c.cc.Invoke(ctx, "/proto.StrongDocService/GetLargeTraffic", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *strongDocServiceClient) GetAccountInfo(ctx context.Context, in *GetAccountInfoReq, opts ...grpc.CallOption) (*GetAccountInfoResp, error) {
+	out := new(GetAccountInfoResp)
+	err := c.cc.Invoke(ctx, "/proto.StrongDocService/GetAccountInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *strongDocServiceClient) GetUserInfo(ctx context.Context, in *GetUserInfoReq, opts ...grpc.CallOption) (*GetUserInfoResp, error) {
+	out := new(GetUserInfoResp)
+	err := c.cc.Invoke(ctx, "/proto.StrongDocService/GetUserInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1300,53 +758,53 @@ type StrongDocServiceServer interface {
 	// The user who created the organization is automatically an administrator
 	//
 	// Does not require Login
-	RegisterOrganization(context.Context, *RegisterOrganizationRequest) (*RegisterOrganizationResponse, error)
+	RegisterOrganization(context.Context, *RegisterOrganizationReq) (*RegisterOrganizationResp, error)
 	// Remove an organization and its search indexes
 	//
 	// Requires Administrator privilege. Only an administrator can remove the whole organization
 	//
 	// Requires Login
-	RemoveOrganization(context.Context, *RemoveOrganizationRequest) (*RemoveOrganizationResponse, error)
+	RemoveOrganization(context.Context, *RemoveOrganizationReq) (*RemoveOrganizationResp, error)
 	// Register new user
 	//
 	// Creates new user if it doesn't already exist. If the user already exist, and
 	// error is thrown
 	//
 	// Requires administrator privilege
-	RegisterUser(context.Context, *RegisterUserRequest) (*RegisterUserResponse, error)
+	RegisterUser(context.Context, *RegisterUserReq) (*RegisterUserResp, error)
 	// List the users of the organization
 	//
 	// Requires Login
-	ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error)
+	ListUsers(context.Context, *ListUsersReq) (*ListUsersResp, error)
 	// Remove user from organization
 	//
 	// Removes the user from the organization. The users documents still exists,
 	// but belong to the organization, only accessible by organization admin.
 	//
 	// Requires administrator privilege.
-	RemoveUser(context.Context, *RemoveUserRequest) (*RemoveUserResponse, error)
+	RemoveUser(context.Context, *RemoveUserReq) (*RemoveUserResp, error)
 	// Promote a regular user to administrator at the organization
 	//
 	// Requires administrator privilege.
-	PromoteUser(context.Context, *PromoteUserRequest) (*PromoteUserResponse, error)
+	PromoteUser(context.Context, *PromoteUserReq) (*PromoteUserResp, error)
 	// Demote administrator to regular user at the organization. Attempting to
 	// demote the last administrator of an organization will fail
 	//
 	// Requires administrator privilege.
-	DemoteUser(context.Context, *DemoteUserRequest) (*DemoteUserResponse, error)
+	DemoteUser(context.Context, *DemoteUserReq) (*DemoteUserResp, error)
 	// List the documents the user can access
 	//
 	// Administrators can see all documents belonging to the organization
 	//
 	// Requires Login
-	ListDocuments(context.Context, *ListDocumentsRequest) (*ListDocumentsResponse, error)
+	ListDocuments(context.Context, *ListDocumentsReq) (*ListDocumentsResp, error)
 	// Remove document the user can access
 	//
 	// Admin user can remove document for the whole organization
 	// Regular user only can remove document for him/herself
 	//
 	// Requires Login
-	RemoveDocument(context.Context, *RemoveDocumentRequest) (*RemoveDocumentResponse, error)
+	RemoveDocument(context.Context, *RemoveDocumentReq) (*RemoveDocumentResp, error)
 	// Upload document
 	//
 	// User can upload document to the organization for storage
@@ -1392,103 +850,102 @@ type StrongDocServiceServer interface {
 	// Share a document to another user
 	//
 	// Requires Login
-	ShareDocument(context.Context, *ShareDocumentRequest) (*ShareDocumentResponse, error)
+	ShareDocument(context.Context, *ShareDocumentReq) (*ShareDocumentResp, error)
 	// Unshare a document that had previously been shared to a user
 	//
 	// Requires Login
-	UnshareDocument(context.Context, *UnshareDocumentRequest) (*UnshareDocumentResponse, error)
-	// Obtain the size of the user's stored documents
-	//
-	// Admin user can see the size of the documents which belong to the company
-	//
-	// Requires Login
-	GetDocumentsSize(context.Context, *GetDocumentsSizeRequest) (*GetDocumentsSizeResponse, error)
+	UnshareDocument(context.Context, *UnshareDocumentReq) (*UnshareDocumentResp, error)
 	// Obtain an authentication token to be used with other APIs
 	//
 	// An authentication token will be returned after user has been validated
 	// The returned token will be used as a Bearer Token and need to be set in
 	// the request header
-	Login(context.Context, *LoginRequest) (*LoginResponse, error)
+	Login(context.Context, *LoginReq) (*LoginResp, error)
 	// Logout current user
 	//
 	// Requires Login
-	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
+	Logout(context.Context, *LogoutReq) (*LogoutResp, error)
 	// Search within a list of user's accessible documents
 	//
 	// The response will include a list document id and its score when matches are found
 	//
 	// Requires Login
-	Search(context.Context, *SearchRequest) (*SearchResponse, error)
-	// Obtain size of the organization's indexes
-	//
-	// Requires Login
-	GetIndexSize(context.Context, *GetIndexSizeRequest) (*GetIndexSizeResponse, error)
+	Search(context.Context, *SearchReq) (*SearchResp, error)
 	//Add a sharable organization to the user's organization.
 	//
 	//Requires Administrator privilege.
 	//Requires Login
-	AddSharableOrg(context.Context, *AddSharableOrgRequest) (*AddSharableOrgResponse, error)
+	AddSharableOrg(context.Context, *AddSharableOrgReq) (*AddSharableOrgResp, error)
 	//Remove a sharable organization from the user's organization.
 	//
 	//Requires Administrator privilege.
 	//Requires Login
-	RemoveSharableOrg(context.Context, *RemoveSharableOrgRequest) (*RemoveSharableOrgResponse, error)
+	RemoveSharableOrg(context.Context, *RemoveSharableOrgReq) (*RemoveSharableOrgResp, error)
 	//Update the organization's multi-level sharing setting
 	//
 	//Requires Administrator privilege.
 	//Requires Login
-	SetMultiLevelSharing(context.Context, *SetMultiLevelSharingRequest) (*SetMultiLevelSharingResponse, error)
-	//List all items of the cost breakdown and also other details such as the billing period
+	SetMultiLevelSharing(context.Context, *SetMultiLevelSharingReq) (*SetMultiLevelSharingResp, error)
+	//List all items of the cost breakdown and also other details such as the billing frequency
 	//
 	//Requires Administrator privilege
 	//Requires Login
-	GetBillingDetails(context.Context, *GetBillingDetailsRequest) (*GetBillingDetailsResponse, error)
-	//Obtain the billing period
+	GetBillingDetails(context.Context, *GetBillingDetailsReq) (*GetBillingDetailsResp, error)
+	//Obtain the list of billing frequencies (past, current and future)
 	//
 	//Requires Administrator privilege
 	//Requires Login
-	GetBillingPeriod(context.Context, *GetBillingPeriodRequest) (*GetBillingPeriodResponse, error)
-	//Change the billing period
+	GetBillingFrequencyList(context.Context, *GetBillingFrequencyListReq) (*GetBillingFrequencyListResp, error)
+	//Change the next billing frequency
 	//
 	//Requires Administrator privilege
 	//Requires Login
-	SetBillingPeriod(context.Context, *SetBillingPeriodRequest) (*SetBillingPeriodResponse, error)
-	//Show current server configuration
+	SetNextBillingFrequency(context.Context, *SetNextBillingFrequencyReq) (*SetNextBillingFrequencyResp, error)
+	//Obtain the list of large traffic usages
 	//
-	//Requires Administrator privilege. Only an administrator can see server configuration
+	//Requires Administrator privilege
 	//Requires Login
-	GetConfiguration(context.Context, *GetConfigurationReq) (*GetConfigurationResp, error)
+	GetLargeTraffic(context.Context, *GetLargeTrafficReq) (*GetLargeTrafficResp, error)
+	//Obtain information about the account
+	//
+	//Requires Administrator privilege
+	//Requires Login
+	GetAccountInfo(context.Context, *GetAccountInfoReq) (*GetAccountInfoResp, error)
+	// Obtain information about logged user
+	//
+	// Requires Login
+	GetUserInfo(context.Context, *GetUserInfoReq) (*GetUserInfoResp, error)
 }
 
 // UnimplementedStrongDocServiceServer can be embedded to have forward compatible implementations.
 type UnimplementedStrongDocServiceServer struct {
 }
 
-func (*UnimplementedStrongDocServiceServer) RegisterOrganization(ctx context.Context, req *RegisterOrganizationRequest) (*RegisterOrganizationResponse, error) {
+func (*UnimplementedStrongDocServiceServer) RegisterOrganization(ctx context.Context, req *RegisterOrganizationReq) (*RegisterOrganizationResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterOrganization not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) RemoveOrganization(ctx context.Context, req *RemoveOrganizationRequest) (*RemoveOrganizationResponse, error) {
+func (*UnimplementedStrongDocServiceServer) RemoveOrganization(ctx context.Context, req *RemoveOrganizationReq) (*RemoveOrganizationResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveOrganization not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) RegisterUser(ctx context.Context, req *RegisterUserRequest) (*RegisterUserResponse, error) {
+func (*UnimplementedStrongDocServiceServer) RegisterUser(ctx context.Context, req *RegisterUserReq) (*RegisterUserResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterUser not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) ListUsers(ctx context.Context, req *ListUsersRequest) (*ListUsersResponse, error) {
+func (*UnimplementedStrongDocServiceServer) ListUsers(ctx context.Context, req *ListUsersReq) (*ListUsersResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUsers not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) RemoveUser(ctx context.Context, req *RemoveUserRequest) (*RemoveUserResponse, error) {
+func (*UnimplementedStrongDocServiceServer) RemoveUser(ctx context.Context, req *RemoveUserReq) (*RemoveUserResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveUser not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) PromoteUser(ctx context.Context, req *PromoteUserRequest) (*PromoteUserResponse, error) {
+func (*UnimplementedStrongDocServiceServer) PromoteUser(ctx context.Context, req *PromoteUserReq) (*PromoteUserResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PromoteUser not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) DemoteUser(ctx context.Context, req *DemoteUserRequest) (*DemoteUserResponse, error) {
+func (*UnimplementedStrongDocServiceServer) DemoteUser(ctx context.Context, req *DemoteUserReq) (*DemoteUserResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DemoteUser not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) ListDocuments(ctx context.Context, req *ListDocumentsRequest) (*ListDocumentsResponse, error) {
+func (*UnimplementedStrongDocServiceServer) ListDocuments(ctx context.Context, req *ListDocumentsReq) (*ListDocumentsResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListDocuments not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) RemoveDocument(ctx context.Context, req *RemoveDocumentRequest) (*RemoveDocumentResponse, error) {
+func (*UnimplementedStrongDocServiceServer) RemoveDocument(ctx context.Context, req *RemoveDocumentReq) (*RemoveDocumentResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveDocument not implemented")
 }
 func (*UnimplementedStrongDocServiceServer) UploadDocumentStream(srv StrongDocService_UploadDocumentStreamServer) error {
@@ -1515,47 +972,47 @@ func (*UnimplementedStrongDocServiceServer) DecryptDocumentStream(srv StrongDocS
 func (*UnimplementedStrongDocServiceServer) DecryptDocument(ctx context.Context, req *DecryptDocReq) (*DecryptDocResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DecryptDocument not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) ShareDocument(ctx context.Context, req *ShareDocumentRequest) (*ShareDocumentResponse, error) {
+func (*UnimplementedStrongDocServiceServer) ShareDocument(ctx context.Context, req *ShareDocumentReq) (*ShareDocumentResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShareDocument not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) UnshareDocument(ctx context.Context, req *UnshareDocumentRequest) (*UnshareDocumentResponse, error) {
+func (*UnimplementedStrongDocServiceServer) UnshareDocument(ctx context.Context, req *UnshareDocumentReq) (*UnshareDocumentResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnshareDocument not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) GetDocumentsSize(ctx context.Context, req *GetDocumentsSizeRequest) (*GetDocumentsSizeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetDocumentsSize not implemented")
-}
-func (*UnimplementedStrongDocServiceServer) Login(ctx context.Context, req *LoginRequest) (*LoginResponse, error) {
+func (*UnimplementedStrongDocServiceServer) Login(ctx context.Context, req *LoginReq) (*LoginResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) Logout(ctx context.Context, req *LogoutRequest) (*LogoutResponse, error) {
+func (*UnimplementedStrongDocServiceServer) Logout(ctx context.Context, req *LogoutReq) (*LogoutResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) Search(ctx context.Context, req *SearchRequest) (*SearchResponse, error) {
+func (*UnimplementedStrongDocServiceServer) Search(ctx context.Context, req *SearchReq) (*SearchResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Search not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) GetIndexSize(ctx context.Context, req *GetIndexSizeRequest) (*GetIndexSizeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetIndexSize not implemented")
-}
-func (*UnimplementedStrongDocServiceServer) AddSharableOrg(ctx context.Context, req *AddSharableOrgRequest) (*AddSharableOrgResponse, error) {
+func (*UnimplementedStrongDocServiceServer) AddSharableOrg(ctx context.Context, req *AddSharableOrgReq) (*AddSharableOrgResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddSharableOrg not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) RemoveSharableOrg(ctx context.Context, req *RemoveSharableOrgRequest) (*RemoveSharableOrgResponse, error) {
+func (*UnimplementedStrongDocServiceServer) RemoveSharableOrg(ctx context.Context, req *RemoveSharableOrgReq) (*RemoveSharableOrgResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveSharableOrg not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) SetMultiLevelSharing(ctx context.Context, req *SetMultiLevelSharingRequest) (*SetMultiLevelSharingResponse, error) {
+func (*UnimplementedStrongDocServiceServer) SetMultiLevelSharing(ctx context.Context, req *SetMultiLevelSharingReq) (*SetMultiLevelSharingResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetMultiLevelSharing not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) GetBillingDetails(ctx context.Context, req *GetBillingDetailsRequest) (*GetBillingDetailsResponse, error) {
+func (*UnimplementedStrongDocServiceServer) GetBillingDetails(ctx context.Context, req *GetBillingDetailsReq) (*GetBillingDetailsResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetBillingDetails not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) GetBillingPeriod(ctx context.Context, req *GetBillingPeriodRequest) (*GetBillingPeriodResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetBillingPeriod not implemented")
+func (*UnimplementedStrongDocServiceServer) GetBillingFrequencyList(ctx context.Context, req *GetBillingFrequencyListReq) (*GetBillingFrequencyListResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBillingFrequencyList not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) SetBillingPeriod(ctx context.Context, req *SetBillingPeriodRequest) (*SetBillingPeriodResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetBillingPeriod not implemented")
+func (*UnimplementedStrongDocServiceServer) SetNextBillingFrequency(ctx context.Context, req *SetNextBillingFrequencyReq) (*SetNextBillingFrequencyResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetNextBillingFrequency not implemented")
 }
-func (*UnimplementedStrongDocServiceServer) GetConfiguration(ctx context.Context, req *GetConfigurationReq) (*GetConfigurationResp, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetConfiguration not implemented")
+func (*UnimplementedStrongDocServiceServer) GetLargeTraffic(ctx context.Context, req *GetLargeTrafficReq) (*GetLargeTrafficResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLargeTraffic not implemented")
+}
+func (*UnimplementedStrongDocServiceServer) GetAccountInfo(ctx context.Context, req *GetAccountInfoReq) (*GetAccountInfoResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAccountInfo not implemented")
+}
+func (*UnimplementedStrongDocServiceServer) GetUserInfo(ctx context.Context, req *GetUserInfoReq) (*GetUserInfoResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserInfo not implemented")
 }
 
 func RegisterStrongDocServiceServer(s *grpc.Server, srv StrongDocServiceServer) {
@@ -1563,7 +1020,7 @@ func RegisterStrongDocServiceServer(s *grpc.Server, srv StrongDocServiceServer) 
 }
 
 func _StrongDocService_RegisterOrganization_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterOrganizationRequest)
+	in := new(RegisterOrganizationReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1575,13 +1032,13 @@ func _StrongDocService_RegisterOrganization_Handler(srv interface{}, ctx context
 		FullMethod: "/proto.StrongDocService/RegisterOrganization",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).RegisterOrganization(ctx, req.(*RegisterOrganizationRequest))
+		return srv.(StrongDocServiceServer).RegisterOrganization(ctx, req.(*RegisterOrganizationReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_RemoveOrganization_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveOrganizationRequest)
+	in := new(RemoveOrganizationReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1593,13 +1050,13 @@ func _StrongDocService_RemoveOrganization_Handler(srv interface{}, ctx context.C
 		FullMethod: "/proto.StrongDocService/RemoveOrganization",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).RemoveOrganization(ctx, req.(*RemoveOrganizationRequest))
+		return srv.(StrongDocServiceServer).RemoveOrganization(ctx, req.(*RemoveOrganizationReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_RegisterUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterUserRequest)
+	in := new(RegisterUserReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1611,13 +1068,13 @@ func _StrongDocService_RegisterUser_Handler(srv interface{}, ctx context.Context
 		FullMethod: "/proto.StrongDocService/RegisterUser",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).RegisterUser(ctx, req.(*RegisterUserRequest))
+		return srv.(StrongDocServiceServer).RegisterUser(ctx, req.(*RegisterUserReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_ListUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListUsersRequest)
+	in := new(ListUsersReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1629,13 +1086,13 @@ func _StrongDocService_ListUsers_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: "/proto.StrongDocService/ListUsers",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).ListUsers(ctx, req.(*ListUsersRequest))
+		return srv.(StrongDocServiceServer).ListUsers(ctx, req.(*ListUsersReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_RemoveUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveUserRequest)
+	in := new(RemoveUserReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1647,13 +1104,13 @@ func _StrongDocService_RemoveUser_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: "/proto.StrongDocService/RemoveUser",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).RemoveUser(ctx, req.(*RemoveUserRequest))
+		return srv.(StrongDocServiceServer).RemoveUser(ctx, req.(*RemoveUserReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_PromoteUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PromoteUserRequest)
+	in := new(PromoteUserReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1665,13 +1122,13 @@ func _StrongDocService_PromoteUser_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/proto.StrongDocService/PromoteUser",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).PromoteUser(ctx, req.(*PromoteUserRequest))
+		return srv.(StrongDocServiceServer).PromoteUser(ctx, req.(*PromoteUserReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_DemoteUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DemoteUserRequest)
+	in := new(DemoteUserReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1683,13 +1140,13 @@ func _StrongDocService_DemoteUser_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: "/proto.StrongDocService/DemoteUser",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).DemoteUser(ctx, req.(*DemoteUserRequest))
+		return srv.(StrongDocServiceServer).DemoteUser(ctx, req.(*DemoteUserReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_ListDocuments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListDocumentsRequest)
+	in := new(ListDocumentsReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1701,13 +1158,13 @@ func _StrongDocService_ListDocuments_Handler(srv interface{}, ctx context.Contex
 		FullMethod: "/proto.StrongDocService/ListDocuments",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).ListDocuments(ctx, req.(*ListDocumentsRequest))
+		return srv.(StrongDocServiceServer).ListDocuments(ctx, req.(*ListDocumentsReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_RemoveDocument_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveDocumentRequest)
+	in := new(RemoveDocumentReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1719,7 +1176,7 @@ func _StrongDocService_RemoveDocument_Handler(srv interface{}, ctx context.Conte
 		FullMethod: "/proto.StrongDocService/RemoveDocument",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).RemoveDocument(ctx, req.(*RemoveDocumentRequest))
+		return srv.(StrongDocServiceServer).RemoveDocument(ctx, req.(*RemoveDocumentReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1896,7 +1353,7 @@ func _StrongDocService_DecryptDocument_Handler(srv interface{}, ctx context.Cont
 }
 
 func _StrongDocService_ShareDocument_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ShareDocumentRequest)
+	in := new(ShareDocumentReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1908,13 +1365,13 @@ func _StrongDocService_ShareDocument_Handler(srv interface{}, ctx context.Contex
 		FullMethod: "/proto.StrongDocService/ShareDocument",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).ShareDocument(ctx, req.(*ShareDocumentRequest))
+		return srv.(StrongDocServiceServer).ShareDocument(ctx, req.(*ShareDocumentReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_UnshareDocument_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UnshareDocumentRequest)
+	in := new(UnshareDocumentReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1926,31 +1383,13 @@ func _StrongDocService_UnshareDocument_Handler(srv interface{}, ctx context.Cont
 		FullMethod: "/proto.StrongDocService/UnshareDocument",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).UnshareDocument(ctx, req.(*UnshareDocumentRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _StrongDocService_GetDocumentsSize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetDocumentsSizeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(StrongDocServiceServer).GetDocumentsSize(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.StrongDocService/GetDocumentsSize",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).GetDocumentsSize(ctx, req.(*GetDocumentsSizeRequest))
+		return srv.(StrongDocServiceServer).UnshareDocument(ctx, req.(*UnshareDocumentReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_Login_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LoginRequest)
+	in := new(LoginReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1962,13 +1401,13 @@ func _StrongDocService_Login_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: "/proto.StrongDocService/Login",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).Login(ctx, req.(*LoginRequest))
+		return srv.(StrongDocServiceServer).Login(ctx, req.(*LoginReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LogoutRequest)
+	in := new(LogoutReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1980,13 +1419,13 @@ func _StrongDocService_Logout_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: "/proto.StrongDocService/Logout",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).Logout(ctx, req.(*LogoutRequest))
+		return srv.(StrongDocServiceServer).Logout(ctx, req.(*LogoutReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_Search_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SearchRequest)
+	in := new(SearchReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1998,31 +1437,13 @@ func _StrongDocService_Search_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: "/proto.StrongDocService/Search",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).Search(ctx, req.(*SearchRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _StrongDocService_GetIndexSize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetIndexSizeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(StrongDocServiceServer).GetIndexSize(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.StrongDocService/GetIndexSize",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).GetIndexSize(ctx, req.(*GetIndexSizeRequest))
+		return srv.(StrongDocServiceServer).Search(ctx, req.(*SearchReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_AddSharableOrg_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddSharableOrgRequest)
+	in := new(AddSharableOrgReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -2034,13 +1455,13 @@ func _StrongDocService_AddSharableOrg_Handler(srv interface{}, ctx context.Conte
 		FullMethod: "/proto.StrongDocService/AddSharableOrg",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).AddSharableOrg(ctx, req.(*AddSharableOrgRequest))
+		return srv.(StrongDocServiceServer).AddSharableOrg(ctx, req.(*AddSharableOrgReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_RemoveSharableOrg_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveSharableOrgRequest)
+	in := new(RemoveSharableOrgReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -2052,13 +1473,13 @@ func _StrongDocService_RemoveSharableOrg_Handler(srv interface{}, ctx context.Co
 		FullMethod: "/proto.StrongDocService/RemoveSharableOrg",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).RemoveSharableOrg(ctx, req.(*RemoveSharableOrgRequest))
+		return srv.(StrongDocServiceServer).RemoveSharableOrg(ctx, req.(*RemoveSharableOrgReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_SetMultiLevelSharing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetMultiLevelSharingRequest)
+	in := new(SetMultiLevelSharingReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -2070,13 +1491,13 @@ func _StrongDocService_SetMultiLevelSharing_Handler(srv interface{}, ctx context
 		FullMethod: "/proto.StrongDocService/SetMultiLevelSharing",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).SetMultiLevelSharing(ctx, req.(*SetMultiLevelSharingRequest))
+		return srv.(StrongDocServiceServer).SetMultiLevelSharing(ctx, req.(*SetMultiLevelSharingReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StrongDocService_GetBillingDetails_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetBillingDetailsRequest)
+	in := new(GetBillingDetailsReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -2088,61 +1509,97 @@ func _StrongDocService_GetBillingDetails_Handler(srv interface{}, ctx context.Co
 		FullMethod: "/proto.StrongDocService/GetBillingDetails",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).GetBillingDetails(ctx, req.(*GetBillingDetailsRequest))
+		return srv.(StrongDocServiceServer).GetBillingDetails(ctx, req.(*GetBillingDetailsReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _StrongDocService_GetBillingPeriod_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetBillingPeriodRequest)
+func _StrongDocService_GetBillingFrequencyList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBillingFrequencyListReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(StrongDocServiceServer).GetBillingPeriod(ctx, in)
+		return srv.(StrongDocServiceServer).GetBillingFrequencyList(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.StrongDocService/GetBillingPeriod",
+		FullMethod: "/proto.StrongDocService/GetBillingFrequencyList",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).GetBillingPeriod(ctx, req.(*GetBillingPeriodRequest))
+		return srv.(StrongDocServiceServer).GetBillingFrequencyList(ctx, req.(*GetBillingFrequencyListReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _StrongDocService_SetBillingPeriod_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetBillingPeriodRequest)
+func _StrongDocService_SetNextBillingFrequency_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetNextBillingFrequencyReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(StrongDocServiceServer).SetBillingPeriod(ctx, in)
+		return srv.(StrongDocServiceServer).SetNextBillingFrequency(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.StrongDocService/SetBillingPeriod",
+		FullMethod: "/proto.StrongDocService/SetNextBillingFrequency",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).SetBillingPeriod(ctx, req.(*SetBillingPeriodRequest))
+		return srv.(StrongDocServiceServer).SetNextBillingFrequency(ctx, req.(*SetNextBillingFrequencyReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _StrongDocService_GetConfiguration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetConfigurationReq)
+func _StrongDocService_GetLargeTraffic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLargeTrafficReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(StrongDocServiceServer).GetConfiguration(ctx, in)
+		return srv.(StrongDocServiceServer).GetLargeTraffic(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.StrongDocService/GetConfiguration",
+		FullMethod: "/proto.StrongDocService/GetLargeTraffic",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StrongDocServiceServer).GetConfiguration(ctx, req.(*GetConfigurationReq))
+		return srv.(StrongDocServiceServer).GetLargeTraffic(ctx, req.(*GetLargeTrafficReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StrongDocService_GetAccountInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAccountInfoReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StrongDocServiceServer).GetAccountInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.StrongDocService/GetAccountInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StrongDocServiceServer).GetAccountInfo(ctx, req.(*GetAccountInfoReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StrongDocService_GetUserInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserInfoReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StrongDocServiceServer).GetUserInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.StrongDocService/GetUserInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StrongDocServiceServer).GetUserInfo(ctx, req.(*GetUserInfoReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2212,10 +1669,6 @@ var _StrongDocService_serviceDesc = grpc.ServiceDesc{
 			Handler:    _StrongDocService_UnshareDocument_Handler,
 		},
 		{
-			MethodName: "GetDocumentsSize",
-			Handler:    _StrongDocService_GetDocumentsSize_Handler,
-		},
-		{
 			MethodName: "Login",
 			Handler:    _StrongDocService_Login_Handler,
 		},
@@ -2226,10 +1679,6 @@ var _StrongDocService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Search",
 			Handler:    _StrongDocService_Search_Handler,
-		},
-		{
-			MethodName: "GetIndexSize",
-			Handler:    _StrongDocService_GetIndexSize_Handler,
 		},
 		{
 			MethodName: "AddSharableOrg",
@@ -2248,16 +1697,24 @@ var _StrongDocService_serviceDesc = grpc.ServiceDesc{
 			Handler:    _StrongDocService_GetBillingDetails_Handler,
 		},
 		{
-			MethodName: "GetBillingPeriod",
-			Handler:    _StrongDocService_GetBillingPeriod_Handler,
+			MethodName: "GetBillingFrequencyList",
+			Handler:    _StrongDocService_GetBillingFrequencyList_Handler,
 		},
 		{
-			MethodName: "SetBillingPeriod",
-			Handler:    _StrongDocService_SetBillingPeriod_Handler,
+			MethodName: "SetNextBillingFrequency",
+			Handler:    _StrongDocService_SetNextBillingFrequency_Handler,
 		},
 		{
-			MethodName: "GetConfiguration",
-			Handler:    _StrongDocService_GetConfiguration_Handler,
+			MethodName: "GetLargeTraffic",
+			Handler:    _StrongDocService_GetLargeTraffic_Handler,
+		},
+		{
+			MethodName: "GetAccountInfo",
+			Handler:    _StrongDocService_GetAccountInfo_Handler,
+		},
+		{
+			MethodName: "GetUserInfo",
+			Handler:    _StrongDocService_GetUserInfo_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

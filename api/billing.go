@@ -2,144 +2,187 @@ package api
 
 import (
 	"context"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/overnest/strongdoc-go/client"
-	"github.com/overnest/strongdoc-go/proto"
-	"log"
+	"time"
+
+	"github.com/golang/protobuf/ptypes"
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/proto"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
+// BillingDetails stores the billing details for the organization
 type BillingDetails struct {
-	protoBillingDetails *proto.GetBillingDetailsResponse
+	// Start of the requested billing period
+	PeriodStart time.Time
+	// End of the requested billing period
+	PeriodEnd time.Time
+	// Total cost incurred during the requested billing period
+	TotalCost float64
+	// Usage and cost breakdown for stored documents
+	Documents *DocumentCosts
+	// Usage and cost breakdown for stored search indices
+	Search *SearchCosts
+	// Usage and cost breakdown for used traffic
+	Traffic *TrafficCosts
 }
 
-type BillingPeriod struct {
-	protoBillingPeriod *proto.BillingPeriod
+// DocumentCosts stores the document cost portion of the bill
+type DocumentCosts struct {
+	// Cost of document storage incurred during a billing period
+	Cost float64
+	// Size of documents stored during a billing period (in MBhours)
+	Size float64
+	// Cost tier reached for document storage during a billing period
+	Tier string
 }
 
-type BillingDocuments struct {
-	protoBillingDocument *proto.Documents
+// SearchCosts stores the search cost portion of the bill
+type SearchCosts struct {
+	// Cost of search index storage incurred during a billing period
+	Cost float64
+	// Size of search indices stored during a billing period (in MBhours)
+	Size float64
+	// Cost tier reached for search index storage during a billing period
+	Tier string
 }
 
-type BillingIndex struct {
-	protoBillingIndex *proto.Index
+// TrafficCosts stores the traffic coast portion of the bill
+type TrafficCosts struct {
+	// Cost of network traffic incurred during a billing period
+	Cost float64
+	// Size of incoming requests during a billing period (in MB)
+	Incoming float64
+	// Size of outgoing requests during a billing period (in MB)
+	Outgoing float64
+	// Cost tier reached for network traffic during a billing period
+	Tier string
 }
 
-type BillingTraffic struct {
-	protoBillingTraffic *proto.Traffic
-}
-
-func (bd *BillingDetails) CurrentPeriod() (CurrentPeriod *BillingPeriod, err error) {
-	if bd.protoBillingDetails == nil {
-		return nil, err
-	}
-	cPeriod := BillingPeriod{bd.protoBillingDetails.CurrentPeriod}
-	return &cPeriod, nil
-}
-
-func (bd *BillingDetails) TotalCost() (TotalCost int32, err error) {
-	if bd.protoBillingDetails == nil {
-		return 0, err
-	}
-	return bd.protoBillingDetails.TotalCost, nil
-}
-
-func (bd *BillingDetails) Documents() (bdoc *BillingDocuments, err error) {
-	if bd.protoBillingDetails == nil {
-		return nil, err
-	}
-	bdoc = &BillingDocuments{bd.protoBillingDetails.Documents}
-	return bdoc, nil
-}
-
-func (d *BillingDocuments) Cost() int32 {
-	return d.protoBillingDocument.Cost
-}
-
-func (d *BillingDocuments) Size() float64 {
-	return d.protoBillingDocument.Size
-}
-
-func (bd *BillingDetails) Index() (bi *BillingIndex, err error) {
-	if bd.protoBillingDetails == nil {
-		return nil, err
-	}
-	bi = &BillingIndex{bd.protoBillingDetails.Index}
-	return bi, nil
-}
-
-func (i *BillingIndex) Cost() int32 {
-	return i.protoBillingIndex.Cost
-}
-
-func (i *BillingIndex) Size() int64 {
-	return i.protoBillingIndex.Size
-}
-
-func (bd *BillingDetails) NextPeriod() (bp *BillingPeriod, err error) {
-	if bd.protoBillingDetails == nil {
-		return nil, err
-	}
-	bp = &BillingPeriod{bd.protoBillingDetails.NextPeriod}
-	return bp, nil
-}
-
-func (bp *BillingPeriod) Frequency() string {
-	return bp.protoBillingPeriod.Frequency.String()
-}
-
-func (bp *BillingPeriod) PeriodStart() *timestamp.Timestamp {
-	return bp.protoBillingPeriod.PeriodStart
-}
-
-func (bp *BillingPeriod) PeriodEnd() *timestamp.Timestamp {
-	return bp.protoBillingPeriod.PeriodEnd
-}
-
-func (bd *BillingDetails) Traffic() (bt *BillingTraffic, err error) {
-	if bd.protoBillingDetails == nil {
-		return nil, err
-	}
-	bt = &BillingTraffic{bd.protoBillingDetails.Traffic}
-	return bt, nil
-}
-
-func (t *BillingTraffic) Cost() int32 {
-	return t.protoBillingTraffic.Cost
-}
-
-func (t *BillingTraffic) Incoming() float64 {
-	return t.protoBillingTraffic.Incoming
-}
-
-func (t *BillingTraffic) Outgoing() float64 {
-	return t.protoBillingTraffic.Outgoing
-}
-
-func Billing(token string) (bd BillingDetails) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+//GetBillingDetails list all items of the cost breakdown and also other details such as the billing frequency
+func GetBillingDetails() (bill *BillingDetails, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
-	req := &proto.GetBillingDetailsRequest{}
-	res, err := authClient.GetBillingDetails(context.Background(), req)
-	//authClient.GetBilling
-	return BillingDetails{res}
+	req := &proto.GetBillingDetailsReq{}
+	res, err := sdc.GetBillingDetails(context.Background(), req)
+	if err != nil {
+		return
+	}
+
+	billing, err := utils.ConvertStruct(res, &BillingDetails{})
+	if err != nil {
+		return nil, err
+	}
+
+	return billing.(*BillingDetails), nil
 }
 
-//func BillingPeriodList(token string) (bd BillingDetails) {
-//	authConn, err := client.ConnectToServerWithAuth(token)
-//	if err != nil {
-//		log.Fatalf("Can not obtain auth connection %s", err)
-//		return
-//	}
-//	defer authConn.Close()
-//	authClient := proto.NewStrongDocServiceClient(authConn)
-//	req := &proto.GetBillingPeriodRequest{}
-//	res, err := authClient.GetBillingPeriod(context.Background(), req)
-//	//authClient.GetBilling
-//	return BillingDetails{res}
-//}
-//
+// BillingFrequency shows the billing frequency information
+type BillingFrequency struct {
+	// Billing frequency
+	Frequency proto.TimeInterval
+	// Start fo billing frequency validity
+	ValidFrom *time.Time
+	// End of billing frequency validity
+	ValidTo *time.Time
+}
+
+//GetBillingFrequencyList obtains the list of billing frequencies (past, current and future)
+func GetBillingFrequencyList() ([]*BillingFrequency, error) {
+	sdc, err := client.GetStrongDocClient()
+	if err != nil {
+		return nil, err
+	}
+
+	req := &proto.GetBillingFrequencyListReq{}
+	resp, err := sdc.GetBillingFrequencyList(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+
+	freqList, err := utils.ConvertStruct(resp.GetBillingFrequencyList(), []*BillingFrequency{})
+	if err != nil {
+		return nil, err
+	}
+
+	return *freqList.(*[]*BillingFrequency), nil
+}
+
+//SetNextBillingFrequency changes the next billing frequency
+func SetNextBillingFrequency(freq proto.TimeInterval, validFrom time.Time) (*BillingFrequency, error) {
+	sdc, err := client.GetStrongDocClient()
+	if err != nil {
+		return nil, err
+	}
+
+	from, err := ptypes.TimestampProto(validFrom)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &proto.SetNextBillingFrequencyReq{Frequency: freq, ValidFrom: from}
+	resp, err := sdc.SetNextBillingFrequency(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+
+	frequency, err := utils.ConvertStruct(resp.GetNextBillingFrequency(), &BillingFrequency{})
+	if err != nil {
+		return nil, err
+	}
+
+	return frequency.(*BillingFrequency), nil
+}
+
+// LargeTraffic contains the large traffic data
+type LargeTraffic struct {
+	// Details of large traffic events
+	LargeTraffic []*TrafficDetail
+	// Start of the requested billing period
+	PeriodStart time.Time
+	// End of the requested billing period
+	PeriodEnd time.Time
+}
+
+// TrafficDetail contains the traffic detail
+type TrafficDetail struct {
+	// Timestamp of the large traffic event
+	Time time.Time
+	// The ID of the user who made the request
+	UserID string
+	// HTTP method of the request
+	Method string
+	// URI called by the request
+	URI string
+	// Size of the request (in MB)
+	Incoming float64
+	// Size of the response (in MB)
+	Outgoing float64
+}
+
+//GetLargeTraffic obtains the list of large traffic usages
+func GetLargeTraffic(at time.Time) (*LargeTraffic, error) {
+	sdc, err := client.GetStrongDocClient()
+	if err != nil {
+		return nil, err
+	}
+
+	atproto, err := ptypes.TimestampProto(at)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &proto.GetLargeTrafficReq{At: atproto}
+	resp, err := sdc.GetLargeTraffic(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+
+	traffic, err := utils.ConvertStruct(resp, &LargeTraffic{})
+	if err != nil {
+		return nil, err
+	}
+
+	return traffic.(*LargeTraffic), nil
+}

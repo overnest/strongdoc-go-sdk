@@ -2,87 +2,211 @@ package client
 
 import (
 	"context"
-	"flag"
+	"fmt"
 	"log"
-	"time"
+	"sync"
+	"sync/atomic"
 
-	"github.com/overnest/strongdoc-go/utils"
+	"github.com/overnest/strongdoc-go-sdk/proto"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
-var (
-	port = flag.String("port", "9090", "The port to connect to")
-	addr = flag.String("addr", "api.strongsalt.com", "The StrongSalt API server")
-	cert = flag.String("cert", "./certs/ssca.cert.pem", "The root certificate used to connect to the server")
-	//addr = flag.String("addr", "localhost", "The address of the server to connect to")
-	//cert = flag.String("cert", "./certs/localhost.crt", "The root certificate used to connect to the server")
+var clientInit uint32 = 0
+var clientMutex sync.Mutex
+
+type locationConfig struct {
+	HostPort string
+	Cert     string
+}
+
+// ServiceLocation specifies the location of the StrongDoc service
+type ServiceLocation string
+
+const (
+	// DEFAULT is the default production service location
+	DEFAULT ServiceLocation = "DEFAULT"
+	// QA is the QA service used only for testing
+	QA ServiceLocation = "QA"
+	// LOCAL is the local service location used only for testing
+	LOCAL ServiceLocation = "LOCAL"
+	// unset specifies that the service location is not set
+	unset ServiceLocation = "UNSET"
 )
 
-// TokenAuth is the auth token used to call gRPC APIs that requires auth
-type TokenAuth struct {
-	Token string
+var serviceLocations = map[ServiceLocation]locationConfig{
+	DEFAULT: locationConfig{"api.strongsalt.com:9090", "./certs/ssca.cert.pem"},
+	QA:      locationConfig{"api.strongsaltqa.com:9090", "./certs/ssca.cert.pem"},
+	LOCAL:   locationConfig{"localhost:9090", "./certs/localhost.crt"},
 }
 
-// GetRequestMetadata gets the request metadata
-func (t *TokenAuth) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
-	return map[string]string{
-		"authorization": "Bearer " + t.Token,
-	}, nil
+type strongDocManagerObj struct {
+	location   ServiceLocation
+	noAuthConn *grpc.ClientConn
+	authConn   *grpc.ClientConn
+	authToken  string
 }
 
-// RequireTransportSecurity requires transport authority
-func (t *TokenAuth) RequireTransportSecurity() bool {
-	return true
+// Singletons
+var serviceLocation ServiceLocation = unset
+var manager *strongDocManagerObj = nil
+
+// StrongDocManager encapsulates the client object that allows connection to the remote service
+type StrongDocManager interface {
+	Login(userID, password, orgID string) (token string, err error)
+	GetNoAuthConn() *grpc.ClientConn
+	GetAuthConn() *grpc.ClientConn
+	GetClient() proto.StrongDocServiceClient
+	Close()
 }
 
-// NoAuth is the auth token used to call gRPC APIs that does not require auth
-type NoAuth struct{}
+// InitStrongDocManager initializes a singleton StrongDocManager
+func InitStrongDocManager(location ServiceLocation, reset bool) (StrongDocManager, error) {
+	_, ok := serviceLocations[location]
+	if !ok || location == unset {
+		return nil, fmt.Errorf("The ServiceLocation %v is not supported", location)
+	}
 
-// GetRequestMetadata gets the request metadata
-func (t *NoAuth) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
-	// No additional values in request headers
-	return map[string]string{}, nil
+	if atomic.LoadUint32(&clientInit) == 1 {
+		if location == serviceLocation {
+			return manager, nil
+		} else if !reset {
+			return nil, fmt.Errorf("Can not initialize StrongDocManager with service location %v. "+
+				"Singleton already initialized with %v", location, serviceLocation)
+		}
+	}
+
+	clientMutex.Lock()
+	defer clientMutex.Unlock()
+
+	if manager != nil {
+		manager.Close()
+	}
+	serviceLocation = location
+	config := serviceLocations[location]
+	noAuthConn, err := getNoAuthConn(config.HostPort, config.Cert)
+	if err != nil {
+		return nil, err
+	}
+	manager = &strongDocManagerObj{location, noAuthConn, nil, ""}
+
+	atomic.StoreUint32(&clientInit, 1)
+	return manager, nil
 }
 
-// RequireTransportSecurity requires transport authority
-func (t *NoAuth) RequireTransportSecurity() bool {
-	return true
+// GetStrongDocManager gets a singleton StrongDocManager
+func GetStrongDocManager() (StrongDocManager, error) {
+	if atomic.LoadUint32(&clientInit) == 1 {
+		if manager != nil {
+			return manager, nil
+		}
+	}
+	return nil, fmt.Errorf("Can not get StrongDocManager. Please call InitStrongDocManager to initialize")
 }
 
-// ConnectToServerNoAuth creates a connection to the server without any authorization
-func ConnectToServerNoAuth() (conn *grpc.ClientConn, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	certFilePath, err := utils.FetchFileLoc(*cert)
+// GetStrongDocClient gets a singleton StrongDocServiceClient
+func GetStrongDocClient() (proto.StrongDocServiceClient, error) {
+	if atomic.LoadUint32(&clientInit) == 1 {
+		if manager != nil {
+			return manager.GetClient(), nil
+		}
+	}
+	return nil, fmt.Errorf("Can not get StrongDocClient. Please call InitStrongDocManager to initialize")
+}
+
+// Login attempts a log in. If successful, it generates an authenticatecd GRPC connection
+func (c *strongDocManagerObj) Login(userID, password, orgID string) (token string, err error) {
+	token = ""
+	noAuthConn := c.GetNoAuthConn()
+	if noAuthConn == nil || err != nil {
+		log.Fatalf("Can not obtain none authenticated connection %s", err)
+		return
+	}
+
+	noAuthClient := proto.NewStrongDocServiceClient(noAuthConn)
+	res, err := noAuthClient.Login(context.Background(), &proto.LoginReq{
+		UserID: userID, Password: password, OrgID: orgID})
+	if err != nil {
+		err = fmt.Errorf("Login err: [%v]", err)
+		return
+	}
+
+	token = res.Token
+	config := serviceLocations[c.location]
+	authConn, err := getAuthConn(token, config.HostPort, config.Cert)
+	if err != nil {
+		return
+	}
+
+	// Close existing authenticated connection
+	if c.authConn != nil {
+		c.authConn.Close()
+	}
+
+	c.authConn = authConn
+	c.authToken = token
+	return
+}
+
+// GetNoAuthConn get the unauthenticated GRPC connection. This is always available, but will not work in most API calls
+func (c *strongDocManagerObj) GetNoAuthConn() *grpc.ClientConn {
+	return c.noAuthConn
+}
+
+// GetAuthConn gets an authenticated GRPC connection. This is available after a successful login.
+func (c *strongDocManagerObj) GetAuthConn() *grpc.ClientConn {
+	return c.authConn
+}
+
+// GetClient returns a StrongDocServiceClient used to call GRPC functions
+func (c *strongDocManagerObj) GetClient() proto.StrongDocServiceClient {
+	if c.GetAuthConn() != nil {
+		return proto.NewStrongDocServiceClient(c.authConn)
+	}
+	return proto.NewStrongDocServiceClient(c.GetNoAuthConn())
+}
+
+// Close closes all the connections.
+func (c *strongDocManagerObj) Close() {
+	if c.GetAuthConn() != nil {
+		c.GetAuthConn().Close()
+	}
+	if c.GetNoAuthConn() != nil {
+		c.GetNoAuthConn().Close()
+	}
+}
+
+func getNoAuthConn(hostport, cert string) (conn *grpc.ClientConn, err error) {
+	certFilePath, err := utils.FetchFileLoc(cert)
+
 	// Create the client TLS credentials
 	creds, err := credentials.NewClientTLSFromFile(certFilePath, "")
 	if err != nil {
-		log.Fatalf("could not load tls cert: %s", err)
+		err = fmt.Errorf("Can not load TLS cert at %v", cert)
+		return
 	}
 
 	// Initiate a connection with the server
-	return grpc.DialContext(ctx, *addr+":"+*port,
+	return grpc.DialContext(context.Background(), hostport,
 		grpc.WithTransportCredentials(creds),
-		grpc.WithPerRPCCredentials(&NoAuth{}),
+		grpc.WithPerRPCCredentials(&grpcNoAuthCred{}),
 	)
 }
 
-// ConnectToServerWithAuth creates a connection to the server without any authorization
-func ConnectToServerWithAuth(token string) (conn *grpc.ClientConn, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
+func getAuthConn(token, hostport, cert string) (conn *grpc.ClientConn, err error) {
+	certFilePath, err := utils.FetchFileLoc(cert)
 
-	certFilePath, err := utils.FetchFileLoc(*cert)
 	// Create the client TLS credentials
 	creds, err := credentials.NewClientTLSFromFile(certFilePath, "")
 	if err != nil {
 		log.Fatalf("could not load tls cert: %s", err)
+		return
 	}
 
 	// Initiate a connection with the server
-	return grpc.DialContext(ctx, *addr+":"+*port,
+	return grpc.DialContext(context.Background(), hostport,
 		grpc.WithTransportCredentials(creds),
-		grpc.WithPerRPCCredentials(&TokenAuth{Token: token}),
+		grpc.WithPerRPCCredentials(&grpcAuthCred{token}),
 	)
 }

@@ -2,51 +2,33 @@ package api
 
 import (
 	"context"
-	"fmt"
-	"log"
 
-	"github.com/overnest/strongdoc-go/client"
-	"github.com/overnest/strongdoc-go/proto"
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/proto"
 )
 
 // Login logs the user in, returning a Bearer Token.
-// This token must henceforth be sent with all requests
+// This token must henceforth be sent with all Reqs
 // in the same session.
 func Login(userID, password, orgID string) (token string, err error) {
-	noAuthConn, err := client.ConnectToServerNoAuth()
+	sdm, err := client.GetStrongDocManager()
 	if err != nil {
-		log.Fatalf("Can not obtain no auth connection %s", err)
-		return
-	}
-	defer noAuthConn.Close()
-
-	noauthClient := proto.NewStrongDocServiceClient(noAuthConn)
-	res, err := noauthClient.Login(context.Background(), &proto.LoginRequest{
-		UserID: userID, Password: password, OrgID: orgID})
-	if err != nil {
-		err = fmt.Errorf("Login err: [%v]\n", err)
-		return
+		return "", err
 	}
 
-	token = res.Token
-	return token, nil
+	return sdm.Login(userID, password, orgID)
 }
 
 // Logout retires the Bearer token in use, ending the session.
-func Logout(token string) (status string, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func Logout() (status string, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
-
-	authClient := proto.NewStrongDocServiceClient(authConn)
-	res, err := authClient.Logout(context.Background(), &proto.LogoutRequest{})
+	res, err := sdc.Logout(context.Background(), &proto.LogoutReq{})
 	if err != nil {
 		return
 	}
 	status = res.Status
-
 	return
 }

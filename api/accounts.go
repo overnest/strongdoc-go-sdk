@@ -2,24 +2,23 @@ package api
 
 import (
 	"context"
-	"log"
+	"time"
 
-	"github.com/overnest/strongdoc-go/client"
-	"github.com/overnest/strongdoc-go/proto"
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/proto"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
 // RegisterOrganization creates an organization. The user who
 // created the organization is automatically an administrator.
-func RegisterOrganization(orgName, orgAddr, adminName, adminPassword, adminEmail, source, sourceData string) (orgID, adminID string, err error) {
-	noAuthConn, err := client.ConnectToServerNoAuth()
+func RegisterOrganization(orgName, orgAddr, adminName, adminPassword,
+	adminEmail, source, sourceData string) (orgID, adminID string, err error) {
+
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain no auth connection %s", err)
 		return
 	}
-	defer noAuthConn.Close()
-
-	noAuthClient := proto.NewStrongDocServiceClient(noAuthConn)
-	resp, err := noAuthClient.RegisterOrganization(context.Background(), &proto.RegisterOrganizationRequest{
+	resp, err := sdc.RegisterOrganization(context.Background(), &proto.RegisterOrganizationReq{
 		OrgName:         orgName,
 		OrgAddr:         orgAddr,
 		UserName:        adminName,
@@ -27,8 +26,8 @@ func RegisterOrganization(orgName, orgAddr, adminName, adminPassword, adminEmail
 		Email:           adminEmail,
 		SharableOrgs:    nil,
 		MultiLevelShare: false,
-		Source: 		 source,
-		SourceData: 	sourceData,
+		Source:          source,
+		SourceData:      sourceData,
 	})
 	if err != nil {
 		return
@@ -41,16 +40,13 @@ func RegisterOrganization(orgName, orgAddr, adminName, adminPassword, adminEmail
 // users, documents, and other data that it owns.
 //
 // Requires administrator privileges.
-func RemoveOrganization(token string, force bool) (success bool, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func RemoveOrganization(force bool) (success bool, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
 
-	authClient := proto.NewStrongDocServiceClient(authConn)
-	resp, err := authClient.RemoveOrganization(context.Background(), &proto.RemoveOrganizationRequest{
+	resp, err := sdc.RemoveOrganization(context.Background(), &proto.RemoveOrganizationReq{
 		Force: force,
 	})
 	if err != nil {
@@ -60,23 +56,93 @@ func RemoveOrganization(token string, force bool) (success bool, err error) {
 	return
 }
 
+// RegisterUser creates new user if it doesn't already exist. Trying to create
+// a user with an existing username throws an error.
+//
+// Requires administrator privileges.
+func RegisterUser(user, pass, email string, admin bool) (userID string, err error) {
+	sdc, err := client.GetStrongDocClient()
+	if err != nil {
+		return
+	}
+
+	req := &proto.RegisterUserReq{
+		UserName: user,
+		Password: pass,
+		Email:    email,
+		Admin:    admin,
+	}
+	res, err := sdc.RegisterUser(context.Background(), req)
+	if err != nil {
+		return
+	}
+	userID = res.UserID
+	return
+}
+
+// User is the user of the organization
+type User struct {
+	UserName string
+	UserID   string
+	IsAdmin  bool
+}
+
+// ListUsers lists the users of the organization
+func ListUsers() (users []User, err error) {
+	sdc, err := client.GetStrongDocClient()
+	if err != nil {
+		return
+	}
+	req := &proto.ListUsersReq{}
+	res, err := sdc.ListUsers(context.Background(), req)
+	if err != nil {
+		return
+	}
+
+	usersi, err := utils.ConvertStruct(res.OrgUsers, []User{})
+	if err != nil {
+		return nil, err
+	}
+
+	return *(usersi.(*[]User)), nil
+}
+
+// RemoveUser removes the user from the organization. The users documents still exist,
+// but belong to the organization, only accessible by the admin of
+// their former organization.
+//
+// Requires administrator privileges.
+func RemoveUser(user string) (count int64, err error) {
+	sdc, err := client.GetStrongDocClient()
+	if err != nil {
+		return
+	}
+
+	req := &proto.RemoveUserReq{
+		UserID: user,
+	}
+	res, err := sdc.RemoveUser(context.Background(), req)
+	if err != nil {
+		return
+	}
+	count = res.Count
+	return
+}
+
 // PromoteUser promotes a regular user to administrator
 // privilege level.
 //
 // Requires administrator privileges.
-func PromoteUser(token, userId string) (success bool, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func PromoteUser(userID string) (success bool, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
 
-	authClient := proto.NewStrongDocServiceClient(authConn)
-	req := &proto.PromoteUserRequest{
-		UserID:               userId,
+	req := &proto.PromoteUserReq{
+		UserID: userID,
 	}
-	res, err := authClient.PromoteUser(context.Background(), req)
+	res, err := sdc.PromoteUser(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -88,19 +154,16 @@ func PromoteUser(token, userId string) (success bool, err error) {
 // privilege level.
 //
 // Requires administrator privileges.
-func DemoteUser(token, userId string) (success bool, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func DemoteUser(userID string) (success bool, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
 
-	authClient := proto.NewStrongDocServiceClient(authConn)
-	req := &proto.DemoteUserRequest{
-		UserID:               userId,
+	req := &proto.DemoteUserReq{
+		UserID: userID,
 	}
-	res, err := authClient.DemoteUser(context.Background(), req)
+	res, err := sdc.DemoteUser(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -108,144 +171,153 @@ func DemoteUser(token, userId string) (success bool, err error) {
 	return
 }
 
-// Creates new user if it doesn't already exist. Trying to create
-// a user with an existing username throws an error.
-//
-// Requires administrator privileges.
-func RegisterUser(token, user, pass, email string, admin bool) (userId string, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
-	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
-		return
-	}
-	defer authConn.Close()
-
-	authClient := proto.NewStrongDocServiceClient(authConn)
-	req := &proto.RegisterUserRequest{
-		UserName:             user,
-		Password:             pass,
-		Email:                email,
-		Admin:                admin,
-	}
-	res, err := authClient.RegisterUser(context.Background(), req)
-	if err != nil {
-		return
-	}
-	userId = res.UserID
-	return
-}
-
-// Removes the user from the organization. The users documents still exist,
-// but belong to the organization, only accessible by the admin of
-// their former organization.
-//
-// Requires administrator privileges.
-func RemoveUser(token, user string) (count int64, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
-	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
-		return
-	}
-	defer authConn.Close()
-
-	authClient := proto.NewStrongDocServiceClient(authConn)
-	req := &proto.RemoveUserRequest{
-		UserID:             user,
-	}
-	res, err := authClient.RemoveUser(context.Background(), req)
-	if err != nil {
-		return
-	}
-	count = res.Count
-	return
-}
-
-type User struct {
-	UserName string
-	UserID string
-	IsAdmin bool
-}
-
-func ListUsers(token string) (users []User, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
-	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
-		return
-	}
-	defer authConn.Close()
-
-	authClient := proto.NewStrongDocServiceClient(authConn)
-	req := &proto.ListUsersRequest{}
-	res, err := authClient.ListUsers(context.Background(), req)
-	if err != nil {
-		return
-	}
-	users = make([]User, 0)
-	for _, protoUser := range res.OrgUsers {
-		user := User{
-			protoUser.UserName,
-			protoUser.UserID,
-			protoUser.IsAdmin,
-		}
-		users = append(users, user)
-	}
-	return
-}
-
 // AddSharableOrg adds a sharable Organization.
-func AddSharableOrg(token, orgID string) (success bool, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func AddSharableOrg(orgID string) (success bool, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	req := &proto.AddSharableOrgRequest{
+	req := &proto.AddSharableOrgReq{
 		NewOrgID: orgID,
 	}
-	res, err := authClient.AddSharableOrg(context.Background(), req)
+	res, err := sdc.AddSharableOrg(context.Background(), req)
+	if err != nil {
+		return
+	}
 
 	success = res.Success
 	return
 }
 
 // RemoveSharableOrg removes a sharable Organization.
-func RemoveSharableOrg(token, orgID string) (success bool, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func RemoveSharableOrg(orgID string) (success bool, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	req := &proto.RemoveSharableOrgRequest{
+	req := &proto.RemoveSharableOrgReq{
 		RemoveOrgID: orgID,
 	}
-	res, err := authClient.RemoveSharableOrg(context.Background(), req)
+	res, err := sdc.RemoveSharableOrg(context.Background(), req)
+	if err != nil {
+		return
+	}
 
 	success = res.Success
 	return
 }
 
 // SetMultiLevelSharing sets MultiLevel Sharing.
-func SetMultiLevelSharing(token string, enable bool) (success bool, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func SetMultiLevelSharing(enable bool) (success bool, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	req := &proto.SetMultiLevelSharingRequest{
+	req := &proto.SetMultiLevelSharingReq{
 		Enable: enable,
 	}
-	res, err := authClient.SetMultiLevelSharing(context.Background(), req)
+	res, err := sdc.SetMultiLevelSharing(context.Background(), req)
+	if err != nil {
+		return
+	}
 
 	success = res.Success
 	return
 }
 
+// AccountInfo is info on the organization account
+type AccountInfo struct {
+	// Account's orgID
+	OrgID string
+	// Account's subscription info
+	Subscription *Subscription
+	// List of all account's payments
+	Payments []*Payment
+	// The address of the organization
+	OrgAddress string
+	// The ability to "reshare" a document that was shared to him/her to another user
+	MultiLevelShare bool
+	// The list of sharable organization IDs.
+	SharableOrgs []string
+}
+
+// Subscription is the subscript type of the organization
+type Subscription struct {
+	// Subscription type (AWS Marketplace, Credit Card, etc.)
+	Type string
+	// State of the subscription (Created, Subscribed, Unsubscribed, etc.)
+	Status string
+}
+
+// Payment is the payment information for the organization
+type Payment struct {
+	// Timestamp of the payment billing transaction
+	BilledAt *time.Time
+	// Start of the payment period
+	PeriodStart *time.Time
+	// End of the payment period
+	PeriodEnd *time.Time
+	// Amount of  payment
+	Amount float64
+	// Payment status ("No Payment","Zero Payment","Payment Pending","Payment Success","Payment Failed")
+	Status string
+}
+
+//GetAccountInfo obtain information about the account
+func GetAccountInfo() (*AccountInfo, error) {
+	sdc, err := client.GetStrongDocClient()
+	if err != nil {
+		return nil, err
+	}
+
+	req := &proto.GetAccountInfoReq{}
+	resp, err := sdc.GetAccountInfo(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+
+	account, err := utils.ConvertStruct(resp, &AccountInfo{})
+	if err != nil {
+		return nil, err
+	}
+
+	return account.(*AccountInfo), err
+}
+
+// UserInfo is info on the user account
+type UserInfo struct {
+	// The user's userID
+	UserID string
+	// The user's email
+	Email string
+	// The user's name
+	UserName string
+	// The user's orgID
+	OrgID string
+	// Whether the user is an admin
+	IsAdmin bool
+}
+
+//GetUserInfo obtain information about logged user
+func GetUserInfo() (*UserInfo, error) {
+	sdc, err := client.GetStrongDocClient()
+	if err != nil {
+		return nil, err
+	}
+
+	req := &proto.GetUserInfoReq{}
+	resp, err := sdc.GetUserInfo(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := utils.ConvertStruct(resp, &UserInfo{})
+	if err != nil {
+		return nil, err
+	}
+
+	return user.(*UserInfo), nil
+}

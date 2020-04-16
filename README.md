@@ -3,7 +3,8 @@ This is a Go SDK for the [StrongDoc](https://api.strongsalt.com "Strongdoc API")
 
 ## Important Links
 
-Documentation: [https://godoc.org/github.com/overnest/strongdoc-go-sdk/api](https://godoc.org/github.com/overnest/strongdoc-go-sdk/api "Strongsalt Go API Documentation")
+Client Documentation: [https://godoc.org/github.com/overnest/strongdoc-go-sdk/client](https://godoc.org/github.com/overnest/strongdoc-go-sdk/client "Strongsalt Go Client API Documentation")
+API Documentation: [https://godoc.org/github.com/overnest/strongdoc-go-sdk/api](https://godoc.org/github.com/overnest/strongdoc-go-sdk/api "Strongsalt Go API Documentation")
 
 Website: [strongsalt.com](https://www.strongsalt.com "Strongsalt website")
 
@@ -11,7 +12,7 @@ Website: [strongsalt.com](https://www.strongsalt.com "Strongsalt website")
 
 The API is available as a Go Module. You must first do:
 
-`go get github.com/overnest/strongdoc-go@v0.1.10`
+`go get github.com/overnest/strongdoc-go@v0.1.12`
 
 Then, import it into your files at the top of your files:
 

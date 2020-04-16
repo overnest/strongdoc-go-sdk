@@ -5,25 +5,21 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 
-	"github.com/overnest/strongdoc-go/client"
-	"github.com/overnest/strongdoc-go/proto"
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/proto"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
 // UploadDocument uploads a document to Strongdoc-provided storage.
-// It then returns a docId that uniquely
-// identifies the document.
-func UploadDocument(token string, docName string, plaintext []byte) (docID string, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+// It then returns a docId that uniquely identifies the document.
+func UploadDocument(docName string, plaintext []byte) (docID string, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	stream, err := authClient.UploadDocumentStream(context.Background())
+	stream, err := sdc.UploadDocumentStream(context.Background())
 	if err != nil {
 		err = fmt.Errorf("UploadDocument err: [%v]", err)
 		return
@@ -66,7 +62,7 @@ func UploadDocument(token string, docName string, plaintext []byte) (docID strin
 		return
 	}
 	if res == nil {
-		err = fmt.Errorf("UploadDocument response is nil: [%v]", err)
+		err = fmt.Errorf("UploadDocument Resp is nil: [%v]", err)
 		return
 	}
 
@@ -74,23 +70,17 @@ func UploadDocument(token string, docName string, plaintext []byte) (docID strin
 	return
 }
 
-// UploadDocumentStream encrypts a document with Strongdoc
-// and stores it in Strongdoc-provided storage.
-// It accepts an io.Reader (which should
-// contain the plaintext) and the document name.
+// UploadDocumentStream encrypts a document with Strongdoc and stores it in Strongdoc-provided storage.
+// It accepts an io.Reader (which should contain the plaintext) and the document name.
 //
-// It then returns a docID that uniquely
-// identifies the document.
-func UploadDocumentStream(token string, docName string, plainStream io.Reader) (docID string, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+// It then returns a docID that uniquely identifies the document.
+func UploadDocumentStream(docName string, plainStream io.Reader) (docID string, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	stream, err := authClient.UploadDocumentStream(context.Background())
+	stream, err := sdc.UploadDocumentStream(context.Background())
 	if err != nil {
 		return
 	}
@@ -141,17 +131,14 @@ func UploadDocumentStream(token string, docName string, plainStream io.Reader) (
 
 // DownloadDocument downloads a document stored in Strongdoc-provided
 // storage. You must provide it with its docID.
-func DownloadDocument(token string, docID string) (plaintext []byte, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func DownloadDocument(docID string) (plaintext []byte, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
 	req := &proto.DownloadDocStreamReq{DocID: docID}
-	stream, err := authClient.DownloadDocumentStream(context.Background(), req)
+	stream, err := sdc.DownloadDocumentStream(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -159,7 +146,7 @@ func DownloadDocument(token string, docID string) (plaintext []byte, err error) 
 	for err == nil {
 		res, rcverr := stream.Recv()
 		if res != nil && docID != res.GetDocID() {
-			err = fmt.Errorf("Requested document %v, received document %v instead",
+			err = fmt.Errorf("Reqed document %v, received document %v instead",
 				docID, res.GetDocID())
 			return
 		}
@@ -179,18 +166,15 @@ func DownloadDocument(token string, docID string) (plaintext []byte, err error) 
 // You must also pass in its docId.
 //
 // It then returns an io.Reader object that contains the plaintext of
-// the requested document.
-func DownloadDocumentStream(token string, docID string) (plainStream io.Reader, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+// the Reqed document.
+func DownloadDocumentStream(docID string) (plainStream io.Reader, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	//defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
 	req := &proto.DownloadDocStreamReq{DocID: docID}
-	stream, err := authClient.DownloadDocumentStream(context.Background(), req)
+	stream, err := sdc.DownloadDocumentStream(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -224,7 +208,7 @@ func (stream *downloadStream) Read(p []byte) (n int, err error) {
 
 	resp, err := (*stream.grpcStream).Recv()
 	if resp != nil && stream.docID != resp.GetDocID() {
-		return 0, fmt.Errorf("Requested document %v, received document %v instead",
+		return 0, fmt.Errorf("Reqed document %v, received document %v instead",
 			stream.docID, resp.GetDocID())
 	}
 
@@ -252,37 +236,31 @@ func (stream *downloadStream) Read(p []byte) (n int, err error) {
 // a document that belongs to you. If you are an administrator,
 // you can remove all the documents of the organization
 // for which you are an administrator.
-func RemoveDocument(token, docID string) error {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func RemoveDocument(docID string) error {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return err
 	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	req := &proto.RemoveDocumentRequest{DocID: docID}
-	_, err = authClient.RemoveDocument(context.Background(), req)
+	req := &proto.RemoveDocumentReq{DocID: docID}
+	_, err = sdc.RemoveDocument(context.Background(), req)
 	return err
 }
 
 // ShareDocument shares the document with other users.
 // Note that the user that you are sharing with be be in an organization
 // that has been declared available for sharing with the Add Sharable Organizations function.
-func ShareDocument(token, docId, userId string) (success bool, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func ShareDocument(docID, userID string) (success bool, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
-		return
+		return false, err
 	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	req := &proto.ShareDocumentRequest{
-		DocID:  docId,
-		UserID: userId,
+	req := &proto.ShareDocumentReq{
+		DocID:  docID,
+		UserID: userID,
 	}
-	res, err := authClient.ShareDocument(context.Background(), req)
+	res, err := sdc.ShareDocument(context.Background(), req)
 	if err != nil {
 		fmt.Printf("Failed to share: %v", err)
 		return
@@ -293,97 +271,50 @@ func ShareDocument(token, docId, userId string) (success bool, err error) {
 
 // UnshareDocument rescinds permission granted earlier, removing other users'
 // access to those documents.
-func UnshareDocument(token, docId, userId string) (count int64, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func UnshareDocument(docID, userID string) (count int64, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
-		return
+		return 0, err
 	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	req := &proto.UnshareDocumentRequest{
-		DocID:  docId,
-		UserID: userId,
+	req := &proto.UnshareDocumentReq{
+		DocID:  docID,
+		UserID: userID,
 	}
-	res, err := authClient.UnshareDocument(context.Background(), req)
+	res, err := sdc.UnshareDocument(context.Background(), req)
 
 	count = res.Count
 	return
 }
 
+// Document contains the document information
 type Document struct {
-	DocName string
+	// The document ID.
 	DocID string
+	// The document name.
+	DocName string
+	// The document size.
 	Size uint64
-}
-
-// convertListDocumentsResponse_Document strips
-func convertListDocumentsResponse_Document(protoDocs []*proto.ListDocumentsResponse_Document) (docs []Document) {
-	for _, protoDoc := range protoDocs {
-		doc := Document{
-			DocName: protoDoc.DocName,
-			DocID:   protoDoc.DocID,
-			Size:    protoDoc.Size,
-		}
-		docs = append(docs, doc)
-	}
-	return docs
 }
 
 // ListDocuments returns a slice of Document objects, representing
 // the documents accessible by the user.
-func ListDocuments(token string) (docs []Document, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func ListDocuments() (docs []Document, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
-		return
-	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
-
-	req := &proto.ListDocumentsRequest{}
-	res, err := authClient.ListDocuments(context.Background(), req)
-	if err != nil {
-		return
-	}
-	docs = convertListDocumentsResponse_Document(res.Documents)
-	return
-}
-
-// GetDocumentsSize returns the size of all the documents of the organization.
-func GetDocumentsSize(token string) (size uint64, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
-	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
-		return
-	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
-
-	req := &proto.GetDocumentsSizeRequest{}
-	res, err := authClient.GetDocumentsSize(context.Background(), req)
-	if err != nil {
-		return
+		return nil, err
 	}
 
-	size = res.Size
-	return
-}
-
-// GetIndexSize returns the size of all the indexes of the organization.
-func GetIndexSize(token string) (size int64, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+	req := &proto.ListDocumentsReq{}
+	res, err := sdc.ListDocuments(context.Background(), req)
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
-		return
+		return nil, err
 	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	req := &proto.GetIndexSizeRequest{}
-	res, err := authClient.GetIndexSize(context.Background(), req)
+	documents, err := utils.ConvertStruct(res.GetDocuments(), []Document{})
+	if err != nil {
+		return nil, err
+	}
 
-	size = res.Size
-	return
+	return *documents.(*[]Document), nil
 }

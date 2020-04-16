@@ -5,26 +5,22 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 
-	"github.com/overnest/strongdoc-go/client"
-	"github.com/overnest/strongdoc-go/proto"
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/proto"
 )
 
 // EncryptDocument encrypts a document with Strongdoc
 // and returns the encrypted ciphertext without storing it on
 // any storage. It accepts a the plaintext and the document name.
 // The returned docId uniquely identifies the document.
-func EncryptDocument(token string, docName string, plaintext []byte) (docID string, ciphertext []byte, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func EncryptDocument(docName string, plaintext []byte) (docID string, ciphertext []byte, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	stream, err := authClient.EncryptDocumentStream(context.Background())
+	stream, err := sdc.EncryptDocumentStream(context.Background())
 	if err != nil {
 		return
 	}
@@ -76,17 +72,15 @@ func EncryptDocument(token string, docName string, plaintext []byte) (docID stri
 // contain the plaintext) and the document name.
 //
 // It then returns an io.Reader object that contains the ciphertext of
-// the requested document, and a docID that uniquely
+// the Reqed document, and a docID that uniquely
 // identifies the document.
-func EncryptDocumentStream(token string, docName string, plainStream io.Reader) (cipherStream io.Reader, docID string, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func EncryptDocumentStream(docName string, plainStream io.Reader) (cipherStream io.Reader, docID string, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	stream, err := authClient.EncryptDocumentStream(context.Background())
+	stream, err := sdc.EncryptDocumentStream(context.Background())
 	if err != nil {
 		return
 	}
@@ -118,16 +112,13 @@ func EncryptDocumentStream(token string, docName string, plainStream io.Reader) 
 
 // DecryptDocument decrypts a document with Strongdoc
 // and returns the plaintext. It accepts a the cipherText and its docId.
-func DecryptDocument(token, docID string, cipherText []byte) (plaintext []byte, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+func DecryptDocument(docID string, cipherText []byte) (plaintext []byte, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	defer authConn.Close()
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	stream, err := authClient.DecryptDocumentStream(context.Background())
+	stream, err := sdc.DecryptDocumentStream(context.Background())
 	if err != nil {
 		return
 	}
@@ -145,7 +136,7 @@ func DecryptDocument(token, docID string, cipherText []byte) (plaintext []byte, 
 	}
 
 	if docID != resp.GetDocID() {
-		err = fmt.Errorf("The requested document ID %v does not match the returned ID %v",
+		err = fmt.Errorf("The Reqed document ID %v does not match the returned ID %v",
 			docID, resp.GetDocID())
 		return
 	}
@@ -184,16 +175,14 @@ func DecryptDocument(token, docID string, cipherText []byte) (plaintext []byte, 
 // contain the ciphertext, and you must also pass in its docID.
 //
 // It then returns an io.Reader object that contains the plaintext of
-// the requested document.
-func DecryptDocumentStream(token string, docID string, cipherStream io.Reader) (plainStream io.Reader, err error) {
-	authConn, err := client.ConnectToServerWithAuth(token)
+// the Reqed document.
+func DecryptDocumentStream(docID string, cipherStream io.Reader) (plainStream io.Reader, err error) {
+	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		log.Fatalf("Can not obtain auth connection %s", err)
 		return
 	}
-	authClient := proto.NewStrongDocServiceClient(authConn)
 
-	stream, err := authClient.DecryptDocumentStream(context.Background())
+	stream, err := sdc.DecryptDocumentStream(context.Background())
 	if err != nil {
 		return
 	}
@@ -274,7 +263,7 @@ func (stream *encryptStream) Read(p []byte) (n int, err error) {
 	resp, err := (*stream.grpcStream).Recv()
 	if resp != nil && stream.docID != resp.GetDocID() {
 		(*stream.grpcStream).CloseSend()
-		return 0, fmt.Errorf("Requested document %v, received document %v instead",
+		return 0, fmt.Errorf("Reqed document %v, received document %v instead",
 			stream.docID, resp.GetDocID())
 	}
 
@@ -349,7 +338,7 @@ func (stream *decryptStream) Read(p []byte) (n int, err error) {
 	resp, err := (*stream.grpcStream).Recv()
 	if resp != nil && stream.docID != resp.GetDocID() {
 		(*stream.grpcStream).CloseSend()
-		return 0, fmt.Errorf("Requested document %v, received document %v instead",
+		return 0, fmt.Errorf("Reqed document %v, received document %v instead",
 			stream.docID, resp.GetDocID())
 	}
 
