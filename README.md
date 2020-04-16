@@ -4,6 +4,7 @@ This is a Go SDK for the [StrongDoc](https://api.strongsalt.com "Strongdoc API")
 ## Important Links
 
 Client Documentation: [https://godoc.org/github.com/overnest/strongdoc-go-sdk/client](https://godoc.org/github.com/overnest/strongdoc-go-sdk/client "Strongsalt Go Client API Documentation")
+
 API Documentation: [https://godoc.org/github.com/overnest/strongdoc-go-sdk/api](https://godoc.org/github.com/overnest/strongdoc-go-sdk/api "Strongsalt Go API Documentation")
 
 Website: [strongsalt.com](https://www.strongsalt.com "Strongsalt website")
