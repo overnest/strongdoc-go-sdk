@@ -13,15 +13,14 @@ Website: [strongsalt.com](https://www.strongsalt.com "Strongsalt website")
 
 The API is available as a Go Module. You must first do:
 
-`go get github.com/overnest/strongdoc-go-sdk`
+`go get github.com/overnest/strongdoc-go-sdk@v0.1.12`
 
 Then, import it into your files at the top of your files:
 
 ```
 import (
     // other imports
-    "github.com/overnest/strongdoc-go-sdk/client"
-    "github.com/overnest/strongdoc-go-sdk/api"
+    "github.com/overnest/strongdoc-go-sdk/api"`
     // even more imports
 )
 ```
