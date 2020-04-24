@@ -1,5 +1,5 @@
 package api
 
 const (
-	blockSize = 10000
+	blockSize = 1024 * 1024 * 1
 )

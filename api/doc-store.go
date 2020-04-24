@@ -93,26 +93,24 @@ func UploadDocumentStream(docName string, plainStream io.Reader) (docID string, 
 		return
 	}
 
+	block := make([]byte, blockSize)
 	for {
-		block := make([]byte, blockSize)
-		n, err := plainStream.Read(block)
-		if err != nil && err == io.EOF {
-			dataReq := &proto.UploadDocStreamReq{
-				NameOrData: &proto.UploadDocStreamReq_Plaintext{
-					Plaintext: block[:n]}}
-			if err = stream.Send(dataReq); err != nil {
-				return "", err
+		n, inerr := plainStream.Read(block)
+		if inerr == nil || inerr == io.EOF {
+			if n > 0 {
+				dataReq := &proto.UploadDocStreamReq{
+					NameOrData: &proto.UploadDocStreamReq_Plaintext{
+						Plaintext: block[:n]}}
+				if err = stream.Send(dataReq); err != nil {
+					return "", err
+				}
 			}
-			break
-		} else if err != nil {
-			return "", err
+			if inerr == io.EOF {
+				break
+			}
 		} else {
-			dataReq := &proto.UploadDocStreamReq{
-				NameOrData: &proto.UploadDocStreamReq_Plaintext{
-					Plaintext: block[:n]}}
-			if err = stream.Send(dataReq); err != nil {
-				return "", err
-			}
+			err = inerr
+			return
 		}
 	}
 
