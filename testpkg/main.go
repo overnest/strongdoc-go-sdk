@@ -11,17 +11,18 @@ import (
 )
 
 const (
-	adminName        = "adminUserName"
-	adminPassword    = "adminUserPassword"
-	adminEmail       = "adminUser@somewhere.com"
-	organization     = "OrganizationOne"
-	organizationAddr = ""
-	source           = "Test Active"
-	sourceData       = ""
-	testDoc1         = "./testdocs/CompanyIntro.txt"
-	testDoc2         = "./testdocs/BedMounts.pdf"
-	tempFileName1    = "/tmp/tempstrongdoc1"
-	tempFileName2    = "/tmp/tempstrongdoc2"
+	adminName         = "adminUserName"
+	adminPassword     = "adminUserPassword"
+	adminEmail        = "adminUser@somewhere.com"
+	organization      = "OrganizationOne"
+	organizationAddr  = ""
+	organizationEmail = "info@organizationone.com"
+	source            = "Test Active"
+	sourceData        = ""
+	testDoc1          = "./testdocs/CompanyIntro.txt"
+	testDoc2          = "./testdocs/BedMounts.pdf"
+	tempFileName1     = "/tmp/tempstrongdoc1"
+	tempFileName2     = "/tmp/tempstrongdoc2"
 )
 
 func testEncryptDecryptStream() {
@@ -110,7 +111,7 @@ func main() {
 	}
 
 	orgID, adminID, err := api.RegisterOrganization(organization, organizationAddr,
-		adminName, adminPassword, adminEmail, source, sourceData)
+		organizationEmail, adminName, adminPassword, adminEmail, source, sourceData)
 	if err != nil {
 		log.Printf("RegisterOrganization error: %s", err)
 		os.Exit(1)

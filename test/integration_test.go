@@ -18,17 +18,18 @@ import (
 )
 
 const (
-	AdminName        = "adminUserName"
-	AdminPassword    = "adminUserPassword"
-	AdminEmail       = "adminUser@somewhere.com"
-	Organization     = "OrganizationOne"
-	OrganizationAddr = ""
-	Source           = "Test Active"
-	SourceData       = ""
-	TestDoc1         = "../testDocuments/CompanyIntro.txt"
-	TestDoc2         = "../testDocuments/BedMounts.pdf"
-	LargeDocFileName = "/tmp/largeDoc.txt"
-	TestText         = `The unanimous Declaration of the thirteen united States of America, When in the Course of human events, it becomes necessary for one people to dissolve the political bands which have connected them with another, and to assume among the powers of the earth, the separate and equal station to which the Laws of Nature and of Nature's God entitle them, a decent respect to the opinions of mankind requires that they should declare the causes which impel them to the separation. We hold these truths to be self-evident, that all men are created equal, that they are endowed by their Creator with certain unalienable Rights, that among these are Life, Liberty and the pursuit of Happiness.--That to secure these rights, Governments are instituted among Men, deriving their just powers from the consent of the governed, --That whenever any Form of Government becomes destructive of these ends, it is the Right of the People to alter or to abolish it, and to institute new Government, laying its foundation on such principles and organizing its powers in such form, as to them shall seem most likely to effect their Safety and Happiness. Prudence, indeed, will dictate that Governments long established should not be changed for light and transient causes; and accordingly all experience hath shewn, that mankind are more disposed to suffer, while evils are sufferable, than to right themselves by abolishing the forms to which they are accustomed. But when a long train of abuses and usurpations, pursuing invariably the same Object evinces a design to reduce them under absolute Despotism, it is their right, it is their duty, to throw off such Government, and to provide new Guards for their future security.--Such has been the patient sufferance of these Colonies; and such is now the necessity which constrains them to alter their former Systems of Government. The history of the present King of Great Britain is a history of repeated injuries and usurpations, all having in direct object the establishment of an absolute Tyranny over these States. To prove this, let Facts be submitted to a candid world. He has refused his Assent to Laws, the most wholesome and necessary for the public good. He has forbidden his Governors to pass Laws of immediate and pressing importance, unless suspended in their operation till his Assent should be obtained; and when so suspended, he has utterly neglected to attend to them.
+	AdminName         = "adminUserName"
+	AdminPassword     = "adminUserPassword"
+	AdminEmail        = "adminUser@somewhere.com"
+	Organization      = "OrganizationOne"
+	OrganizationAddr  = ""
+	OrganizationEmail = "info@organizationone.com"
+	Source            = "Test Active"
+	SourceData        = ""
+	TestDoc1          = "../testDocuments/CompanyIntro.txt"
+	TestDoc2          = "../testDocuments/BedMounts.pdf"
+	LargeDocFileName  = "/tmp/largeDoc.txt"
+	TestText          = `The unanimous Declaration of the thirteen united States of America, When in the Course of human events, it becomes necessary for one people to dissolve the political bands which have connected them with another, and to assume among the powers of the earth, the separate and equal station to which the Laws of Nature and of Nature's God entitle them, a decent respect to the opinions of mankind requires that they should declare the causes which impel them to the separation. We hold these truths to be self-evident, that all men are created equal, that they are endowed by their Creator with certain unalienable Rights, that among these are Life, Liberty and the pursuit of Happiness.--That to secure these rights, Governments are instituted among Men, deriving their just powers from the consent of the governed, --That whenever any Form of Government becomes destructive of these ends, it is the Right of the People to alter or to abolish it, and to institute new Government, laying its foundation on such principles and organizing its powers in such form, as to them shall seem most likely to effect their Safety and Happiness. Prudence, indeed, will dictate that Governments long established should not be changed for light and transient causes; and accordingly all experience hath shewn, that mankind are more disposed to suffer, while evils are sufferable, than to right themselves by abolishing the forms to which they are accustomed. But when a long train of abuses and usurpations, pursuing invariably the same Object evinces a design to reduce them under absolute Despotism, it is their right, it is their duty, to throw off such Government, and to provide new Guards for their future security.--Such has been the patient sufferance of these Colonies; and such is now the necessity which constrains them to alter their former Systems of Government. The history of the present King of Great Britain is a history of repeated injuries and usurpations, all having in direct object the establishment of an absolute Tyranny over these States. To prove this, let Facts be submitted to a candid world. He has refused his Assent to Laws, the most wholesome and necessary for the public good. He has forbidden his Governors to pass Laws of immediate and pressing importance, unless suspended in their operation till his Assent should be obtained; and when so suspended, he has utterly neglected to attend to them.
 He has refused to pass other Laws for the accommodation of large districts of people, unless those people would relinquish the right of Representation in the Legislature, a right inestimable to them and formidable to tyrants only.
 He has called together legislative bodies at places unusual, uncomfortable, and distant from the depository of their public Records, for the sole purpose of fatiguing them into compliance with his measures.
 He has dissolved Representative Houses repeatedly, for opposing with manly firmness his invasions on the rights of the people.
@@ -77,6 +78,21 @@ func testUploadDownload(t *testing.T, fileName string) {
 	txtBytes, err := ioutil.ReadFile(fileName)
 	assert.NoError(t, err)
 	uploadDocID, err := api.UploadDocument(path.Base(fileName), txtBytes)
+	assert.NoError(t, err)
+
+	uploadDocID, err = api.UploadDocument(path.Base(fileName), txtBytes)
+	assert.NoError(t, err)
+
+	uploadDocID, err = api.UploadDocument(path.Base(fileName), txtBytes)
+	assert.NoError(t, err)
+
+	uploadDocID, err = api.UploadDocument(path.Base(fileName), txtBytes)
+	assert.NoError(t, err)
+
+	uploadDocID, err = api.UploadDocument(path.Base(fileName), txtBytes)
+	assert.NoError(t, err)
+
+	uploadDocID, err = api.UploadDocument(path.Base(fileName), txtBytes)
 	assert.NoError(t, err)
 
 	downBytes, err := api.DownloadDocument(uploadDocID)
@@ -209,11 +225,10 @@ func TestIntegrationSmall(t *testing.T) {
 	_, err := client.InitStrongDocManager(client.LOCAL, false)
 	assert.NoError(t, err)
 
-	orgID, adminID, err := api.RegisterOrganization(Organization, OrganizationAddr,
-		AdminName, AdminPassword, AdminEmail, Source, SourceData)
+	orgID, _, err := api.RegisterOrganization(Organization, OrganizationAddr,
+		OrganizationEmail, AdminName, AdminPassword, AdminEmail, Source, SourceData)
 	assert.NoError(t, err)
 	assert.Equal(t, orgID, Organization)
-	assert.Equal(t, adminID, AdminEmail)
 
 	token, err := api.Login(AdminEmail, AdminPassword, Organization)
 	assert.NoError(t, err)

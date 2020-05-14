@@ -11,7 +11,7 @@ import (
 
 // RegisterOrganization creates an organization. The user who
 // created the organization is automatically an administrator.
-func RegisterOrganization(orgName, orgAddr, adminName, adminPassword,
+func RegisterOrganization(orgName, orgAddr, orgEmail, adminName, adminPassword,
 	adminEmail, source, sourceData string) (orgID, adminID string, err error) {
 
 	sdc, err := client.GetStrongDocClient()
@@ -21,9 +21,10 @@ func RegisterOrganization(orgName, orgAddr, adminName, adminPassword,
 	resp, err := sdc.RegisterOrganization(context.Background(), &proto.RegisterOrganizationReq{
 		OrgName:         orgName,
 		OrgAddr:         orgAddr,
+		OrgEmail:        orgEmail,
 		UserName:        adminName,
 		Password:        adminPassword,
-		Email:           adminEmail,
+		AdminEmail:      adminEmail,
 		SharableOrgs:    nil,
 		MultiLevelShare: false,
 		Source:          source,
