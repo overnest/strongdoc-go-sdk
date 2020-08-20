@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"sync"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/overnest/strongdoc-go-sdk/proto"
 	"github.com/overnest/strongdoc-go-sdk/utils"
+	ssc "github.com/overnest/strongsalt-crypto-go"
+	sscKdf "github.com/overnest/strongsalt-crypto-go/kdf"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -42,10 +45,12 @@ var serviceLocations = map[ServiceLocation]locationConfig{
 }
 
 type strongDocManagerObj struct {
-	location   ServiceLocation
-	noAuthConn *grpc.ClientConn
-	authConn   *grpc.ClientConn
-	authToken  string
+	location      ServiceLocation
+	noAuthConn    *grpc.ClientConn
+	authConn      *grpc.ClientConn
+	authToken     string
+	passwordKey   *ssc.StrongSaltKey // TODO: This should eventually be hidden from user
+	passwordKeyID string             // This should eventually be hidden from user
 }
 
 // Singletons
@@ -54,11 +59,13 @@ var manager *strongDocManagerObj = nil
 
 // StrongDocManager encapsulates the client object that allows connection to the remote service
 type StrongDocManager interface {
-	Login(userID, password, orgID string) (token string, err error)
+	Login(userID, password, orgID, keyPassword string) (token string, err error)
 	GetNoAuthConn() *grpc.ClientConn
 	GetAuthConn() *grpc.ClientConn
 	GetClient() proto.StrongDocServiceClient
 	Close()
+	GetPasswordKey() *ssc.StrongSaltKey // TODO: This should eventually be hidden from user
+	GetPasswordKeyID() string           // This should eventually be hidden from user
 }
 
 // InitStrongDocManager initializes a singleton StrongDocManager
@@ -89,7 +96,12 @@ func InitStrongDocManager(location ServiceLocation, reset bool) (StrongDocManage
 	if err != nil {
 		return nil, err
 	}
-	manager = &strongDocManagerObj{location, noAuthConn, nil, ""}
+	manager = &strongDocManagerObj{
+		location:   location,
+		noAuthConn: noAuthConn,
+		authConn:   nil,
+		authToken:  "",
+	}
 
 	atomic.StoreUint32(&clientInit, 1)
 	return manager, nil
@@ -116,7 +128,7 @@ func GetStrongDocClient() (proto.StrongDocServiceClient, error) {
 }
 
 // Login attempts a log in. If successful, it generates an authenticatecd GRPC connection
-func (c *strongDocManagerObj) Login(userID, password, orgID string) (token string, err error) {
+func (c *strongDocManagerObj) Login(userID, password, orgID, keyPassword string) (token string, err error) {
 	token = ""
 	noAuthConn := c.GetNoAuthConn()
 	if noAuthConn == nil || err != nil {
@@ -146,6 +158,24 @@ func (c *strongDocManagerObj) Login(userID, password, orgID string) (token strin
 
 	c.authConn = authConn
 	c.authToken = token
+
+	encodedSerialKdfMeta := res.GetKdfMeta()
+	if encodedSerialKdfMeta != "" {
+		serialKdfMeta, err := base64.URLEncoding.DecodeString(encodedSerialKdfMeta)
+		if err != nil {
+			return "", err
+		}
+		userKdf, err := sscKdf.DeserializeKdf(serialKdfMeta)
+		if err != nil {
+			return "", err
+		}
+		passwordKey, err := userKdf.GenerateKey([]byte(keyPassword))
+		if err != nil {
+			return "", err
+		}
+		c.passwordKey = passwordKey
+		c.passwordKeyID = res.GetKeyID()
+	}
 	return
 }
 
@@ -175,6 +205,14 @@ func (c *strongDocManagerObj) Close() {
 	if c.GetNoAuthConn() != nil {
 		c.GetNoAuthConn().Close()
 	}
+}
+
+func (c *strongDocManagerObj) GetPasswordKey() *ssc.StrongSaltKey {
+	return c.passwordKey
+}
+
+func (c *strongDocManagerObj) GetPasswordKeyID() string {
+	return c.passwordKeyID
 }
 
 func getNoAuthConn(hostport, cert string) (conn *grpc.ClientConn, err error) {

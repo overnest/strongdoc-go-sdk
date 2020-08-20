@@ -25,6 +25,9 @@ type UploadDocStreamReq struct {
 	// Types that are valid to be assigned to NameOrData:
 	//	*UploadDocStreamReq_DocName
 	//	*UploadDocStreamReq_Plaintext
+	//	*UploadDocStreamReq_PreMetadata
+	//	*UploadDocStreamReq_Data
+	//	*UploadDocStreamReq_PostMetadata
 	NameOrData           isUploadDocStreamReq_NameOrData `protobuf_oneof:"NameOrData"`
 	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
 	XXX_unrecognized     []byte                          `json:"-"`
@@ -68,9 +71,27 @@ type UploadDocStreamReq_Plaintext struct {
 	Plaintext []byte `protobuf:"bytes,2,opt,name=plaintext,proto3,oneof"`
 }
 
+type UploadDocStreamReq_PreMetadata struct {
+	PreMetadata *UploadDocPreMetadata `protobuf:"bytes,3,opt,name=preMetadata,proto3,oneof"`
+}
+
+type UploadDocStreamReq_Data struct {
+	Data []byte `protobuf:"bytes,4,opt,name=data,proto3,oneof"`
+}
+
+type UploadDocStreamReq_PostMetadata struct {
+	PostMetadata *UploadDocPostMetadata `protobuf:"bytes,5,opt,name=postMetadata,proto3,oneof"`
+}
+
 func (*UploadDocStreamReq_DocName) isUploadDocStreamReq_NameOrData() {}
 
 func (*UploadDocStreamReq_Plaintext) isUploadDocStreamReq_NameOrData() {}
+
+func (*UploadDocStreamReq_PreMetadata) isUploadDocStreamReq_NameOrData() {}
+
+func (*UploadDocStreamReq_Data) isUploadDocStreamReq_NameOrData() {}
+
+func (*UploadDocStreamReq_PostMetadata) isUploadDocStreamReq_NameOrData() {}
 
 func (m *UploadDocStreamReq) GetNameOrData() isUploadDocStreamReq_NameOrData {
 	if m != nil {
@@ -93,12 +114,161 @@ func (m *UploadDocStreamReq) GetPlaintext() []byte {
 	return nil
 }
 
+func (m *UploadDocStreamReq) GetPreMetadata() *UploadDocPreMetadata {
+	if x, ok := m.GetNameOrData().(*UploadDocStreamReq_PreMetadata); ok {
+		return x.PreMetadata
+	}
+	return nil
+}
+
+func (m *UploadDocStreamReq) GetData() []byte {
+	if x, ok := m.GetNameOrData().(*UploadDocStreamReq_Data); ok {
+		return x.Data
+	}
+	return nil
+}
+
+func (m *UploadDocStreamReq) GetPostMetadata() *UploadDocPostMetadata {
+	if x, ok := m.GetNameOrData().(*UploadDocStreamReq_PostMetadata); ok {
+		return x.PostMetadata
+	}
+	return nil
+}
+
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*UploadDocStreamReq) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
 		(*UploadDocStreamReq_DocName)(nil),
 		(*UploadDocStreamReq_Plaintext)(nil),
+		(*UploadDocStreamReq_PreMetadata)(nil),
+		(*UploadDocStreamReq_Data)(nil),
+		(*UploadDocStreamReq_PostMetadata)(nil),
 	}
+}
+
+type UploadDocPreMetadata struct {
+	// The name of the document to upload.
+	DocName string `protobuf:"bytes,1,opt,name=docName,proto3" json:"docName,omitempty"`
+	// Whether or not this will be client-side encrypted.
+	ClientSide bool `protobuf:"varint,2,opt,name=clientSide,proto3" json:"clientSide,omitempty"`
+	// The document key encrypted by the user's public key.
+	UserEncDocKey *EncryptedKey `protobuf:"bytes,3,opt,name=userEncDocKey,proto3" json:"userEncDocKey,omitempty"`
+	// The MAC key encrypted by the user's public key.
+	UserEncMACKey *EncryptedKey `protobuf:"bytes,4,opt,name=userEncMACKey,proto3" json:"userEncMACKey,omitempty"`
+	// The document key encrypted by the orgs' public key.
+	OrgEncDocKeys []*EncryptedKey `protobuf:"bytes,5,rep,name=orgEncDocKeys,proto3" json:"orgEncDocKeys,omitempty"`
+	// The MAC key encrypted by the orgs' public key.
+	OrgEncMACKeys        []*EncryptedKey `protobuf:"bytes,6,rep,name=orgEncMACKeys,proto3" json:"orgEncMACKeys,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
+}
+
+func (m *UploadDocPreMetadata) Reset()         { *m = UploadDocPreMetadata{} }
+func (m *UploadDocPreMetadata) String() string { return proto.CompactTextString(m) }
+func (*UploadDocPreMetadata) ProtoMessage()    {}
+func (*UploadDocPreMetadata) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{1}
+}
+
+func (m *UploadDocPreMetadata) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UploadDocPreMetadata.Unmarshal(m, b)
+}
+func (m *UploadDocPreMetadata) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UploadDocPreMetadata.Marshal(b, m, deterministic)
+}
+func (m *UploadDocPreMetadata) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UploadDocPreMetadata.Merge(m, src)
+}
+func (m *UploadDocPreMetadata) XXX_Size() int {
+	return xxx_messageInfo_UploadDocPreMetadata.Size(m)
+}
+func (m *UploadDocPreMetadata) XXX_DiscardUnknown() {
+	xxx_messageInfo_UploadDocPreMetadata.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UploadDocPreMetadata proto.InternalMessageInfo
+
+func (m *UploadDocPreMetadata) GetDocName() string {
+	if m != nil {
+		return m.DocName
+	}
+	return ""
+}
+
+func (m *UploadDocPreMetadata) GetClientSide() bool {
+	if m != nil {
+		return m.ClientSide
+	}
+	return false
+}
+
+func (m *UploadDocPreMetadata) GetUserEncDocKey() *EncryptedKey {
+	if m != nil {
+		return m.UserEncDocKey
+	}
+	return nil
+}
+
+func (m *UploadDocPreMetadata) GetUserEncMACKey() *EncryptedKey {
+	if m != nil {
+		return m.UserEncMACKey
+	}
+	return nil
+}
+
+func (m *UploadDocPreMetadata) GetOrgEncDocKeys() []*EncryptedKey {
+	if m != nil {
+		return m.OrgEncDocKeys
+	}
+	return nil
+}
+
+func (m *UploadDocPreMetadata) GetOrgEncMACKeys() []*EncryptedKey {
+	if m != nil {
+		return m.OrgEncMACKeys
+	}
+	return nil
+}
+
+type UploadDocPostMetadata struct {
+	// The MAC of the ciphertext of the document.
+	Mac                  string   `protobuf:"bytes,1,opt,name=mac,proto3" json:"mac,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *UploadDocPostMetadata) Reset()         { *m = UploadDocPostMetadata{} }
+func (m *UploadDocPostMetadata) String() string { return proto.CompactTextString(m) }
+func (*UploadDocPostMetadata) ProtoMessage()    {}
+func (*UploadDocPostMetadata) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{2}
+}
+
+func (m *UploadDocPostMetadata) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UploadDocPostMetadata.Unmarshal(m, b)
+}
+func (m *UploadDocPostMetadata) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UploadDocPostMetadata.Marshal(b, m, deterministic)
+}
+func (m *UploadDocPostMetadata) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UploadDocPostMetadata.Merge(m, src)
+}
+func (m *UploadDocPostMetadata) XXX_Size() int {
+	return xxx_messageInfo_UploadDocPostMetadata.Size(m)
+}
+func (m *UploadDocPostMetadata) XXX_DiscardUnknown() {
+	xxx_messageInfo_UploadDocPostMetadata.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UploadDocPostMetadata proto.InternalMessageInfo
+
+func (m *UploadDocPostMetadata) GetMac() string {
+	if m != nil {
+		return m.Mac
+	}
+	return ""
 }
 
 type UploadDocStreamResp struct {
@@ -115,7 +285,7 @@ func (m *UploadDocStreamResp) Reset()         { *m = UploadDocStreamResp{} }
 func (m *UploadDocStreamResp) String() string { return proto.CompactTextString(m) }
 func (*UploadDocStreamResp) ProtoMessage()    {}
 func (*UploadDocStreamResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{1}
+	return fileDescriptor_9d2790a4091b3173, []int{3}
 }
 
 func (m *UploadDocStreamResp) XXX_Unmarshal(b []byte) error {
@@ -150,6 +320,84 @@ func (m *UploadDocStreamResp) GetBytes() int64 {
 	return 0
 }
 
+type PrepareDownloadDocReq struct {
+	DocID                string   `protobuf:"bytes,1,opt,name=docID,proto3" json:"docID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *PrepareDownloadDocReq) Reset()         { *m = PrepareDownloadDocReq{} }
+func (m *PrepareDownloadDocReq) String() string { return proto.CompactTextString(m) }
+func (*PrepareDownloadDocReq) ProtoMessage()    {}
+func (*PrepareDownloadDocReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{4}
+}
+
+func (m *PrepareDownloadDocReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PrepareDownloadDocReq.Unmarshal(m, b)
+}
+func (m *PrepareDownloadDocReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PrepareDownloadDocReq.Marshal(b, m, deterministic)
+}
+func (m *PrepareDownloadDocReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PrepareDownloadDocReq.Merge(m, src)
+}
+func (m *PrepareDownloadDocReq) XXX_Size() int {
+	return xxx_messageInfo_PrepareDownloadDocReq.Size(m)
+}
+func (m *PrepareDownloadDocReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_PrepareDownloadDocReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PrepareDownloadDocReq proto.InternalMessageInfo
+
+func (m *PrepareDownloadDocReq) GetDocID() string {
+	if m != nil {
+		return m.DocID
+	}
+	return ""
+}
+
+type PrepareDownloadDocResp struct {
+	DocumentAccessMetadata *DocumentAccessMetadata `protobuf:"bytes,1,opt,name=documentAccessMetadata,proto3" json:"documentAccessMetadata,omitempty"`
+	XXX_NoUnkeyedLiteral   struct{}                `json:"-"`
+	XXX_unrecognized       []byte                  `json:"-"`
+	XXX_sizecache          int32                   `json:"-"`
+}
+
+func (m *PrepareDownloadDocResp) Reset()         { *m = PrepareDownloadDocResp{} }
+func (m *PrepareDownloadDocResp) String() string { return proto.CompactTextString(m) }
+func (*PrepareDownloadDocResp) ProtoMessage()    {}
+func (*PrepareDownloadDocResp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{5}
+}
+
+func (m *PrepareDownloadDocResp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PrepareDownloadDocResp.Unmarshal(m, b)
+}
+func (m *PrepareDownloadDocResp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PrepareDownloadDocResp.Marshal(b, m, deterministic)
+}
+func (m *PrepareDownloadDocResp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PrepareDownloadDocResp.Merge(m, src)
+}
+func (m *PrepareDownloadDocResp) XXX_Size() int {
+	return xxx_messageInfo_PrepareDownloadDocResp.Size(m)
+}
+func (m *PrepareDownloadDocResp) XXX_DiscardUnknown() {
+	xxx_messageInfo_PrepareDownloadDocResp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PrepareDownloadDocResp proto.InternalMessageInfo
+
+func (m *PrepareDownloadDocResp) GetDocumentAccessMetadata() *DocumentAccessMetadata {
+	if m != nil {
+		return m.DocumentAccessMetadata
+	}
+	return nil
+}
+
 type DownloadDocStreamReq struct {
 	// The ID of the document to download.
 	DocID                string   `protobuf:"bytes,1,opt,name=docID,proto3" json:"docID,omitempty"`
@@ -162,7 +410,7 @@ func (m *DownloadDocStreamReq) Reset()         { *m = DownloadDocStreamReq{} }
 func (m *DownloadDocStreamReq) String() string { return proto.CompactTextString(m) }
 func (*DownloadDocStreamReq) ProtoMessage()    {}
 func (*DownloadDocStreamReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{2}
+	return fileDescriptor_9d2790a4091b3173, []int{6}
 }
 
 func (m *DownloadDocStreamReq) XXX_Unmarshal(b []byte) error {
@@ -193,8 +441,10 @@ func (m *DownloadDocStreamReq) GetDocID() string {
 type DownloadDocStreamResp struct {
 	// The ID of the document downloaded.
 	DocID string `protobuf:"bytes,1,opt,name=docID,proto3" json:"docID,omitempty"`
-	// The decrypted data of the document.
-	Plaintext            []byte   `protobuf:"bytes,2,opt,name=plaintext,proto3" json:"plaintext,omitempty"`
+	// The decrypted data of the document. (OBSOLETE. Use 'data' instead.)
+	Plaintext []byte `protobuf:"bytes,2,opt,name=plaintext,proto3" json:"plaintext,omitempty"`
+	// The data of the document.
+	Data                 []byte   `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -204,7 +454,7 @@ func (m *DownloadDocStreamResp) Reset()         { *m = DownloadDocStreamResp{} }
 func (m *DownloadDocStreamResp) String() string { return proto.CompactTextString(m) }
 func (*DownloadDocStreamResp) ProtoMessage()    {}
 func (*DownloadDocStreamResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{3}
+	return fileDescriptor_9d2790a4091b3173, []int{7}
 }
 
 func (m *DownloadDocStreamResp) XXX_Unmarshal(b []byte) error {
@@ -239,6 +489,13 @@ func (m *DownloadDocStreamResp) GetPlaintext() []byte {
 	return nil
 }
 
+func (m *DownloadDocStreamResp) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
 type UploadDocReq struct {
 	// The name of the document to upload.
 	DocName string `protobuf:"bytes,1,opt,name=docName,proto3" json:"docName,omitempty"`
@@ -253,7 +510,7 @@ func (m *UploadDocReq) Reset()         { *m = UploadDocReq{} }
 func (m *UploadDocReq) String() string { return proto.CompactTextString(m) }
 func (*UploadDocReq) ProtoMessage()    {}
 func (*UploadDocReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{4}
+	return fileDescriptor_9d2790a4091b3173, []int{8}
 }
 
 func (m *UploadDocReq) XXX_Unmarshal(b []byte) error {
@@ -300,7 +557,7 @@ func (m *UploadDocResp) Reset()         { *m = UploadDocResp{} }
 func (m *UploadDocResp) String() string { return proto.CompactTextString(m) }
 func (*UploadDocResp) ProtoMessage()    {}
 func (*UploadDocResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{5}
+	return fileDescriptor_9d2790a4091b3173, []int{9}
 }
 
 func (m *UploadDocResp) XXX_Unmarshal(b []byte) error {
@@ -340,7 +597,7 @@ func (m *DownloadDocReq) Reset()         { *m = DownloadDocReq{} }
 func (m *DownloadDocReq) String() string { return proto.CompactTextString(m) }
 func (*DownloadDocReq) ProtoMessage()    {}
 func (*DownloadDocReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{6}
+	return fileDescriptor_9d2790a4091b3173, []int{10}
 }
 
 func (m *DownloadDocReq) XXX_Unmarshal(b []byte) error {
@@ -382,7 +639,7 @@ func (m *DownloadDocResp) Reset()         { *m = DownloadDocResp{} }
 func (m *DownloadDocResp) String() string { return proto.CompactTextString(m) }
 func (*DownloadDocResp) ProtoMessage()    {}
 func (*DownloadDocResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{7}
+	return fileDescriptor_9d2790a4091b3173, []int{11}
 }
 
 func (m *DownloadDocResp) XXX_Unmarshal(b []byte) error {
@@ -417,7 +674,110 @@ func (m *DownloadDocResp) GetPlaintext() string {
 	return ""
 }
 
-type ShareDocumentReq struct {
+type DocumentAccessMetadata struct {
+	// Whether or not the doc was uploaded with client-side encryption.
+	IsEncryptedByClientSide bool `protobuf:"varint,1,opt,name=isEncryptedByClientSide,proto3" json:"isEncryptedByClientSide,omitempty"`
+	// Whether or not the encrypted keys are encrypted with the org's public key (for admin access).
+	IsKeyOrgs bool `protobuf:"varint,2,opt,name=isKeyOrgs,proto3" json:"isKeyOrgs,omitempty"`
+	// The document key encrypted with the user's key, or org's key if keyIsOrgs.
+	EncDocKey string `protobuf:"bytes,3,opt,name=encDocKey,proto3" json:"encDocKey,omitempty"`
+	// The user/org's key that encrypts the document key and mac key, its either {orgPriKey}userPubKey or userPubKey
+	DocKeyEncryptor string `protobuf:"bytes,4,opt,name=docKeyEncryptor,proto3" json:"docKeyEncryptor,omitempty"`
+	// {userPriKey}userKeyPassword
+	EncUserAsymKey string `protobuf:"bytes,5,opt,name=encUserAsymKey,proto3" json:"encUserAsymKey,omitempty"`
+	// the encryptor id for userPriKey, for key rotation version validation
+	UserAsymKeyEncryptorId string `protobuf:"bytes,6,opt,name=userAsymKeyEncryptorId,proto3" json:"userAsymKeyEncryptorId,omitempty"`
+	// The document MAC key encrypted with the user's public key, or org's public key if keyIsOrgs.
+	EncMACKey string `protobuf:"bytes,7,opt,name=encMACKey,proto3" json:"encMACKey,omitempty"`
+	// The MAC of the ciphertext of the document.
+	Mac                  string   `protobuf:"bytes,8,opt,name=mac,proto3" json:"mac,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DocumentAccessMetadata) Reset()         { *m = DocumentAccessMetadata{} }
+func (m *DocumentAccessMetadata) String() string { return proto.CompactTextString(m) }
+func (*DocumentAccessMetadata) ProtoMessage()    {}
+func (*DocumentAccessMetadata) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{12}
+}
+
+func (m *DocumentAccessMetadata) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DocumentAccessMetadata.Unmarshal(m, b)
+}
+func (m *DocumentAccessMetadata) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DocumentAccessMetadata.Marshal(b, m, deterministic)
+}
+func (m *DocumentAccessMetadata) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DocumentAccessMetadata.Merge(m, src)
+}
+func (m *DocumentAccessMetadata) XXX_Size() int {
+	return xxx_messageInfo_DocumentAccessMetadata.Size(m)
+}
+func (m *DocumentAccessMetadata) XXX_DiscardUnknown() {
+	xxx_messageInfo_DocumentAccessMetadata.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DocumentAccessMetadata proto.InternalMessageInfo
+
+func (m *DocumentAccessMetadata) GetIsEncryptedByClientSide() bool {
+	if m != nil {
+		return m.IsEncryptedByClientSide
+	}
+	return false
+}
+
+func (m *DocumentAccessMetadata) GetIsKeyOrgs() bool {
+	if m != nil {
+		return m.IsKeyOrgs
+	}
+	return false
+}
+
+func (m *DocumentAccessMetadata) GetEncDocKey() string {
+	if m != nil {
+		return m.EncDocKey
+	}
+	return ""
+}
+
+func (m *DocumentAccessMetadata) GetDocKeyEncryptor() string {
+	if m != nil {
+		return m.DocKeyEncryptor
+	}
+	return ""
+}
+
+func (m *DocumentAccessMetadata) GetEncUserAsymKey() string {
+	if m != nil {
+		return m.EncUserAsymKey
+	}
+	return ""
+}
+
+func (m *DocumentAccessMetadata) GetUserAsymKeyEncryptorId() string {
+	if m != nil {
+		return m.UserAsymKeyEncryptorId
+	}
+	return ""
+}
+
+func (m *DocumentAccessMetadata) GetEncMACKey() string {
+	if m != nil {
+		return m.EncMACKey
+	}
+	return ""
+}
+
+func (m *DocumentAccessMetadata) GetMac() string {
+	if m != nil {
+		return m.Mac
+	}
+	return ""
+}
+
+type PrepareShareDocumentReq struct {
 	// The ID of the document to share.
 	DocID string `protobuf:"bytes,1,opt,name=docID,proto3" json:"docID,omitempty"`
 	// The user ID to share it to.
@@ -427,11 +787,112 @@ type ShareDocumentReq struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
+func (m *PrepareShareDocumentReq) Reset()         { *m = PrepareShareDocumentReq{} }
+func (m *PrepareShareDocumentReq) String() string { return proto.CompactTextString(m) }
+func (*PrepareShareDocumentReq) ProtoMessage()    {}
+func (*PrepareShareDocumentReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{13}
+}
+
+func (m *PrepareShareDocumentReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PrepareShareDocumentReq.Unmarshal(m, b)
+}
+func (m *PrepareShareDocumentReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PrepareShareDocumentReq.Marshal(b, m, deterministic)
+}
+func (m *PrepareShareDocumentReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PrepareShareDocumentReq.Merge(m, src)
+}
+func (m *PrepareShareDocumentReq) XXX_Size() int {
+	return xxx_messageInfo_PrepareShareDocumentReq.Size(m)
+}
+func (m *PrepareShareDocumentReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_PrepareShareDocumentReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PrepareShareDocumentReq proto.InternalMessageInfo
+
+func (m *PrepareShareDocumentReq) GetDocID() string {
+	if m != nil {
+		return m.DocID
+	}
+	return ""
+}
+
+func (m *PrepareShareDocumentReq) GetUserID() string {
+	if m != nil {
+		return m.UserID
+	}
+	return ""
+}
+
+type PrepareShareDocumentResp struct {
+	DocumentAccessMetadata *DocumentAccessMetadata `protobuf:"bytes,1,opt,name=documentAccessMetadata,proto3" json:"documentAccessMetadata,omitempty"`
+	// If client-side: The public keys of the user and orgs being shared to.
+	ToUserPubKeys        *UserPubKeys `protobuf:"bytes,2,opt,name=toUserPubKeys,proto3" json:"toUserPubKeys,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
+	XXX_unrecognized     []byte       `json:"-"`
+	XXX_sizecache        int32        `json:"-"`
+}
+
+func (m *PrepareShareDocumentResp) Reset()         { *m = PrepareShareDocumentResp{} }
+func (m *PrepareShareDocumentResp) String() string { return proto.CompactTextString(m) }
+func (*PrepareShareDocumentResp) ProtoMessage()    {}
+func (*PrepareShareDocumentResp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{14}
+}
+
+func (m *PrepareShareDocumentResp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PrepareShareDocumentResp.Unmarshal(m, b)
+}
+func (m *PrepareShareDocumentResp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PrepareShareDocumentResp.Marshal(b, m, deterministic)
+}
+func (m *PrepareShareDocumentResp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PrepareShareDocumentResp.Merge(m, src)
+}
+func (m *PrepareShareDocumentResp) XXX_Size() int {
+	return xxx_messageInfo_PrepareShareDocumentResp.Size(m)
+}
+func (m *PrepareShareDocumentResp) XXX_DiscardUnknown() {
+	xxx_messageInfo_PrepareShareDocumentResp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PrepareShareDocumentResp proto.InternalMessageInfo
+
+func (m *PrepareShareDocumentResp) GetDocumentAccessMetadata() *DocumentAccessMetadata {
+	if m != nil {
+		return m.DocumentAccessMetadata
+	}
+	return nil
+}
+
+func (m *PrepareShareDocumentResp) GetToUserPubKeys() *UserPubKeys {
+	if m != nil {
+		return m.ToUserPubKeys
+	}
+	return nil
+}
+
+type ShareDocumentReq struct {
+	// The ID of the document to share.
+	DocID string `protobuf:"bytes,1,opt,name=docID,proto3" json:"docID,omitempty"`
+	// The user ID to share it to.
+	UserID               string          `protobuf:"bytes,2,opt,name=userID,proto3" json:"userID,omitempty"`
+	UserEncDocKey        *EncryptedKey   `protobuf:"bytes,3,opt,name=userEncDocKey,proto3" json:"userEncDocKey,omitempty"`
+	UserEncMACKey        *EncryptedKey   `protobuf:"bytes,4,opt,name=userEncMACKey,proto3" json:"userEncMACKey,omitempty"`
+	OrgEncDocKeys        []*EncryptedKey `protobuf:"bytes,5,rep,name=orgEncDocKeys,proto3" json:"orgEncDocKeys,omitempty"`
+	OrgEncMACKeys        []*EncryptedKey `protobuf:"bytes,6,rep,name=orgEncMACKeys,proto3" json:"orgEncMACKeys,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
+}
+
 func (m *ShareDocumentReq) Reset()         { *m = ShareDocumentReq{} }
 func (m *ShareDocumentReq) String() string { return proto.CompactTextString(m) }
 func (*ShareDocumentReq) ProtoMessage()    {}
 func (*ShareDocumentReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{8}
+	return fileDescriptor_9d2790a4091b3173, []int{15}
 }
 
 func (m *ShareDocumentReq) XXX_Unmarshal(b []byte) error {
@@ -466,6 +927,34 @@ func (m *ShareDocumentReq) GetUserID() string {
 	return ""
 }
 
+func (m *ShareDocumentReq) GetUserEncDocKey() *EncryptedKey {
+	if m != nil {
+		return m.UserEncDocKey
+	}
+	return nil
+}
+
+func (m *ShareDocumentReq) GetUserEncMACKey() *EncryptedKey {
+	if m != nil {
+		return m.UserEncMACKey
+	}
+	return nil
+}
+
+func (m *ShareDocumentReq) GetOrgEncDocKeys() []*EncryptedKey {
+	if m != nil {
+		return m.OrgEncDocKeys
+	}
+	return nil
+}
+
+func (m *ShareDocumentReq) GetOrgEncMACKeys() []*EncryptedKey {
+	if m != nil {
+		return m.OrgEncMACKeys
+	}
+	return nil
+}
+
 type ShareDocumentResp struct {
 	// Whether the share was successful.
 	Success              bool     `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
@@ -478,7 +967,7 @@ func (m *ShareDocumentResp) Reset()         { *m = ShareDocumentResp{} }
 func (m *ShareDocumentResp) String() string { return proto.CompactTextString(m) }
 func (*ShareDocumentResp) ProtoMessage()    {}
 func (*ShareDocumentResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{9}
+	return fileDescriptor_9d2790a4091b3173, []int{16}
 }
 
 func (m *ShareDocumentResp) XXX_Unmarshal(b []byte) error {
@@ -520,7 +1009,7 @@ func (m *UnshareDocumentReq) Reset()         { *m = UnshareDocumentReq{} }
 func (m *UnshareDocumentReq) String() string { return proto.CompactTextString(m) }
 func (*UnshareDocumentReq) ProtoMessage()    {}
 func (*UnshareDocumentReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{10}
+	return fileDescriptor_9d2790a4091b3173, []int{17}
 }
 
 func (m *UnshareDocumentReq) XXX_Unmarshal(b []byte) error {
@@ -567,7 +1056,7 @@ func (m *UnshareDocumentResp) Reset()         { *m = UnshareDocumentResp{} }
 func (m *UnshareDocumentResp) String() string { return proto.CompactTextString(m) }
 func (*UnshareDocumentResp) ProtoMessage()    {}
 func (*UnshareDocumentResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{11}
+	return fileDescriptor_9d2790a4091b3173, []int{18}
 }
 
 func (m *UnshareDocumentResp) XXX_Unmarshal(b []byte) error {
@@ -605,7 +1094,7 @@ func (m *ListDocumentsReq) Reset()         { *m = ListDocumentsReq{} }
 func (m *ListDocumentsReq) String() string { return proto.CompactTextString(m) }
 func (*ListDocumentsReq) ProtoMessage()    {}
 func (*ListDocumentsReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{12}
+	return fileDescriptor_9d2790a4091b3173, []int{19}
 }
 
 func (m *ListDocumentsReq) XXX_Unmarshal(b []byte) error {
@@ -638,7 +1127,7 @@ func (m *ListDocumentsResp) Reset()         { *m = ListDocumentsResp{} }
 func (m *ListDocumentsResp) String() string { return proto.CompactTextString(m) }
 func (*ListDocumentsResp) ProtoMessage()    {}
 func (*ListDocumentsResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{13}
+	return fileDescriptor_9d2790a4091b3173, []int{20}
 }
 
 func (m *ListDocumentsResp) XXX_Unmarshal(b []byte) error {
@@ -682,7 +1171,7 @@ func (m *ListDocumentsResp_Document) Reset()         { *m = ListDocumentsResp_Do
 func (m *ListDocumentsResp_Document) String() string { return proto.CompactTextString(m) }
 func (*ListDocumentsResp_Document) ProtoMessage()    {}
 func (*ListDocumentsResp_Document) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{13, 0}
+	return fileDescriptor_9d2790a4091b3173, []int{20, 0}
 }
 
 func (m *ListDocumentsResp_Document) XXX_Unmarshal(b []byte) error {
@@ -736,7 +1225,7 @@ func (m *RemoveDocumentReq) Reset()         { *m = RemoveDocumentReq{} }
 func (m *RemoveDocumentReq) String() string { return proto.CompactTextString(m) }
 func (*RemoveDocumentReq) ProtoMessage()    {}
 func (*RemoveDocumentReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{14}
+	return fileDescriptor_9d2790a4091b3173, []int{21}
 }
 
 func (m *RemoveDocumentReq) XXX_Unmarshal(b []byte) error {
@@ -776,7 +1265,7 @@ func (m *RemoveDocumentResp) Reset()         { *m = RemoveDocumentResp{} }
 func (m *RemoveDocumentResp) String() string { return proto.CompactTextString(m) }
 func (*RemoveDocumentResp) ProtoMessage()    {}
 func (*RemoveDocumentResp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_9d2790a4091b3173, []int{15}
+	return fileDescriptor_9d2790a4091b3173, []int{22}
 }
 
 func (m *RemoveDocumentResp) XXX_Unmarshal(b []byte) error {
@@ -804,15 +1293,414 @@ func (m *RemoveDocumentResp) GetStatus() bool {
 	return false
 }
 
+type UploadDocE2EReq struct {
+	// The encrypted document to upload.
+	CipherText string `protobuf:"bytes,1,opt,name=cipherText,proto3" json:"cipherText,omitempty"`
+	// The document metadata.
+	Metadata             *UploadDocPreMetadata `protobuf:"bytes,2,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
+	XXX_unrecognized     []byte                `json:"-"`
+	XXX_sizecache        int32                 `json:"-"`
+}
+
+func (m *UploadDocE2EReq) Reset()         { *m = UploadDocE2EReq{} }
+func (m *UploadDocE2EReq) String() string { return proto.CompactTextString(m) }
+func (*UploadDocE2EReq) ProtoMessage()    {}
+func (*UploadDocE2EReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{23}
+}
+
+func (m *UploadDocE2EReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UploadDocE2EReq.Unmarshal(m, b)
+}
+func (m *UploadDocE2EReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UploadDocE2EReq.Marshal(b, m, deterministic)
+}
+func (m *UploadDocE2EReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UploadDocE2EReq.Merge(m, src)
+}
+func (m *UploadDocE2EReq) XXX_Size() int {
+	return xxx_messageInfo_UploadDocE2EReq.Size(m)
+}
+func (m *UploadDocE2EReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_UploadDocE2EReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UploadDocE2EReq proto.InternalMessageInfo
+
+func (m *UploadDocE2EReq) GetCipherText() string {
+	if m != nil {
+		return m.CipherText
+	}
+	return ""
+}
+
+func (m *UploadDocE2EReq) GetMetadata() *UploadDocPreMetadata {
+	if m != nil {
+		return m.Metadata
+	}
+	return nil
+}
+
+type UploadDocE2EResp struct {
+	// The ID of the document uploaded.
+	DocID                string   `protobuf:"bytes,1,opt,name=docID,proto3" json:"docID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *UploadDocE2EResp) Reset()         { *m = UploadDocE2EResp{} }
+func (m *UploadDocE2EResp) String() string { return proto.CompactTextString(m) }
+func (*UploadDocE2EResp) ProtoMessage()    {}
+func (*UploadDocE2EResp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{24}
+}
+
+func (m *UploadDocE2EResp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UploadDocE2EResp.Unmarshal(m, b)
+}
+func (m *UploadDocE2EResp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UploadDocE2EResp.Marshal(b, m, deterministic)
+}
+func (m *UploadDocE2EResp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UploadDocE2EResp.Merge(m, src)
+}
+func (m *UploadDocE2EResp) XXX_Size() int {
+	return xxx_messageInfo_UploadDocE2EResp.Size(m)
+}
+func (m *UploadDocE2EResp) XXX_DiscardUnknown() {
+	xxx_messageInfo_UploadDocE2EResp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UploadDocE2EResp proto.InternalMessageInfo
+
+func (m *UploadDocE2EResp) GetDocID() string {
+	if m != nil {
+		return m.DocID
+	}
+	return ""
+}
+
+type DownloadDocE2EReq struct {
+	// The ID of the document to download.
+	DocID                string   `protobuf:"bytes,1,opt,name=docID,proto3" json:"docID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DownloadDocE2EReq) Reset()         { *m = DownloadDocE2EReq{} }
+func (m *DownloadDocE2EReq) String() string { return proto.CompactTextString(m) }
+func (*DownloadDocE2EReq) ProtoMessage()    {}
+func (*DownloadDocE2EReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{25}
+}
+
+func (m *DownloadDocE2EReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DownloadDocE2EReq.Unmarshal(m, b)
+}
+func (m *DownloadDocE2EReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DownloadDocE2EReq.Marshal(b, m, deterministic)
+}
+func (m *DownloadDocE2EReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DownloadDocE2EReq.Merge(m, src)
+}
+func (m *DownloadDocE2EReq) XXX_Size() int {
+	return xxx_messageInfo_DownloadDocE2EReq.Size(m)
+}
+func (m *DownloadDocE2EReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_DownloadDocE2EReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DownloadDocE2EReq proto.InternalMessageInfo
+
+func (m *DownloadDocE2EReq) GetDocID() string {
+	if m != nil {
+		return m.DocID
+	}
+	return ""
+}
+
+type DownloadDocE2EResp struct {
+	// The ID of the document downloaded.
+	DocID string `protobuf:"bytes,1,opt,name=docID,proto3" json:"docID,omitempty"`
+	// The encrypted data of the document.
+	CipherText string `protobuf:"bytes,2,opt,name=cipherText,proto3" json:"cipherText,omitempty"`
+	// The encrypted filekey by user pub key.
+	EncryptedFileKeyUser string `protobuf:"bytes,3,opt,name=encryptedFileKeyUser,proto3" json:"encryptedFileKeyUser,omitempty"`
+	// The encrypted filekey by organization pub key.
+	EncryptedFileKeyOrg  string   `protobuf:"bytes,4,opt,name=encryptedFileKeyOrg,proto3" json:"encryptedFileKeyOrg,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DownloadDocE2EResp) Reset()         { *m = DownloadDocE2EResp{} }
+func (m *DownloadDocE2EResp) String() string { return proto.CompactTextString(m) }
+func (*DownloadDocE2EResp) ProtoMessage()    {}
+func (*DownloadDocE2EResp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{26}
+}
+
+func (m *DownloadDocE2EResp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DownloadDocE2EResp.Unmarshal(m, b)
+}
+func (m *DownloadDocE2EResp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DownloadDocE2EResp.Marshal(b, m, deterministic)
+}
+func (m *DownloadDocE2EResp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DownloadDocE2EResp.Merge(m, src)
+}
+func (m *DownloadDocE2EResp) XXX_Size() int {
+	return xxx_messageInfo_DownloadDocE2EResp.Size(m)
+}
+func (m *DownloadDocE2EResp) XXX_DiscardUnknown() {
+	xxx_messageInfo_DownloadDocE2EResp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DownloadDocE2EResp proto.InternalMessageInfo
+
+func (m *DownloadDocE2EResp) GetDocID() string {
+	if m != nil {
+		return m.DocID
+	}
+	return ""
+}
+
+func (m *DownloadDocE2EResp) GetCipherText() string {
+	if m != nil {
+		return m.CipherText
+	}
+	return ""
+}
+
+func (m *DownloadDocE2EResp) GetEncryptedFileKeyUser() string {
+	if m != nil {
+		return m.EncryptedFileKeyUser
+	}
+	return ""
+}
+
+func (m *DownloadDocE2EResp) GetEncryptedFileKeyOrg() string {
+	if m != nil {
+		return m.EncryptedFileKeyOrg
+	}
+	return ""
+}
+
+type ShareDocumentE2EReq struct {
+	// The encrypted AES key of the document.
+	EncryptedFileKey string `protobuf:"bytes,1,opt,name=encryptedFileKey,proto3" json:"encryptedFileKey,omitempty"`
+	// The ID of the document to share.
+	DocID string `protobuf:"bytes,2,opt,name=docID,proto3" json:"docID,omitempty"`
+	// Public keys of users, whom document is shared with
+	ShareToList          []string `protobuf:"bytes,3,rep,name=shareToList,proto3" json:"shareToList,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ShareDocumentE2EReq) Reset()         { *m = ShareDocumentE2EReq{} }
+func (m *ShareDocumentE2EReq) String() string { return proto.CompactTextString(m) }
+func (*ShareDocumentE2EReq) ProtoMessage()    {}
+func (*ShareDocumentE2EReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{27}
+}
+
+func (m *ShareDocumentE2EReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ShareDocumentE2EReq.Unmarshal(m, b)
+}
+func (m *ShareDocumentE2EReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ShareDocumentE2EReq.Marshal(b, m, deterministic)
+}
+func (m *ShareDocumentE2EReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ShareDocumentE2EReq.Merge(m, src)
+}
+func (m *ShareDocumentE2EReq) XXX_Size() int {
+	return xxx_messageInfo_ShareDocumentE2EReq.Size(m)
+}
+func (m *ShareDocumentE2EReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_ShareDocumentE2EReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ShareDocumentE2EReq proto.InternalMessageInfo
+
+func (m *ShareDocumentE2EReq) GetEncryptedFileKey() string {
+	if m != nil {
+		return m.EncryptedFileKey
+	}
+	return ""
+}
+
+func (m *ShareDocumentE2EReq) GetDocID() string {
+	if m != nil {
+		return m.DocID
+	}
+	return ""
+}
+
+func (m *ShareDocumentE2EReq) GetShareToList() []string {
+	if m != nil {
+		return m.ShareToList
+	}
+	return nil
+}
+
+type ShareDocumentE2EResp struct {
+	// Whether the share was successful.
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	// E2E public key of user
+	UserE2EPubKey        string   `protobuf:"bytes,2,opt,name=userE2EPubKey,proto3" json:"userE2EPubKey,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ShareDocumentE2EResp) Reset()         { *m = ShareDocumentE2EResp{} }
+func (m *ShareDocumentE2EResp) String() string { return proto.CompactTextString(m) }
+func (*ShareDocumentE2EResp) ProtoMessage()    {}
+func (*ShareDocumentE2EResp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{28}
+}
+
+func (m *ShareDocumentE2EResp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ShareDocumentE2EResp.Unmarshal(m, b)
+}
+func (m *ShareDocumentE2EResp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ShareDocumentE2EResp.Marshal(b, m, deterministic)
+}
+func (m *ShareDocumentE2EResp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ShareDocumentE2EResp.Merge(m, src)
+}
+func (m *ShareDocumentE2EResp) XXX_Size() int {
+	return xxx_messageInfo_ShareDocumentE2EResp.Size(m)
+}
+func (m *ShareDocumentE2EResp) XXX_DiscardUnknown() {
+	xxx_messageInfo_ShareDocumentE2EResp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ShareDocumentE2EResp proto.InternalMessageInfo
+
+func (m *ShareDocumentE2EResp) GetSuccess() bool {
+	if m != nil {
+		return m.Success
+	}
+	return false
+}
+
+func (m *ShareDocumentE2EResp) GetUserE2EPubKey() string {
+	if m != nil {
+		return m.UserE2EPubKey
+	}
+	return ""
+}
+
+type UnshareDocumentE2EReq struct {
+	// The ID of the document to share.
+	DocID string `protobuf:"bytes,1,opt,name=docID,proto3" json:"docID,omitempty"`
+	// Public keys of users, whom document is shared with
+	UnshareFromPubKeyList []string `protobuf:"bytes,2,rep,name=unshareFromPubKeyList,proto3" json:"unshareFromPubKeyList,omitempty"`
+	XXX_NoUnkeyedLiteral  struct{} `json:"-"`
+	XXX_unrecognized      []byte   `json:"-"`
+	XXX_sizecache         int32    `json:"-"`
+}
+
+func (m *UnshareDocumentE2EReq) Reset()         { *m = UnshareDocumentE2EReq{} }
+func (m *UnshareDocumentE2EReq) String() string { return proto.CompactTextString(m) }
+func (*UnshareDocumentE2EReq) ProtoMessage()    {}
+func (*UnshareDocumentE2EReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{29}
+}
+
+func (m *UnshareDocumentE2EReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UnshareDocumentE2EReq.Unmarshal(m, b)
+}
+func (m *UnshareDocumentE2EReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UnshareDocumentE2EReq.Marshal(b, m, deterministic)
+}
+func (m *UnshareDocumentE2EReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UnshareDocumentE2EReq.Merge(m, src)
+}
+func (m *UnshareDocumentE2EReq) XXX_Size() int {
+	return xxx_messageInfo_UnshareDocumentE2EReq.Size(m)
+}
+func (m *UnshareDocumentE2EReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_UnshareDocumentE2EReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UnshareDocumentE2EReq proto.InternalMessageInfo
+
+func (m *UnshareDocumentE2EReq) GetDocID() string {
+	if m != nil {
+		return m.DocID
+	}
+	return ""
+}
+
+func (m *UnshareDocumentE2EReq) GetUnshareFromPubKeyList() []string {
+	if m != nil {
+		return m.UnshareFromPubKeyList
+	}
+	return nil
+}
+
+type UnshareDocumentE2EResp struct {
+	// The unshared document count.
+	Count                int64    `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *UnshareDocumentE2EResp) Reset()         { *m = UnshareDocumentE2EResp{} }
+func (m *UnshareDocumentE2EResp) String() string { return proto.CompactTextString(m) }
+func (*UnshareDocumentE2EResp) ProtoMessage()    {}
+func (*UnshareDocumentE2EResp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{30}
+}
+
+func (m *UnshareDocumentE2EResp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_UnshareDocumentE2EResp.Unmarshal(m, b)
+}
+func (m *UnshareDocumentE2EResp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_UnshareDocumentE2EResp.Marshal(b, m, deterministic)
+}
+func (m *UnshareDocumentE2EResp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UnshareDocumentE2EResp.Merge(m, src)
+}
+func (m *UnshareDocumentE2EResp) XXX_Size() int {
+	return xxx_messageInfo_UnshareDocumentE2EResp.Size(m)
+}
+func (m *UnshareDocumentE2EResp) XXX_DiscardUnknown() {
+	xxx_messageInfo_UnshareDocumentE2EResp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UnshareDocumentE2EResp proto.InternalMessageInfo
+
+func (m *UnshareDocumentE2EResp) GetCount() int64 {
+	if m != nil {
+		return m.Count
+	}
+	return 0
+}
+
 func init() {
 	proto.RegisterType((*UploadDocStreamReq)(nil), "proto.UploadDocStreamReq")
+	proto.RegisterType((*UploadDocPreMetadata)(nil), "proto.UploadDocPreMetadata")
+	proto.RegisterType((*UploadDocPostMetadata)(nil), "proto.UploadDocPostMetadata")
 	proto.RegisterType((*UploadDocStreamResp)(nil), "proto.UploadDocStreamResp")
+	proto.RegisterType((*PrepareDownloadDocReq)(nil), "proto.PrepareDownloadDocReq")
+	proto.RegisterType((*PrepareDownloadDocResp)(nil), "proto.PrepareDownloadDocResp")
 	proto.RegisterType((*DownloadDocStreamReq)(nil), "proto.DownloadDocStreamReq")
 	proto.RegisterType((*DownloadDocStreamResp)(nil), "proto.DownloadDocStreamResp")
 	proto.RegisterType((*UploadDocReq)(nil), "proto.UploadDocReq")
 	proto.RegisterType((*UploadDocResp)(nil), "proto.UploadDocResp")
 	proto.RegisterType((*DownloadDocReq)(nil), "proto.DownloadDocReq")
 	proto.RegisterType((*DownloadDocResp)(nil), "proto.DownloadDocResp")
+	proto.RegisterType((*DocumentAccessMetadata)(nil), "proto.DocumentAccessMetadata")
+	proto.RegisterType((*PrepareShareDocumentReq)(nil), "proto.PrepareShareDocumentReq")
+	proto.RegisterType((*PrepareShareDocumentResp)(nil), "proto.PrepareShareDocumentResp")
 	proto.RegisterType((*ShareDocumentReq)(nil), "proto.ShareDocumentReq")
 	proto.RegisterType((*ShareDocumentResp)(nil), "proto.ShareDocumentResp")
 	proto.RegisterType((*UnshareDocumentReq)(nil), "proto.UnshareDocumentReq")
@@ -822,57 +1710,120 @@ func init() {
 	proto.RegisterType((*ListDocumentsResp_Document)(nil), "proto.ListDocumentsResp.Document")
 	proto.RegisterType((*RemoveDocumentReq)(nil), "proto.RemoveDocumentReq")
 	proto.RegisterType((*RemoveDocumentResp)(nil), "proto.RemoveDocumentResp")
+	proto.RegisterType((*UploadDocE2EReq)(nil), "proto.UploadDocE2EReq")
+	proto.RegisterType((*UploadDocE2EResp)(nil), "proto.UploadDocE2EResp")
+	proto.RegisterType((*DownloadDocE2EReq)(nil), "proto.DownloadDocE2EReq")
+	proto.RegisterType((*DownloadDocE2EResp)(nil), "proto.DownloadDocE2EResp")
+	proto.RegisterType((*ShareDocumentE2EReq)(nil), "proto.ShareDocumentE2EReq")
+	proto.RegisterType((*ShareDocumentE2EResp)(nil), "proto.ShareDocumentE2EResp")
+	proto.RegisterType((*UnshareDocumentE2EReq)(nil), "proto.UnshareDocumentE2EReq")
+	proto.RegisterType((*UnshareDocumentE2EResp)(nil), "proto.UnshareDocumentE2EResp")
 }
 
 func init() { proto.RegisterFile("document.proto", fileDescriptor_9d2790a4091b3173) }
 
 var fileDescriptor_9d2790a4091b3173 = []byte{
-	// 743 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x54, 0xcd, 0x6f, 0xd3, 0x4a,
-	0x10, 0xaf, 0x9b, 0xb6, 0xaf, 0x99, 0x97, 0x97, 0x26, 0x9b, 0xf4, 0x11, 0x95, 0x0f, 0x99, 0xbd,
-	0x10, 0x99, 0x34, 0x25, 0x6e, 0x01, 0x69, 0x2f, 0xc8, 0xc1, 0x82, 0x46, 0x85, 0x20, 0xb9, 0x2a,
-	0x2d, 0x94, 0x0f, 0x39, 0xf6, 0x12, 0x22, 0x12, 0xaf, 0xeb, 0xdd, 0xd0, 0x96, 0x28, 0x77, 0xb8,
-	0xfa, 0xc6, 0x0d, 0xf1, 0x97, 0x22, 0xdb, 0x49, 0xf3, 0xe1, 0xa4, 0xad, 0xc4, 0xc9, 0x3b, 0xb3,
-	0x33, 0xbf, 0xf9, 0xed, 0x6f, 0xc6, 0x03, 0x69, 0x9b, 0x59, 0xdd, 0x0e, 0x75, 0x44, 0xd9, 0xf5,
-	0x98, 0x60, 0x68, 0x39, 0xfc, 0x6c, 0x94, 0xc2, 0x8f, 0xb5, 0xd9, 0xa4, 0xce, 0x26, 0x3f, 0x35,
-	0x9b, 0x4d, 0xea, 0x6d, 0x31, 0x57, 0xb4, 0x98, 0xc3, 0xb7, 0x4c, 0xc7, 0x61, 0xc2, 0x0c, 0xcf,
-	0x51, 0x12, 0xfe, 0x00, 0xe8, 0xc0, 0x6d, 0x33, 0xd3, 0xd6, 0x99, 0xb5, 0x2f, 0x3c, 0x6a, 0x76,
-	0x0c, 0x7a, 0x82, 0x36, 0xe0, 0x1f, 0x9b, 0x59, 0x75, 0xb3, 0x43, 0x0b, 0x92, 0x2c, 0x15, 0x93,
-	0xbb, 0x0b, 0xc6, 0xd0, 0x81, 0xee, 0x40, 0xd2, 0x6d, 0x9b, 0x2d, 0x47, 0xd0, 0x33, 0x51, 0x58,
-	0x94, 0xa5, 0x62, 0x6a, 0x77, 0xc1, 0x18, 0xb9, 0xaa, 0x29, 0x80, 0x20, 0xee, 0x95, 0xa7, 0x9b,
-	0xc2, 0xc4, 0x1a, 0xe4, 0x62, 0xf8, 0xdc, 0x45, 0x79, 0x58, 0xb6, 0x99, 0x55, 0xd3, 0x23, 0x78,
-	0x23, 0x32, 0x02, 0x6f, 0xe3, 0x5c, 0x50, 0x1e, 0xc2, 0x26, 0x8c, 0xc8, 0xc0, 0x25, 0xc8, 0xeb,
-	0xec, 0xd4, 0x89, 0x91, 0x9c, 0x89, 0x81, 0xf7, 0x60, 0x7d, 0x46, 0xf4, 0xdc, 0x92, 0xb7, 0x62,
-	0xaf, 0x19, 0x7b, 0x0b, 0xfe, 0x25, 0x41, 0xea, 0x82, 0x7e, 0x50, 0xb3, 0x30, 0x25, 0xcc, 0x48,
-	0x96, 0x18, 0x50, 0x72, 0x0c, 0x88, 0x1c, 0xf9, 0xda, 0x01, 0xa4, 0x95, 0x09, 0x30, 0xf5, 0x29,
-	0xd2, 0x7a, 0x78, 0x90, 0x8f, 0x89, 0x8c, 0x1b, 0x5e, 0xab, 0x41, 0xcd, 0x0e, 0xeb, 0x3a, 0x02,
-	0x97, 0x64, 0x3c, 0xa2, 0x41, 0x64, 0x5c, 0x93, 0x5d, 0xb3, 0x65, 0xcb, 0x95, 0x97, 0xb2, 0x60,
-	0xf2, 0x6b, 0xd6, 0x66, 0xf6, 0x79, 0xe7, 0xdc, 0xc3, 0x7d, 0xfc, 0x16, 0xfe, 0x1b, 0x03, 0x9d,
-	0xf7, 0x4e, 0xb2, 0xed, 0x6b, 0x0f, 0x60, 0x4d, 0x99, 0x8c, 0x55, 0x6f, 0xa3, 0x9b, 0x21, 0x83,
-	0x9a, 0x3e, 0x55, 0xff, 0x63, 0x4d, 0xc7, 0x7d, 0xfc, 0x0e, 0xd2, 0x63, 0x5a, 0xce, 0xd5, 0x9c,
-	0xec, 0xf8, 0x5a, 0x05, 0x32, 0xca, 0x54, 0xf0, 0x55, 0xe8, 0xbf, 0x25, 0x58, 0x9b, 0xc8, 0xb8,
-	0x7e, 0x93, 0x26, 0xb4, 0x3d, 0xf6, 0xb5, 0xa3, 0x19, 0xd5, 0x75, 0x54, 0x9d, 0x5f, 0xfd, 0xda,
-	0xf2, 0xfe, 0x90, 0x20, 0xb3, 0xff, 0xd9, 0xf4, 0xa8, 0x3e, 0xf8, 0xd9, 0xe6, 0xaa, 0x80, 0xfe,
-	0x87, 0x95, 0x2e, 0xa7, 0x5e, 0x4d, 0x1f, 0x50, 0x1c, 0x58, 0xe4, 0xb9, 0xaf, 0xe9, 0x80, 0x94,
-	0x18, 0x8c, 0x5a, 0x46, 0xa5, 0x4b, 0x19, 0x46, 0xf9, 0xc1, 0xdd, 0xb3, 0x6a, 0x2d, 0x6c, 0x47,
-	0x76, 0x0a, 0x83, 0xbb, 0xc1, 0x44, 0xf2, 0xae, 0x65, 0x51, 0xce, 0x43, 0x36, 0xab, 0xc6, 0xd0,
-	0x24, 0x9b, 0xbe, 0xa6, 0x40, 0x4e, 0x89, 0xe7, 0xa8, 0x39, 0x94, 0xed, 0xe1, 0x41, 0x18, 0x26,
-	0xb2, 0xf0, 0xba, 0xb4, 0x8f, 0x7d, 0x09, 0xd0, 0x81, 0xc3, 0xff, 0xee, 0xad, 0x75, 0x5f, 0xdb,
-	0x83, 0xbc, 0x32, 0x03, 0x48, 0xdd, 0x46, 0x95, 0xeb, 0xbe, 0x96, 0x9d, 0xc9, 0x75, 0x7a, 0xca,
-	0x71, 0x1f, 0x1f, 0x42, 0x2e, 0x06, 0x15, 0x8d, 0x89, 0x15, 0xa4, 0x86, 0xa4, 0x12, 0x46, 0x64,
-	0x10, 0xc5, 0xd7, 0xee, 0xc1, 0xba, 0x32, 0x2b, 0x43, 0x4d, 0xa3, 0x54, 0x0f, 0x87, 0x61, 0x98,
-	0xc8, 0x95, 0x3e, 0xbe, 0x0f, 0x99, 0x17, 0x2d, 0x2e, 0x86, 0x31, 0xdc, 0xa0, 0x27, 0xe4, 0x86,
-	0xaf, 0xe5, 0x83, 0x46, 0x4d, 0x5f, 0xe0, 0x9f, 0x8b, 0x90, 0x9d, 0x72, 0x72, 0x17, 0x3d, 0x81,
-	0xe4, 0x70, 0x03, 0x07, 0xda, 0x27, 0x8a, 0xff, 0xaa, 0x77, 0xa3, 0xad, 0x5a, 0x8e, 0x05, 0x97,
-	0x2f, 0xc8, 0x8c, 0x72, 0x36, 0xea, 0xb0, 0x3a, 0x74, 0xcf, 0x91, 0x79, 0x6c, 0xdd, 0x2c, 0x4e,
-	0xae, 0x1b, 0x04, 0x4b, 0xbc, 0xf5, 0x8d, 0x16, 0x12, 0xb2, 0x54, 0x5c, 0x32, 0xc2, 0x33, 0xe1,
-	0xbe, 0xe6, 0x06, 0x0d, 0x8f, 0x55, 0x57, 0xdf, 0xa0, 0xc3, 0x50, 0xfb, 0xc8, 0x85, 0x89, 0x7c,
-	0x7c, 0x69, 0x2b, 0x66, 0xef, 0xa4, 0xb2, 0x6b, 0x7f, 0x0a, 0x6e, 0x83, 0x5a, 0x98, 0xc8, 0x0f,
-	0x1f, 0x55, 0xfa, 0xef, 0xfb, 0xb8, 0x01, 0x59, 0x83, 0x76, 0xd8, 0xd7, 0xab, 0x87, 0x86, 0x3c,
-	0xf6, 0xb5, 0x9d, 0x80, 0x5f, 0x2c, 0xfe, 0xaa, 0x4d, 0x71, 0x0c, 0x68, 0x3a, 0x87, 0xbb, 0xc1,
-	0x0c, 0x72, 0x61, 0x8a, 0xee, 0x70, 0xf0, 0x07, 0x56, 0x34, 0xf7, 0x79, 0x65, 0x46, 0x8a, 0x8a,
-	0x50, 0xa6, 0x87, 0xa3, 0xb0, 0xe1, 0xdc, 0x57, 0x55, 0xc0, 0x16, 0xeb, 0x94, 0xb9, 0xf0, 0x98,
-	0xd3, 0xe4, 0x66, 0x5b, 0x0c, 0x8e, 0x36, 0xb3, 0xca, 0xdc, 0xfe, 0x12, 0x75, 0xb4, 0x9a, 0xbc,
-	0x10, 0xf4, 0xbb, 0x24, 0x35, 0x56, 0x42, 0xe7, 0xf6, 0x9f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x44,
-	0xd0, 0x30, 0xdd, 0x83, 0x07, 0x00, 0x00,
+	// 1621 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x57, 0x4f, 0x6f, 0xdb, 0xc8,
+	0x15, 0x37, 0x25, 0xdb, 0xb1, 0x5e, 0x1c, 0x5b, 0x1e, 0xcb, 0xb6, 0xea, 0x24, 0x05, 0x3b, 0x28,
+	0x5a, 0x97, 0x75, 0x9c, 0x98, 0x76, 0x93, 0x94, 0x3d, 0x04, 0x74, 0xe4, 0xd4, 0x86, 0x13, 0x3b,
+	0x65, 0xec, 0x26, 0x6d, 0x1a, 0x24, 0x34, 0x39, 0x95, 0xd5, 0x4a, 0xa2, 0xc2, 0xa1, 0xea, 0xa8,
+	0x86, 0xee, 0x39, 0xa4, 0x40, 0x4b, 0xa0, 0x87, 0xde, 0x8a, 0xbd, 0x2d, 0xb0, 0xd8, 0xc3, 0x9e,
+	0x17, 0xd8, 0xeb, 0xee, 0x71, 0x3f, 0xc4, 0x7e, 0x84, 0x3d, 0xec, 0x61, 0x81, 0xc5, 0x0c, 0x47,
+	0x24, 0xc5, 0x3f, 0xb2, 0x81, 0x20, 0xa7, 0x3d, 0x89, 0xf3, 0xe6, 0xfd, 0x9b, 0xf7, 0x7e, 0xf3,
+	0x9b, 0x27, 0x98, 0xb1, 0x1d, 0xab, 0xdb, 0x22, 0x6d, 0x6f, 0xad, 0xe3, 0x3a, 0x9e, 0x83, 0x26,
+	0xf8, 0xcf, 0xf2, 0x2a, 0xff, 0xb1, 0x6e, 0xd4, 0x49, 0xfb, 0x06, 0x3d, 0x35, 0xeb, 0x75, 0xe2,
+	0xde, 0x74, 0x3a, 0x5e, 0xc3, 0x69, 0xd3, 0x9b, 0x66, 0xbb, 0xed, 0x78, 0x26, 0xff, 0x0e, 0x8c,
+	0x96, 0xcb, 0xa4, 0x6d, 0xb9, 0x3d, 0xbe, 0x1d, 0x48, 0xf0, 0x77, 0x12, 0xa0, 0xa3, 0x4e, 0xd3,
+	0x31, 0xed, 0x9a, 0x63, 0x3d, 0xf1, 0x5c, 0x62, 0xb6, 0x0c, 0xf2, 0x1a, 0x2d, 0xc3, 0x25, 0xdb,
+	0xb1, 0xf6, 0xcd, 0x16, 0xa9, 0x4a, 0xb2, 0xb4, 0x52, 0xda, 0x19, 0x33, 0x06, 0x02, 0xf4, 0x53,
+	0x28, 0x75, 0x9a, 0x66, 0xa3, 0xed, 0x91, 0x37, 0x5e, 0xb5, 0x20, 0x4b, 0x2b, 0xd3, 0x3b, 0x63,
+	0x46, 0x24, 0x42, 0xf7, 0xe0, 0x72, 0xc7, 0x25, 0x8f, 0x88, 0x67, 0xda, 0xa6, 0x67, 0x56, 0x8b,
+	0xb2, 0xb4, 0x72, 0x59, 0xbd, 0x1a, 0xc4, 0x5b, 0x0b, 0x63, 0x3d, 0x8e, 0x54, 0x76, 0xc6, 0x8c,
+	0xb8, 0x05, 0xaa, 0xc0, 0x38, 0xb7, 0x1c, 0x17, 0xbe, 0xf9, 0x0a, 0x6d, 0xc1, 0x74, 0xc7, 0xa1,
+	0x5e, 0xe8, 0x77, 0x82, 0xfb, 0xbd, 0x96, 0xf2, 0x1b, 0xd3, 0xd9, 0x19, 0x33, 0x86, 0x6c, 0xb6,
+	0xa6, 0x01, 0xd8, 0x11, 0x0e, 0xdc, 0x9a, 0xe9, 0x99, 0xf8, 0xf3, 0x02, 0x54, 0xb2, 0xf2, 0x41,
+	0xd5, 0xc4, 0xe9, 0xe3, 0x67, 0x07, 0xab, 0xd9, 0x20, 0x6d, 0xef, 0x49, 0xc3, 0x26, 0xfc, 0xf0,
+	0x53, 0x46, 0x4c, 0x82, 0x7e, 0x0b, 0x57, 0xba, 0x94, 0xb8, 0xdb, 0x6d, 0xab, 0xe6, 0x58, 0x7b,
+	0xa4, 0x27, 0x4e, 0x3f, 0x2f, 0xb2, 0xdc, 0x0e, 0xca, 0x4f, 0xec, 0x3d, 0xd2, 0x33, 0x86, 0x35,
+	0x63, 0xa6, 0x8f, 0xf4, 0xfb, 0xcc, 0x74, 0xfc, 0x7c, 0xd3, 0x40, 0x93, 0x99, 0x3a, 0x6e, 0x3d,
+	0x74, 0x45, 0xab, 0x13, 0x72, 0x31, 0xd7, 0x74, 0x48, 0x33, 0x32, 0x0d, 0x5c, 0xd1, 0xea, 0xe4,
+	0xb9, 0xa6, 0x42, 0x13, 0xff, 0x0a, 0x16, 0x32, 0xab, 0x8e, 0xca, 0x50, 0x6c, 0x99, 0x96, 0x28,
+	0x1d, 0xfb, 0xc4, 0x3a, 0xcc, 0xa7, 0x40, 0x46, 0x3b, 0xa8, 0x02, 0x13, 0xb6, 0x63, 0xed, 0xd6,
+	0x84, 0x6a, 0xb0, 0x60, 0xd2, 0xe3, 0x9e, 0x47, 0x28, 0x2f, 0x6f, 0xd1, 0x08, 0x16, 0xf8, 0x6f,
+	0xb0, 0xf0, 0xd8, 0x25, 0x1d, 0xd3, 0x25, 0x35, 0xe7, 0xb4, 0x2d, 0x7c, 0x31, 0xa8, 0x66, 0x3a,
+	0xd1, 0x7e, 0xe7, 0xeb, 0x77, 0x61, 0x49, 0xc9, 0xb6, 0x51, 0xaf, 0xa3, 0xab, 0x67, 0x98, 0x2b,
+	0x62, 0x4d, 0xc6, 0xde, 0x49, 0x83, 0xee, 0xd2, 0xc3, 0x13, 0x52, 0xe3, 0x92, 0x3e, 0xfe, 0x4a,
+	0x82, 0xc5, 0x2c, 0x43, 0xda, 0x41, 0x47, 0xb0, 0x38, 0xb8, 0x88, 0xba, 0x65, 0x11, 0x4a, 0x43,
+	0x3c, 0x4a, 0xbc, 0x5d, 0xd7, 0x45, 0xe1, 0x6a, 0x99, 0x4a, 0x46, 0x8e, 0xb1, 0xf6, 0xcc, 0xd7,
+	0x8f, 0x60, 0x46, 0x99, 0x0e, 0xab, 0xc4, 0xb2, 0xbc, 0x8f, 0x74, 0x9e, 0x25, 0x43, 0x1e, 0xcb,
+	0xf3, 0xd8, 0x6d, 0x1c, 0x13, 0xb3, 0xe5, 0x74, 0xdb, 0x1e, 0x5e, 0x95, 0x71, 0x78, 0xe3, 0xd8,
+	0xde, 0xae, 0xdc, 0x31, 0x1b, 0xb6, 0xbc, 0xfe, 0x48, 0xf6, 0x1c, 0xf9, 0x8f, 0x4e, 0xd3, 0xb1,
+	0x7b, 0xad, 0x9e, 0x8b, 0xfb, 0x78, 0x15, 0x2a, 0xb1, 0x33, 0x44, 0x37, 0x3c, 0xb3, 0x6c, 0xf8,
+	0x25, 0x2c, 0x64, 0x68, 0xe7, 0xb6, 0xea, 0x5a, 0x8a, 0x0a, 0xe2, 0x44, 0x80, 0xc4, 0x3d, 0x2e,
+	0xf2, 0x0d, 0xfe, 0x8d, 0xff, 0x2f, 0xc1, 0xd0, 0x21, 0x47, 0xdc, 0xb5, 0x94, 0xf3, 0x52, 0xcc,
+	0xf9, 0x07, 0xac, 0xd8, 0x9f, 0xe1, 0x4a, 0xcc, 0x69, 0xde, 0xd9, 0xb5, 0x0d, 0x5f, 0xbf, 0x05,
+	0xb3, 0xca, 0xb0, 0x6e, 0x02, 0x59, 0xb1, 0xf8, 0x2f, 0x39, 0xb2, 0xfe, 0x02, 0x33, 0x17, 0x82,
+	0xef, 0xa6, 0xaf, 0xaf, 0x43, 0x59, 0x99, 0x19, 0x89, 0xdb, 0x94, 0xf7, 0x8f, 0x24, 0x98, 0x4d,
+	0x02, 0xf6, 0x82, 0x8d, 0x1b, 0xaa, 0xed, 0x73, 0x5f, 0x7f, 0x96, 0x11, 0xbd, 0x86, 0xb6, 0xf2,
+	0xa3, 0x5f, 0xb8, 0xbc, 0x5f, 0x16, 0x60, 0x31, 0xfb, 0x76, 0xa0, 0xbb, 0xb0, 0xd4, 0xa0, 0x21,
+	0xe5, 0x6c, 0xf5, 0xee, 0x47, 0x54, 0x2b, 0x71, 0xaa, 0xcd, 0xdb, 0x66, 0xe7, 0x69, 0xd0, 0x3d,
+	0xd2, 0x3b, 0x70, 0xeb, 0x54, 0xd0, 0x72, 0x24, 0x60, 0xbb, 0x64, 0x88, 0x91, 0x4b, 0x46, 0x24,
+	0x40, 0x2b, 0x30, 0x6b, 0xf3, 0x2f, 0xe1, 0xda, 0x71, 0x39, 0xf5, 0x96, 0x8c, 0xa4, 0x18, 0xfd,
+	0x02, 0x66, 0x48, 0xdb, 0x3a, 0xa2, 0xc4, 0xd5, 0x69, 0xaf, 0xc5, 0x9c, 0x4d, 0x70, 0xc5, 0x84,
+	0x14, 0xdd, 0x86, 0xc5, 0x6e, 0xb4, 0x0c, 0xed, 0x77, 0xed, 0xea, 0x24, 0xd7, 0xcf, 0xd9, 0x15,
+	0x79, 0x0a, 0xfa, 0xbf, 0x14, 0xe6, 0x29, 0x58, 0x5e, 0xd0, 0xea, 0x54, 0x44, 0xab, 0x9f, 0x48,
+	0xb0, 0x24, 0x78, 0xea, 0xc9, 0x09, 0x27, 0xab, 0xa0, 0xac, 0xb9, 0xb8, 0x42, 0x8b, 0x30, 0xc9,
+	0x62, 0xef, 0xd6, 0x44, 0xd3, 0xc5, 0x4a, 0xb3, 0x7c, 0xfd, 0x15, 0xfc, 0x44, 0xc9, 0xf3, 0x16,
+	0x5e, 0xac, 0x4c, 0xc2, 0x5c, 0x95, 0x71, 0xe0, 0x66, 0x68, 0x8f, 0x15, 0x64, 0xd7, 0x3e, 0x74,
+	0xb8, 0xaf, 0x43, 0x07, 0xf7, 0xf1, 0x17, 0x05, 0xa8, 0x66, 0x07, 0xf8, 0x60, 0xc4, 0x8a, 0xee,
+	0xc2, 0x15, 0xcf, 0x61, 0xa9, 0x3c, 0xee, 0x1e, 0xf3, 0xf7, 0xad, 0xc0, 0xbd, 0xa1, 0xc1, 0xd8,
+	0x10, 0xed, 0x18, 0xc3, 0x8a, 0xda, 0x7f, 0x24, 0x5f, 0xff, 0x97, 0x04, 0xcb, 0x4a, 0x6e, 0xce,
+	0xaa, 0x83, 0x5a, 0x67, 0xd8, 0x6c, 0x36, 0x9d, 0x53, 0x62, 0x63, 0x4d, 0xf6, 0xdc, 0x2e, 0x59,
+	0x95, 0x71, 0x34, 0x0e, 0x44, 0xb2, 0x10, 0x6d, 0xac, 0x44, 0x26, 0xb5, 0xff, 0xca, 0x8a, 0x16,
+	0x8f, 0x97, 0x96, 0x1f, 0xb8, 0xf5, 0xc4, 0x56, 0x1f, 0x7f, 0x5b, 0x80, 0xf2, 0xfb, 0x75, 0xfa,
+	0xc7, 0x34, 0xa1, 0x68, 0xbf, 0xf7, 0xf5, 0x1a, 0x20, 0x25, 0x55, 0x32, 0x75, 0x0d, 0xad, 0x8e,
+	0x64, 0xb2, 0x08, 0xce, 0x0f, 0xb6, 0x76, 0x39, 0x6d, 0xcf, 0xa5, 0x11, 0x5b, 0x85, 0x4b, 0xb4,
+	0xcb, 0xd1, 0x26, 0xd8, 0x69, 0xb0, 0xd4, 0x6e, 0xf8, 0xba, 0x02, 0xf3, 0x4a, 0xda, 0x46, 0x9d,
+	0x47, 0x73, 0x67, 0x58, 0xa8, 0x09, 0x74, 0xf4, 0xb1, 0xcf, 0x66, 0xf0, 0x36, 0x7d, 0xbf, 0x1b,
+	0xbc, 0xef, 0xeb, 0x7b, 0x50, 0x51, 0x32, 0x1c, 0xa9, 0x1b, 0x68, 0xfd, 0xa2, 0xa7, 0x75, 0xde,
+	0xc8, 0xfb, 0xe4, 0x94, 0xe2, 0x3e, 0x7e, 0x0a, 0xf3, 0x29, 0x57, 0xc1, 0x73, 0x62, 0x31, 0x53,
+	0x9e, 0x54, 0xd1, 0x08, 0x16, 0x9a, 0xe2, 0xeb, 0xbf, 0x84, 0x05, 0x25, 0xcb, 0x42, 0x9d, 0x41,
+	0xd3, 0x67, 0x98, 0xab, 0x61, 0x4d, 0x5e, 0xef, 0xe3, 0x5f, 0x43, 0xf9, 0x61, 0x83, 0x7a, 0x03,
+	0x1d, 0x6a, 0x90, 0xd7, 0xda, 0x92, 0xaf, 0x57, 0x58, 0xa3, 0x92, 0x1b, 0xf8, 0x7f, 0x05, 0x98,
+	0x4b, 0x08, 0x69, 0x07, 0xdd, 0x83, 0xd2, 0xe0, 0xba, 0xb3, 0xda, 0x33, 0x38, 0xfc, 0x4c, 0xc0,
+	0x21, 0xa5, 0x1c, 0x12, 0x86, 0x11, 0xd9, 0x2c, 0xef, 0xc3, 0xd4, 0x40, 0x9c, 0x53, 0xe6, 0xd8,
+	0x58, 0x52, 0x18, 0x1e, 0x4b, 0x10, 0x8c, 0xd3, 0xc6, 0x3f, 0x09, 0xbf, 0x37, 0xe3, 0x06, 0xff,
+	0xd6, 0xa8, 0xaf, 0x77, 0x58, 0xc3, 0x53, 0xd1, 0xd5, 0x3f, 0xa1, 0xa7, 0xbc, 0xf6, 0x81, 0x08,
+	0x6b, 0xf2, 0xf3, 0x91, 0xad, 0xc8, 0x9e, 0x5d, 0xd6, 0x3a, 0x01, 0x31, 0xb0, 0x58, 0x58, 0x93,
+	0x7f, 0x73, 0x7b, 0xbd, 0xff, 0xa2, 0x8f, 0x8f, 0x61, 0xce, 0x20, 0x2d, 0xe7, 0x1f, 0xe7, 0x83,
+	0x46, 0xbb, 0xe3, 0xeb, 0x9b, 0x2c, 0xbf, 0x94, 0xfe, 0x79, 0x13, 0xc5, 0x73, 0x40, 0x49, 0x1b,
+	0xda, 0x61, 0x18, 0xa4, 0x9e, 0xe9, 0x75, 0x07, 0xc0, 0x17, 0xab, 0x00, 0xf7, 0x15, 0x25, 0xc3,
+	0x44, 0x45, 0xa8, 0x7c, 0x86, 0x03, 0xb5, 0x10, 0xf7, 0xdf, 0x4b, 0x30, 0x1b, 0x4e, 0x4f, 0xdb,
+	0xea, 0x36, 0xcb, 0x9f, 0xfd, 0xc1, 0x6a, 0x74, 0x4e, 0x88, 0x7b, 0xc8, 0x26, 0x93, 0xe0, 0x10,
+	0x31, 0x09, 0xba, 0x03, 0x53, 0xad, 0xc1, 0xc3, 0x50, 0x38, 0xf7, 0x9f, 0xa5, 0x11, 0x2a, 0x6b,
+	0xff, 0x96, 0x7c, 0xfd, 0x9d, 0x04, 0x73, 0x4a, 0x32, 0xa4, 0x7a, 0x8a, 0xba, 0x67, 0x38, 0x0a,
+	0xc1, 0xea, 0x60, 0x9b, 0xb6, 0x49, 0x71, 0xc0, 0xdb, 0x01, 0xbb, 0x3c, 0x68, 0x34, 0xc9, 0x1e,
+	0xe9, 0x31, 0x62, 0x66, 0x0a, 0x99, 0xf2, 0x0c, 0xfd, 0x03, 0xb7, 0x9e, 0xa5, 0xce, 0xc4, 0x7d,
+	0xfc, 0x0a, 0xca, 0xc3, 0xb9, 0xe4, 0xce, 0x9a, 0xb7, 0x7d, 0x7d, 0x83, 0xdd, 0x8f, 0xa4, 0xfa,
+	0x79, 0xed, 0x3b, 0x86, 0xb9, 0xd8, 0x0c, 0x27, 0x4a, 0x3c, 0x1a, 0x22, 0x29, 0xfd, 0xf3, 0x62,
+	0x7c, 0x53, 0x00, 0x94, 0x34, 0xca, 0x9d, 0x3b, 0x87, 0xdb, 0x5b, 0x48, 0xb5, 0x57, 0x85, 0x4a,
+	0x56, 0x69, 0xc5, 0xd0, 0x96, 0xb9, 0x87, 0x6e, 0xc1, 0x7c, 0x46, 0x7d, 0xc5, 0x0c, 0x97, 0xb5,
+	0xa5, 0x7d, 0x26, 0xf9, 0xfa, 0xa7, 0x12, 0x43, 0x6a, 0x3a, 0x71, 0xf5, 0xbf, 0x12, 0xf2, 0xa5,
+	0x91, 0x97, 0x74, 0x18, 0x2b, 0x94, 0x61, 0xc5, 0x36, 0x3f, 0x38, 0x5a, 0xde, 0x16, 0x60, 0x7e,
+	0xe8, 0x41, 0x11, 0xed, 0x54, 0xa0, 0x9c, 0x34, 0x10, 0x35, 0x4f, 0xc9, 0xa3, 0xa6, 0x14, 0xe2,
+	0x4d, 0x91, 0xe1, 0x32, 0x0d, 0x86, 0x34, 0xc6, 0x5f, 0xd5, 0xa2, 0x5c, 0x5c, 0x29, 0x19, 0x71,
+	0x91, 0xf6, 0x4e, 0xf2, 0xf5, 0xb7, 0x12, 0x63, 0xf8, 0x8c, 0x0c, 0x82, 0x31, 0x28, 0x19, 0x2b,
+	0xeb, 0x20, 0x82, 0xe1, 0xf2, 0xea, 0x1a, 0x8b, 0xc8, 0x88, 0x32, 0x58, 0xdb, 0x87, 0x7c, 0x1a,
+	0xda, 0x56, 0xb7, 0xc5, 0x34, 0xf4, 0xa2, 0x8f, 0x3f, 0x96, 0xa0, 0x92, 0x4e, 0x64, 0xd4, 0x93,
+	0x8c, 0x7e, 0x2e, 0x66, 0x97, 0x81, 0x1b, 0x51, 0x81, 0x61, 0xa1, 0xf6, 0x07, 0x5f, 0xdf, 0x87,
+	0x45, 0x25, 0xd3, 0xb9, 0xba, 0x89, 0xd4, 0xe4, 0xdb, 0x2d, 0x1e, 0xcf, 0x28, 0x39, 0x2d, 0xb1,
+	0xee, 0xe3, 0xaf, 0x25, 0x58, 0x48, 0x3c, 0x8b, 0xa3, 0xee, 0x21, 0xda, 0x84, 0x85, 0x6e, 0xa0,
+	0xfe, 0xc0, 0x75, 0x5a, 0x81, 0x1b, 0xde, 0x96, 0x02, 0x6f, 0x4b, 0xf6, 0xa6, 0xd6, 0xf4, 0xf5,
+	0x06, 0x2c, 0x29, 0xd9, 0x91, 0xd4, 0x7d, 0xf4, 0x70, 0xf4, 0x00, 0x10, 0xf9, 0x0c, 0x8b, 0x1f,
+	0x93, 0xa5, 0xea, 0xff, 0x02, 0x16, 0xb3, 0x02, 0xe5, 0x8e, 0x07, 0xfc, 0x5d, 0xa8, 0x2a, 0x39,
+	0x46, 0xc9, 0x09, 0x61, 0x4b, 0x05, 0x6c, 0x39, 0xad, 0x35, 0xea, 0xb9, 0x4e, 0xbb, 0x4e, 0xcd,
+	0xa6, 0x27, 0x3e, 0x6d, 0xc7, 0x5a, 0xa3, 0xf6, 0xdf, 0x03, 0xbe, 0xdf, 0x2a, 0x85, 0x0f, 0xed,
+	0x5b, 0x49, 0x3a, 0x9e, 0xe4, 0xc2, 0x8d, 0x1f, 0x02, 0x00, 0x00, 0xff, 0xff, 0xc1, 0xba, 0x55,
+	0xd3, 0x27, 0x15, 0x00, 0x00,
 }
