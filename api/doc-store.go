@@ -596,27 +596,40 @@ type Key struct {
 	ownerID string
 }
 
-func deserializeUserPubKeys(pubKeys *proto.UserPubKeys) (*Key, []*Key, error) {
-	/*serialUserPub, err := base64.URLEncoding.DecodeString(userPubs.GetUserPubKey())
+func deserializeUserPubKeys(pubKeys *proto.UserPubKeys) (userKey *Key, orgKeys []*Key, err error) {
+	protoUserPub := pubKeys.GetUserPubKey()
+	serialUserPub, err := base64.URLEncoding.DecodeString(protoUserPub.GetPubKey())
 	if err != nil {
-		return false, err
+		return
 	}
-	toUserPubKey, err := ssc.DeserializeKey(serialToUserPub)
+	userPubKey, err := ssc.DeserializeKey(serialUserPub)
 	if err != nil {
-		return false, err
+		return
 	}
 
-	toUser
-	serialToOrgPub, err := base64.URLEncoding.DecodeString(userPubs.GetOrgPubKey())
-	if err != nil {
-		return false, err
+	userKey = &Key{
+		key:     userPubKey,
+		keyID:   protoUserPub.GetKeyID(),
+		ownerID: protoUserPub.GetOwnerID(),
 	}
-	toOrgPub, err := ssc.DeserializeKey(serialToOrgPub)
-	if err != nil {
-		return false, err
+
+	orgKeys = make([]*Key, 0)
+	for _, orgPub := range pubKeys.GetOrgPubKeys() {
+		serialOrgPub, err := base64.URLEncoding.DecodeString(orgPub.GetPubKey())
+		if err != nil {
+			return nil, nil, err
+		}
+		orgPubKey, err := ssc.DeserializeKey(serialOrgPub)
+		if err != nil {
+			return nil, nil, err
+		}
+		orgKeys = append(orgKeys, &Key{
+			key:     orgPubKey,
+			keyID:   orgPub.GetKeyID(),
+			ownerID: orgPub.GetOwnerID(),
+		})
 	}
-	*/
-	return nil, nil, nil
+	return
 }
 
 // ShareDocument shares the document with other users.
@@ -704,13 +717,6 @@ func ShareDocument(docID, userID string) (success bool, err error) {
 			UserEncMACKey: protoUserEncMACKey,
 			OrgEncDocKeys: orgEncDocKeys,
 			OrgEncMACKeys: orgEncMACKeys,
-			//OrgEncDocKeys
-			//encUserDocKey,
-			//encUserMACKey,
-			//userPubID,
-			//encOrgDocKey,
-			//encOrgMACKey,
-			//orgPubID,
 		}
 		res, err := sdc.ShareDocument(context.Background(), req)
 		if err != nil {
