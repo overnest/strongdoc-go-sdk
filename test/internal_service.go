@@ -18,7 +18,6 @@ const (
 	REMOVE_ORG_API = "http://localhost:8081/v1/organization"
 	USER_ID = "userid"
 	PASSWORD = "passwd"
-	TOKEN = "Token"
 	AUTHENTICATION = "authorization"
 	AUTHENTICATION_BEARER = "bearer"
 	SUPER_USER_ID = "SUPER_USER_ID"
@@ -49,7 +48,7 @@ func initializeService() *http.Client {
 		},
 		Timeout: time.Duration(RequestTimeout) * time.Second,
 	}
-	fmt.Println("initialized service")
+	fmt.Println("Internal Service initialized")
 	return client
 }
 
@@ -68,7 +67,7 @@ func sendRequest(req *http.Request) (*http.Response, error) {
 	return getClient().Do(req)
 }
 
-func login() error {
+func superUserLogin() error {
 	// build request
 	req, err := buildRequest("GET",
 		LOGIN_API+"?"+USER_ID+"="+getSuperUserId()+"&"+PASSWORD+"="+getSuperUserPwd(),
@@ -89,7 +88,7 @@ func login() error {
 	return nil
 }
 
-func logout() error {
+func superUserLogout() error {
 	// build request
 	req, err := buildRequest("PUT", LOGOUT_API+"?"+USER_ID+"="+getSuperUserId(), true)
 	if err != nil {
