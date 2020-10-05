@@ -4,18 +4,29 @@ import (
 	"fmt"
 	"github.com/overnest/strongdoc-go-sdk/api"
 	assert "github.com/stretchr/testify/require"
+	"io"
 	"os"
 	"path"
 	"testing"
 )
 
 func testStreamWithWrongDocId(t *testing.T) {
+	// read and upload
 	file, err := os.Open(TestDoc1)
 	assert.NoError(t, err)
 	defer file.Close()
 	docID, err := api.UploadDocumentStream(path.Base(TestDoc1), file)
 	assert.NoError(t, err)
-	fmt.Println(docID)
+	// download and write
+	downloadFile, err := os.Create("download.txt")
+	assert.NoError(t, err)
+	defer downloadFile.Close()
+	downloadStream, err := api.DownloadDocumentStream(docID+"wrongID")
+	assert.NoError(t, err) // error here
+	_, err = io.Copy(downloadFile, downloadStream)
+	assert.Error(t, err) // not here
+	fmt.Println(err)
+
 }
 
 // test with command line $go test -run TestStreamErr -dev
@@ -27,4 +38,8 @@ func TestStreamErr(t *testing.T){
 	// log out
 	_, err = api.Logout()
 	assert.NoError(t, err)
+}
+
+func TestNoSetup(t *testing.T) {
+	fmt.Println("i am a testing")
 }
