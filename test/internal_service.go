@@ -48,7 +48,6 @@ func initializeService() *http.Client {
 		},
 		Timeout: time.Duration(RequestTimeout) * time.Second,
 	}
-	fmt.Println("Internal Service initialized")
 	return client
 }
 
@@ -69,6 +68,9 @@ func sendRequest(req *http.Request) (*http.Response, error) {
 
 func superUserLogin() error {
 	// build request
+	if getSuperUserId() == "" || getSuperUserPwd() == "" {
+		return fmt.Errorf("please specify superuser id and superuser password in config file or export ENV varible")
+	}
 	req, err := buildRequest("GET",
 		LOGIN_API+"?"+USER_ID+"="+getSuperUserId()+"&"+PASSWORD+"="+getSuperUserPwd(),
 		false)

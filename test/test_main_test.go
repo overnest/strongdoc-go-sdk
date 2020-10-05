@@ -45,19 +45,22 @@ func testTeardown() error {
 
 // control all tests within package
 func TestMain(m *testing.M) {
-	var dev bool
-	flag.BoolVar(&dev, "dev", false, "whether to setup and tearDown")
+	var opt string
+	flag.StringVar(&opt, "option", "", "test options")
 	flag.Parse()
 	var exitVal int
-	if dev {
-		testTeardown()
+	if opt != "" {
+		if err := loadConfig(opt); err != nil {
+			fmt.Println("fail to load config file: ", err)
+			return
+		}
 		if err := testSetup(); err != nil {
-			fmt.Println(err)
+			fmt.Println("fail to set up: ", err)
 			return
 		}
 		exitVal = m.Run()
 		if err := testTeardown(); err != nil {
-			fmt.Println(err)
+			fmt.Println("fail to tear down: ", err)
 			return
 		}
 	}else{
