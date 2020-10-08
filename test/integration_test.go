@@ -101,25 +101,25 @@ func testUploadDownload(t *testing.T, fileName string) {
 
 	docs, err := api.ListDocuments()
 	assert.NoError(t, err)
-	assert.Equal(t, len(docs), 1)
+	assert.Equal(t, len(docs), 6)
 
 	hits, err := api.Search("security")
 	assert.NoError(t, err)
-	assert.Equal(t, len(hits), 1)
+	assert.Equal(t, len(hits), 6)
 
 	err = api.RemoveDocument(uploadDocID)
 	assert.NoError(t, err)
 
 	docs, err = api.ListDocuments()
 	assert.NoError(t, err)
-	assert.Equal(t, len(docs), 0)
+	assert.Equal(t, len(docs), 5)
 
 	downBytes, err = api.DownloadDocument(uploadDocID)
 	assert.Error(t, err)
 
 	hits, err = api.Search("security")
 	assert.NoError(t, err)
-	assert.Equal(t, len(hits), 0)
+	assert.Equal(t, len(hits), 5)
 
 	file, err := os.Open(TestDoc1)
 	assert.NoError(t, err)
@@ -221,6 +221,14 @@ func testBilling(t *testing.T) {
 	fmt.Println("Large Traffic:", traffic)
 }
 
+func testDocActionHistory(t *testing.T) {
+	docActionList, totalResult, offset, err := api.ListDocActionHistory()
+	assert.NoError(t, err)
+	assert.Equal(t, 11, len(docActionList))
+	assert.Equal(t, 11, totalResult)
+	assert.Equal(t, 0, offset)
+}
+
 func TestIntegrationSmall(t *testing.T) {
 	_, err := client.InitStrongDocManager(client.LOCAL, false)
 	assert.NoError(t, err)
@@ -240,10 +248,11 @@ func TestIntegrationSmall(t *testing.T) {
 		assert.True(t, success)
 	}()
 
-	testAccounts(t)
+	// testAccounts(t)
 	testUploadDownload(t, TestDoc1)
-	testEncryptDecrypt(t, TestDoc1)
-	testBilling(t)
+	// testEncryptDecrypt(t, TestDoc1)
+	// testBilling(t)
+	testDocActionHistory(t)
 
 	_, err = api.Logout()
 	assert.NoError(t, err)

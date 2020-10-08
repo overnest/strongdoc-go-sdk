@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"bytes"
 	"context"
 	"fmt"
@@ -315,4 +316,46 @@ func ListDocuments() (docs []Document, err error) {
 	}
 
 	return *documents.(*[]Document), nil
+}
+
+// Document contains the document information
+type DocActionHistory struct {
+	// The document ID.
+	DocID string
+	
+	UserID string
+	// The document name.
+	DocName string
+
+	ActionTime timestamp.Timestamp
+	
+	ActionType string
+	
+	OtherUserID string
+}
+
+// ListDocuments returns a slice of Document objects, representing
+// the documents accessible by the user.
+func ListDocActionHistory() ([]DocActionHistory, int32, int32, error) {
+	sdc, err := client.GetStrongDocClient()
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	req := &proto.ListDocActionHistoryReq{}
+	res, err := sdc.ListDocActionHistory(context.Background(), req)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	docActionHistoryListReq := res.GetDocActionHistoryList()
+	temp, err := utils.ConvertStruct(docActionHistoryListReq, []DocActionHistory{})
+	resultTotalCount := res.GetResultTotalCount()
+	offset := res.GetOffset()
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	// return *docActionHistoryList.(*[]DocActionHistory), nil
+	return *temp.(*[]DocActionHistory), resultTotalCount, offset, nil
 }
