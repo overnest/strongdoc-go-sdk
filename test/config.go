@@ -17,13 +17,7 @@ type superuser struct {
 }
 
 func setEnv(key string, value string) error {
-	val := os.Getenv(key)
-	if val == "" {
-		if err := os.Setenv(key, value); err != nil {
-			return err
-		}
-	}
-	return nil
+	return os.Setenv(key, value)
 }
 
 // load config file

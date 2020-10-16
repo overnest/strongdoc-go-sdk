@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"encoding/base64"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"time"
 
 	"github.com/overnest/strongdoc-go-sdk/client"
@@ -9,10 +11,12 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
+// todo RegisterOrganization removed from sdk
+
 // RegisterOrganization creates an organization. The user who
 // created the organization is automatically an administrator.
-func RegisterOrganization(orgName, orgAddr, orgEmail, adminName, adminPassword,
-	adminEmail, source, sourceData string) (orgID, adminID string, err error) {
+func RegisterOrganization(orgName, orgAddr, orgEmail, adminName, adminPassword, adminEmail, source, sourceData string,
+	kdfMeta []byte, userPubKey []byte, encUserPriKey []byte, orgPubKey []byte, encOrgPriKey []byte) (orgID, adminID string, err error) {
 
 	sdc, err := client.GetStrongDocClient()
 	if err != nil {
@@ -29,6 +33,11 @@ func RegisterOrganization(orgName, orgAddr, orgEmail, adminName, adminPassword,
 		MultiLevelShare: false,
 		Source:          source,
 		SourceData:      sourceData,
+		KdfMetadata: 	 base64.URLEncoding.EncodeToString(kdfMeta), //todo base64
+		UserPubKey:      base64.URLEncoding.EncodeToString(userPubKey),
+		EncUserPriKey:   base64.URLEncoding.EncodeToString(encUserPriKey),
+		OrgPubKey:       base64.URLEncoding.EncodeToString(orgPubKey),
+		EncOrgPriKey:    base64.URLEncoding.EncodeToString(encOrgPriKey),
 	})
 	if err != nil {
 		return
@@ -57,28 +66,95 @@ func RemoveOrganization(force bool) (success bool, err error) {
 	return
 }
 
+// InviteUser sends invitation email to potential user
+//
+// Requires administrator privileges.
+func InviteUser(email string, expireTime int64) (bool, error){
+	sdc, err := client.GetStrongDocClient()
+	if err != nil {
+		return false, err
+	}
+	req := &proto.InviteUserReq{
+		Email: email,
+		ExpireTime: expireTime,
+	}
+	res, err := sdc.InviteUser(context.Background(), req)
+	if err != nil {
+		return false, err
+	}
+	return res.Success, nil
+}
+
+// Invitation is the registration invitation
+type Invitation struct {
+	UserName   string
+	ExpireTime *timestamp.Timestamp
+	CreateTime *timestamp.Timestamp
+}
+
+// ListInvitations lists active non-expired invitations
+//
+// Requires administrator privileges.
+func ListInvitations() ([]Invitation, error){
+	sdc, err := client.GetStrongDocClient()
+	if err != nil {
+		return nil, err
+	}
+	req := &proto.ListInvitationsReq{}
+	res, err := sdc.ListInvitations(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+	invitations, err := utils.ConvertStruct(res.Invitations, []Invitation{})
+	if err != nil {
+		return nil, err
+	}
+	return *(invitations.(*[]Invitation)), nil
+}
+
+// RevokeInvitation revoke invitation
+//
+// Requires administrator privileges.
+func RevokeInvitation(email string) (bool, bool, error){
+	sdc, err := client.GetStrongDocClient()
+	if err != nil {
+		return false, false, err
+	}
+	req := &proto.RevokeInvitationReq{
+		Email: email,
+	}
+	res, err := sdc.RevokeInvitation(context.Background(), req)
+	if err != nil {
+		return false, false, err
+	}
+	return res.Success, res.CodeAlreadyUsed, nil
+}
+
 // RegisterUser creates new user if it doesn't already exist. Trying to create
 // a user with an existing username throws an error.
 //
-// Requires administrator privileges.
-func RegisterUser(user, pass, email string, admin bool) (userID string, err error) {
+// Does not require Login
+func RegisterWithInvitation(invitationCode string, orgID string, userName string, userPassword string, userEmail string,
+	kdfMetaBytes []byte, pubKeyBytes []byte, encPriKeyBytes []byte) (string, string, bool, error) {
 	sdc, err := client.GetStrongDocClient()
 	if err != nil {
-		return
+		return "", "", false, err
 	}
-
 	req := &proto.RegisterUserReq{
-		UserName: user,
-		Password: pass,
-		Email:    email,
-		Admin:    admin,
+		InvitationCode: invitationCode,
+		OrgID: orgID,
+		Email: userEmail,
+		KdfMeta: base64.URLEncoding.EncodeToString(kdfMetaBytes),
+		PubKey: base64.URLEncoding.EncodeToString(pubKeyBytes),
+		EncPriKey: base64.URLEncoding.EncodeToString(encPriKeyBytes),
+		UserName: userName,
+		Password: userPassword,
 	}
 	res, err := sdc.RegisterUser(context.Background(), req)
 	if err != nil {
-		return
+		return "", "", false, err
 	}
-	userID = res.UserID
-	return
+	return res.UserID, res.OrgID, res.Success, nil
 }
 
 // User is the user of the organization

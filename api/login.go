@@ -10,13 +10,13 @@ import (
 // Login logs the user in, returning a Bearer Token.
 // This token must henceforth be sent with all Reqs
 // in the same session.
-func Login(userID, password, orgID string) (token string, err error) {
+func Login(userID, password, orgID, keyPassword string) (token string, err error) {
 	sdm, err := client.GetStrongDocManager()
 	if err != nil {
 		return "", err
 	}
 
-	return sdm.Login(userID, password, orgID)
+	return sdm.Login(userID, password, orgID, keyPassword)
 }
 
 // Logout retires the Bearer token in use, ending the session.

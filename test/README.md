@@ -1,31 +1,48 @@
 ## test
 
+every module has a test file named as \[moduleName\]_test.go, like <b>accounts_test.go</b> tests on account related operations
 
 #### development
-We use Package [testing](https://golang.org/pkg/testing/) to write unit tests and the go test command runs tests
+
+Go has a robust built-in testing library [testing](https://golang.org/pkg/testing/) 
 
 #### usage
-func TestMain() defines some setup work before running test(s) , also clean up after down with all specified testing case(s).   
 
-we implemented a flag parser, allowing user to choose:
-
-with <b>-option=dev</b>, running setup before testing and tearDown after all work is done  
-```
-    go test -run <TestName> -option=dev
-```
-otherwise, directly call the test case itself
-```
-    go test -run <TestName>
-```
-
-#### Config
-setUp registered for organization(s) and user(s), tearDown hard remove all organizations via superUser API.  
-Please fill in config file(<b>dev.json</b>) or export environment variables as required before testing with option  
+run a single test case
 
 ```
-    $export SUPER_USER_ID=<super user id>
-    $export SUPER_USER_PASSWORD=<super user password>
+    $go test -run <TestName>
 ```
 
-Also, make sure Internal Serive is enabled on server side
+##### implementation with SetUp and TearDown  
+setUp would register for org(s) and user(s); tearDown would hard remove all registered organizations
 
+e.g.
+```
+func TestFoo(t *testing.T) {
+	// set up and tear down
+	registeredOrgs, registeredOrgUsers, orgids, err := testSetup(1, 2) // 1: number of orgs, 2: number of users per org
+	assert.NilError(t, err)
+	defer testTeardown(orgids)
+
+	t.Run("example test", func(t *testing.T) {
+		//start test
+		org1 := registeredOrgs[0]
+		usersInOrg1 := registeredOrgUsers[0]
+		org1Admin := usersInOrg1[0] // the first user is admin
+		org1User := usersInOrg1[1]
+		assert.Check(t, org1User.OrgID == org1Admin.OrgID && org1User.OrgID == org1.OrgID)
+	})
+
+}
+```
+
+
+#### Troubleshooting
+
+Failed to TearDown
+
+----
+tearDown hard remove registered organizations via superUser API  
+- make sure config file(<b>dev.json</b>) is configured correctly and Internal Serive is enabled on server side  
+- the failure of tearDown would raise some unexpected problems, remember to drop the db before restart
