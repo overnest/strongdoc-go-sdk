@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"testing"
-	"time"
 )
 
 const (
@@ -67,7 +66,6 @@ func testSetup(numOfOrgs int, numOfUsersPerOrg int) ([]*testOrg, [][]*testUser, 
 			return nil, nil, nil, err
 		}
 	}
-	time.Sleep(2*time.Second) // todo temporary fix busy login problem
 	return orgs, orgUsers, registeredOrgIds, err
 }
 

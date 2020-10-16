@@ -204,7 +204,6 @@ func TestLogin(t *testing.T) {
 	assert.NilError(t, err)
 }
 
-// todo fix busy login problem
 func TestBusyLogin(t *testing.T) {
 	_, err := client.InitStrongDocManager(client.LOCAL, false)
 	assert.NilError(t, err)
@@ -224,6 +223,12 @@ func TestBusyLogin(t *testing.T) {
 	assert.NilError(t, err)
 	_, err = api.Logout()
 	assert.NilError(t, err)
+	// duplicate logout
+	_, err = api.Logout()
+	assert.ErrorContains(t, err, " The JWT user is logged out")
+	// do something needs login
+	_, err = api.ListInvitations()
+	assert.ErrorContains(t, err, " The JWT user is logged out")
 }
 
 func TestInviteUser(t *testing.T) {
