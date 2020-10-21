@@ -27,6 +27,8 @@ type ServiceLocation string
 const (
 	// DEFAULT is the default production service location
 	DEFAULT ServiceLocation = "DEFAULT"
+	// SANDBOX is the sandbox testing location
+	SANDBOX ServiceLocation = "SANDBOX"
 	// QA is the QA service used only for testing
 	QA ServiceLocation = "QA"
 	// LOCAL is the local service location used only for testing
@@ -37,6 +39,7 @@ const (
 
 var serviceLocations = map[ServiceLocation]locationConfig{
 	DEFAULT: locationConfig{"api.strongsalt.com:9090", "./certs/ssca.cert.pem"},
+	SANDBOX: locationConfig{"api.sandbox.strongsalt.com:9090", "./certs/ssca.cert.pem"},
 	QA:      locationConfig{"api.strongsaltqa.com:9090", "./certs/ssca.cert.pem"},
 	LOCAL:   locationConfig{"localhost:9090", "./certs/localhost.crt"},
 }

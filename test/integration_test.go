@@ -74,52 +74,47 @@ func testAccounts(t *testing.T) {
 	assert.NotNil(t, user)
 }
 
-func testUploadDownload(t *testing.T, fileName string) {
+func testUploadDownload(t *testing.T, fileName string) (actions int) {
+	actions = 0
+
 	txtBytes, err := ioutil.ReadFile(fileName)
 	assert.NoError(t, err)
-	uploadDocID, err := api.UploadDocument(path.Base(fileName), txtBytes)
-	assert.NoError(t, err)
 
-	uploadDocID, err = api.UploadDocument(path.Base(fileName), txtBytes)
-	assert.NoError(t, err)
-
-	uploadDocID, err = api.UploadDocument(path.Base(fileName), txtBytes)
-	assert.NoError(t, err)
-
-	uploadDocID, err = api.UploadDocument(path.Base(fileName), txtBytes)
-	assert.NoError(t, err)
-
-	uploadDocID, err = api.UploadDocument(path.Base(fileName), txtBytes)
-	assert.NoError(t, err)
-
-	uploadDocID, err = api.UploadDocument(path.Base(fileName), txtBytes)
-	assert.NoError(t, err)
+	var uploads int = 6
+	var uploadDocID string
+	for i := 0; i < uploads; i++ {
+		uploadDocID, err = api.UploadDocument(path.Base(fileName), txtBytes)
+		assert.NoError(t, err)
+		actions++
+	}
 
 	downBytes, err := api.DownloadDocument(uploadDocID)
 	assert.NoError(t, err)
 	assert.Equal(t, txtBytes, downBytes)
+	actions++
 
 	docs, err := api.ListDocuments()
 	assert.NoError(t, err)
-	assert.Equal(t, len(docs), 6)
+	assert.Equal(t, len(docs), uploads)
 
 	hits, err := api.Search("security")
 	assert.NoError(t, err)
-	assert.Equal(t, len(hits), 6)
+	assert.Equal(t, len(hits), uploads)
 
 	err = api.RemoveDocument(uploadDocID)
 	assert.NoError(t, err)
+	actions++
 
 	docs, err = api.ListDocuments()
 	assert.NoError(t, err)
-	assert.Equal(t, len(docs), 5)
+	assert.Equal(t, len(docs), uploads-1)
 
 	downBytes, err = api.DownloadDocument(uploadDocID)
 	assert.Error(t, err)
 
 	hits, err = api.Search("security")
 	assert.NoError(t, err)
-	assert.Equal(t, len(hits), 5)
+	assert.Equal(t, len(hits), uploads-1)
 
 	file, err := os.Open(TestDoc1)
 	assert.NoError(t, err)
@@ -127,20 +122,32 @@ func testUploadDownload(t *testing.T, fileName string) {
 
 	uploadDocID, err = api.UploadDocumentStream(path.Base(fileName), file)
 	assert.NoError(t, err)
+	actions++
 
 	stream, err := api.DownloadDocumentStream(uploadDocID)
 	assert.NoError(t, err)
 	downBytes, err = ioutil.ReadAll(stream)
 	assert.NoError(t, err)
 	assert.Equal(t, txtBytes, downBytes)
+	actions++
 
-	err = api.RemoveDocument(uploadDocID)
+	docs, err = api.ListDocuments()
 	assert.NoError(t, err)
+	for _, doc := range docs {
+		err = api.RemoveDocument(doc.DocID)
+		assert.NoError(t, err)
+		actions++
+	}
+
+	return
 }
 
-func testEncryptDecrypt(t *testing.T, fileName string) {
+func testEncryptDecrypt(t *testing.T, fileName string) (actions int) {
+	actions = 0
+
 	txtBytes, err := ioutil.ReadFile(fileName)
 	assert.NoError(t, err)
+
 	encryptDocID, ciphertext, err := api.EncryptDocument(path.Base(fileName), txtBytes)
 	assert.NoError(t, err)
 
@@ -158,6 +165,7 @@ func testEncryptDecrypt(t *testing.T, fileName string) {
 
 	err = api.RemoveDocument(encryptDocID)
 	assert.NoError(t, err)
+	actions++
 
 	docs, err = api.ListDocuments()
 	assert.NoError(t, err)
@@ -184,8 +192,15 @@ func testEncryptDecrypt(t *testing.T, fileName string) {
 	assert.NoError(t, err)
 	assert.Equal(t, txtBytes, plaintext)
 
-	err = api.RemoveDocument(encryptDocID)
+	docs, err = api.ListDocuments()
 	assert.NoError(t, err)
+	for _, doc := range docs {
+		err = api.RemoveDocument(doc.DocID)
+		assert.NoError(t, err)
+		actions++
+	}
+
+	return
 }
 
 func testBilling(t *testing.T) {
@@ -221,12 +236,13 @@ func testBilling(t *testing.T) {
 	fmt.Println("Large Traffic:", traffic)
 }
 
-func testDocActionHistory(t *testing.T) {
+func testDocActionHistory(t *testing.T, actions int) {
+	time.Sleep(time.Second * 1)
 	docActionList, totalResult, offset, err := api.ListDocActionHistory()
 	assert.NoError(t, err)
-	assert.Equal(t, 11, len(docActionList))
-	assert.Equal(t, 11, totalResult)
-	assert.Equal(t, 0, offset)
+	assert.Equal(t, actions, len(docActionList))
+	assert.Equal(t, int32(actions), totalResult)
+	assert.Equal(t, int32(0), offset)
 }
 
 func TestIntegrationSmall(t *testing.T) {
@@ -248,11 +264,14 @@ func TestIntegrationSmall(t *testing.T) {
 		assert.True(t, success)
 	}()
 
-	// testAccounts(t)
-	testUploadDownload(t, TestDoc1)
-	// testEncryptDecrypt(t, TestDoc1)
-	// testBilling(t)
-	testDocActionHistory(t)
+	var actions int = 0
+
+	testAccounts(t)
+	actions += testUploadDownload(t, TestDoc1)
+	testDocActionHistory(t, actions)
+	actions += testEncryptDecrypt(t, TestDoc1)
+	testDocActionHistory(t, actions)
+	testBilling(t)
 
 	_, err = api.Logout()
 	assert.NoError(t, err)
@@ -308,12 +327,17 @@ func TestLargeFileUploadDownload(t *testing.T) {
 		t.SkipNow()
 	}
 
-	fileSize := int64(500 * 1024 * 1024)
+	fileSize := int64(100 * 1024 * 1024)
 
 	_, err := client.InitStrongDocManager(client.LOCAL, false)
 	assert.NoError(t, err)
 
-	token, err := api.Login("paul@strongsalt.com", "1111111111", "FakeStrongSalt")
+	orgID, _, err := api.RegisterOrganization(Organization, OrganizationAddr,
+		OrganizationEmail, AdminName, AdminPassword, AdminEmail, Source, SourceData)
+	assert.NoError(t, err)
+	assert.Equal(t, orgID, Organization)
+
+	token, err := api.Login(AdminEmail, AdminPassword, Organization)
 	assert.NoError(t, err)
 	assert.NotNil(t, token)
 
