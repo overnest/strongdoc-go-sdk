@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	TestInvitationCode       = "" //hard-coded on server side for testing
+	TestInvitationCode       = "abcdef" //hard-coded on server side for testing
 	TestInvitationExpireTime = 10
 	TestSource               = "Test Active"
 	TestSourceData           = ""
@@ -109,7 +109,7 @@ func  generateUserClientKeys(user *testUser) error {
 	if err != nil {
 		return err
 	}
-	encUserPriKeyBytes, err := userPasswordKey.Encrypt(userFullKeyBytes) //todo encrypt on full key bytes
+	encUserPriKeyBytes, err := userPasswordKey.Encrypt(userFullKeyBytes)
 	if err != nil {
 		return err
 	}
@@ -344,7 +344,7 @@ func TestRevokeInvitation(t *testing.T) {
 	assert.Check(t, len(invitations)+1 == nUsers) // len(invitations) = 9
 
 	// revoke one invitation
-	succ, codeAlreadyUsed, err := api.RevokeInvitation(invitations[0].UserName)
+	succ, codeAlreadyUsed, err := api.RevokeInvitation(invitations[0].Email)
 	assert.Check(t, succ)
 	assert.Check(t, !codeAlreadyUsed)
 	assert.NilError(t, err)

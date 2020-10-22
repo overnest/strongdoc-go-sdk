@@ -271,7 +271,7 @@ type StrongDocServiceClient interface {
 	// Creates new user if it doesn't already exist. If the user already exist, and
 	// error is thrown
 	//
-	// Requires administrator privilege
+	// Does not require Login
 	RegisterUser(ctx context.Context, in *RegisterUserReq, opts ...grpc.CallOption) (*RegisterUserResp, error)
 	// Get user private keys
 	//
@@ -1048,7 +1048,7 @@ type StrongDocServiceServer interface {
 	// Creates new user if it doesn't already exist. If the user already exist, and
 	// error is thrown
 	//
-	// Requires administrator privilege
+	// Does not require Login
 	RegisterUser(context.Context, *RegisterUserReq) (*RegisterUserResp, error)
 	// Get user private keys
 	//

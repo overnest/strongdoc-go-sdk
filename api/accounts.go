@@ -87,7 +87,7 @@ func InviteUser(email string, expireTime int64) (bool, error){
 
 // Invitation is the registration invitation
 type Invitation struct {
-	UserName   string
+	Email   string
 	ExpireTime *timestamp.Timestamp
 	CreateTime *timestamp.Timestamp
 }
@@ -144,9 +144,9 @@ func RegisterWithInvitation(invitationCode string, orgID string, userName string
 		InvitationCode: invitationCode,
 		OrgID: orgID,
 		Email: userEmail,
-		KdfMeta: base64.URLEncoding.EncodeToString(kdfMetaBytes),
-		PubKey: base64.URLEncoding.EncodeToString(pubKeyBytes),
-		EncPriKey: base64.URLEncoding.EncodeToString(encPriKeyBytes),
+		KdfMetadata: base64.URLEncoding.EncodeToString(kdfMetaBytes),
+		UserPubKey: base64.URLEncoding.EncodeToString(pubKeyBytes),
+		EncUserPriKey: base64.URLEncoding.EncodeToString(encPriKeyBytes),
 		UserName: userName,
 		Password: userPassword,
 	}
