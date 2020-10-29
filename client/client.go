@@ -38,13 +38,13 @@ const (
 )
 
 var serviceLocations = map[ServiceLocation]locationConfig{
-	DEFAULT: locationConfig{"api.strongsalt.com:9090", "./certs/ssca.cert.pem"},
-	SANDBOX: locationConfig{"api.sandbox.strongsalt.com:9090", "./certs/ssca.cert.pem"},
-	QA:      locationConfig{"api.strongsaltqa.com:9090", "./certs/ssca.cert.pem"},
-	LOCAL:   locationConfig{"localhost:9090", "./certs/localhost.crt"},
+	DEFAULT: {"api.strongsalt.com:9090", "./certs/ssca.cert.pem"},
+	SANDBOX: {"api.sandbox.strongsalt.com:9090", "./certs/ssca.cert.pem"},
+	QA:      {"api.strongsaltqa.com:9090", "./certs/ssca.cert.pem"},
+	LOCAL:   {"localhost:9090", "./certs/localhost.crt"},
 }
 
-type strongDocManagerObj struct {
+type strongDocClientObj struct {
 	location   ServiceLocation
 	noAuthConn *grpc.ClientConn
 	authConn   *grpc.ClientConn
@@ -53,19 +53,19 @@ type strongDocManagerObj struct {
 
 // Singletons
 var serviceLocation ServiceLocation = unset
-var manager *strongDocManagerObj = nil
+var client StrongDocClient = nil
 
-// StrongDocManager encapsulates the client object that allows connection to the remote service
-type StrongDocManager interface {
+// StrongDocClient encapsulates the client object that allows connection to the remote service
+type StrongDocClient interface {
 	Login(userID, password, orgID string) (token string, err error)
 	GetNoAuthConn() *grpc.ClientConn
 	GetAuthConn() *grpc.ClientConn
-	GetClient() proto.StrongDocServiceClient
+	GetGrpcClient() proto.StrongDocServiceClient
 	Close()
 }
 
-// InitStrongDocManager initializes a singleton StrongDocManager
-func InitStrongDocManager(location ServiceLocation, reset bool) (StrongDocManager, error) {
+// InitStrongDocClient initializes a singleton StrongDocClient
+func InitStrongDocClient(location ServiceLocation, reset bool) (StrongDocClient, error) {
 	_, ok := serviceLocations[location]
 	if !ok || location == unset {
 		return nil, fmt.Errorf("The ServiceLocation %v is not supported", location)
@@ -73,9 +73,9 @@ func InitStrongDocManager(location ServiceLocation, reset bool) (StrongDocManage
 
 	if atomic.LoadUint32(&clientInit) == 1 {
 		if location == serviceLocation {
-			return manager, nil
+			return client, nil
 		} else if !reset {
-			return nil, fmt.Errorf("Can not initialize StrongDocManager with service location %v. "+
+			return nil, fmt.Errorf("Can not initialize StrongDocClient with service location %v. "+
 				"Singleton already initialized with %v", location, serviceLocation)
 		}
 	}
@@ -83,43 +83,54 @@ func InitStrongDocManager(location ServiceLocation, reset bool) (StrongDocManage
 	clientMutex.Lock()
 	defer clientMutex.Unlock()
 
-	if manager != nil {
-		manager.Close()
+	if client != nil {
+		client.Close()
 	}
+
+	var err error
+	client, err = CreateStrongDocClient(location)
+	if err != nil {
+		return nil, err
+	}
+
 	serviceLocation = location
+	atomic.StoreUint32(&clientInit, 1)
+	return client, nil
+}
+
+// CreateStrongDocClient creates an instance of StrongDocClient
+func CreateStrongDocClient(location ServiceLocation) (StrongDocClient, error) {
 	config := serviceLocations[location]
 	noAuthConn, err := getNoAuthConn(config.HostPort, config.Cert)
 	if err != nil {
 		return nil, err
 	}
-	manager = &strongDocManagerObj{location, noAuthConn, nil, ""}
-
-	atomic.StoreUint32(&clientInit, 1)
-	return manager, nil
+	client = &strongDocClientObj{location, noAuthConn, nil, ""}
+	return client, nil
 }
 
-// GetStrongDocManager gets a singleton StrongDocManager
-func GetStrongDocManager() (StrongDocManager, error) {
+// GetStrongDocClient gets a singleton StrongDocClient
+func GetStrongDocClient() (StrongDocClient, error) {
 	if atomic.LoadUint32(&clientInit) == 1 {
-		if manager != nil {
-			return manager, nil
+		if client != nil {
+			return client, nil
 		}
 	}
 	return nil, fmt.Errorf("Can not get StrongDocManager. Please call InitStrongDocManager to initialize")
 }
 
-// GetStrongDocClient gets a singleton StrongDocServiceClient
-func GetStrongDocClient() (proto.StrongDocServiceClient, error) {
+// GetStrongDocGrpcClient gets a singleton gRPC StrongDocServiceClient
+func GetStrongDocGrpcClient() (proto.StrongDocServiceClient, error) {
 	if atomic.LoadUint32(&clientInit) == 1 {
-		if manager != nil {
-			return manager.GetClient(), nil
+		if client != nil {
+			return client.GetGrpcClient(), nil
 		}
 	}
 	return nil, fmt.Errorf("Can not get StrongDocClient. Please call InitStrongDocManager to initialize")
 }
 
 // Login attempts a log in. If successful, it generates an authenticatecd GRPC connection
-func (c *strongDocManagerObj) Login(userID, password, orgID string) (token string, err error) {
+func (c *strongDocClientObj) Login(userID, password, orgID string) (token string, err error) {
 	token = ""
 	noAuthConn := c.GetNoAuthConn()
 	if noAuthConn == nil || err != nil {
@@ -153,17 +164,17 @@ func (c *strongDocManagerObj) Login(userID, password, orgID string) (token strin
 }
 
 // GetNoAuthConn get the unauthenticated GRPC connection. This is always available, but will not work in most API calls
-func (c *strongDocManagerObj) GetNoAuthConn() *grpc.ClientConn {
+func (c *strongDocClientObj) GetNoAuthConn() *grpc.ClientConn {
 	return c.noAuthConn
 }
 
 // GetAuthConn gets an authenticated GRPC connection. This is available after a successful login.
-func (c *strongDocManagerObj) GetAuthConn() *grpc.ClientConn {
+func (c *strongDocClientObj) GetAuthConn() *grpc.ClientConn {
 	return c.authConn
 }
 
-// GetClient returns a StrongDocServiceClient used to call GRPC functions
-func (c *strongDocManagerObj) GetClient() proto.StrongDocServiceClient {
+// GetProtoClient returns a gRPC StrongDocServiceClient used to call GRPC functions
+func (c *strongDocClientObj) GetGrpcClient() proto.StrongDocServiceClient {
 	if c.GetAuthConn() != nil {
 		return proto.NewStrongDocServiceClient(c.authConn)
 	}
@@ -171,7 +182,7 @@ func (c *strongDocManagerObj) GetClient() proto.StrongDocServiceClient {
 }
 
 // Close closes all the connections.
-func (c *strongDocManagerObj) Close() {
+func (c *strongDocClientObj) Close() {
 	if c.GetAuthConn() != nil {
 		c.GetAuthConn().Close()
 	}

@@ -11,31 +11,31 @@ func TestClient(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, sdc)
 
-	sdm, err := InitStrongDocManager(unset, false)
+	sdc, err = InitStrongDocClient(unset, false)
 	assert.Error(t, err)
-	assert.Nil(t, sdm)
+	assert.Nil(t, sdc)
 
-	sdm, err = InitStrongDocManager(DEFAULT, false)
+	sdc, err = InitStrongDocClient(DEFAULT, false)
 	assert.NoError(t, err)
-	assert.NotNil(t, sdm)
+	assert.NotNil(t, sdc)
 
-	sdm, err = InitStrongDocManager(LOCAL, false)
+	sdc, err = InitStrongDocClient(LOCAL, false)
 	assert.Error(t, err)
-	assert.Nil(t, sdm)
+	assert.Nil(t, sdc)
 
-	sdm, err = InitStrongDocManager(LOCAL, true)
+	sdc, err = InitStrongDocClient(LOCAL, true)
 	assert.NoError(t, err)
-	assert.NotNil(t, sdm)
+	assert.NotNil(t, sdc)
 
-	assert.Nil(t, sdm.GetAuthConn())
-	assert.NotNil(t, sdm.GetNoAuthConn())
+	assert.Nil(t, sdc.GetAuthConn())
+	assert.NotNil(t, sdc.GetNoAuthConn())
 
-	getSdm, err := GetStrongDocManager()
+	getSdc, err := GetStrongDocClient()
 	assert.NoError(t, err)
-	assert.Equal(t, sdm, getSdm)
+	assert.Equal(t, sdc, getSdc)
 
-	assert.NotNil(t, sdm.GetClient())
-	sdc, err = GetStrongDocClient()
+	assert.NotNil(t, sdc.GetGrpcClient())
+	sdgc, err := GetStrongDocGrpcClient()
 	assert.NoError(t, err)
-	assert.Equal(t, sdc, sdm.GetClient())
+	assert.Equal(t, sdgc, sdc.GetGrpcClient())
 }

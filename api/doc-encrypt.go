@@ -14,13 +14,8 @@ import (
 // and returns the encrypted ciphertext without storing it on
 // any storage. It accepts a the plaintext and the document name.
 // The returned docId uniquely identifies the document.
-func EncryptDocument(docName string, plaintext []byte) (docID string, ciphertext []byte, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
-	stream, err := sdc.EncryptDocumentStream(context.Background())
+func EncryptDocument(sdc client.StrongDocClient, docName string, plaintext []byte) (docID string, ciphertext []byte, err error) {
+	stream, err := sdc.GetGrpcClient().EncryptDocumentStream(context.Background())
 	if err != nil {
 		return
 	}
@@ -74,13 +69,8 @@ func EncryptDocument(docName string, plaintext []byte) (docID string, ciphertext
 // It then returns an io.Reader object that contains the ciphertext of
 // the Reqed document, and a docID that uniquely
 // identifies the document.
-func EncryptDocumentStream(docName string, plainStream io.Reader) (cipherStream io.Reader, docID string, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
-	stream, err := sdc.EncryptDocumentStream(context.Background())
+func EncryptDocumentStream(sdc client.StrongDocClient, docName string, plainStream io.Reader) (cipherStream io.Reader, docID string, err error) {
+	stream, err := sdc.GetGrpcClient().EncryptDocumentStream(context.Background())
 	if err != nil {
 		return
 	}
@@ -112,13 +102,8 @@ func EncryptDocumentStream(docName string, plainStream io.Reader) (cipherStream 
 
 // DecryptDocument decrypts a document with Strongdoc
 // and returns the plaintext. It accepts a the cipherText and its docId.
-func DecryptDocument(docID string, cipherText []byte) (plaintext []byte, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
-	stream, err := sdc.DecryptDocumentStream(context.Background())
+func DecryptDocument(sdc client.StrongDocClient, docID string, cipherText []byte) (plaintext []byte, err error) {
+	stream, err := sdc.GetGrpcClient().DecryptDocumentStream(context.Background())
 	if err != nil {
 		return
 	}
@@ -176,13 +161,8 @@ func DecryptDocument(docID string, cipherText []byte) (plaintext []byte, err err
 //
 // It then returns an io.Reader object that contains the plaintext of
 // the Reqed document.
-func DecryptDocumentStream(docID string, cipherStream io.Reader) (plainStream io.Reader, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
-	stream, err := sdc.DecryptDocumentStream(context.Background())
+func DecryptDocumentStream(sdc client.StrongDocClient, docID string, cipherStream io.Reader) (plainStream io.Reader, err error) {
+	stream, err := sdc.GetGrpcClient().DecryptDocumentStream(context.Background())
 	if err != nil {
 		return
 	}

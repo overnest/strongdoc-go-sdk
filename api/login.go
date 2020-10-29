@@ -10,22 +10,13 @@ import (
 // Login logs the user in, returning a Bearer Token.
 // This token must henceforth be sent with all Reqs
 // in the same session.
-func Login(userID, password, orgID string) (token string, err error) {
-	sdm, err := client.GetStrongDocManager()
-	if err != nil {
-		return "", err
-	}
-
-	return sdm.Login(userID, password, orgID)
+func Login(sdc client.StrongDocClient, userID, password, orgID string) (token string, err error) {
+	return sdc.Login(userID, password, orgID)
 }
 
 // Logout retires the Bearer token in use, ending the session.
-func Logout() (status string, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-	res, err := sdc.Logout(context.Background(), &proto.LogoutReq{})
+func Logout(sdc client.StrongDocClient) (status string, err error) {
+	res, err := sdc.GetGrpcClient().Logout(context.Background(), &proto.LogoutReq{})
 	if err != nil {
 		return
 	}
