@@ -9,6 +9,8 @@ API Documentation: [https://godoc.org/github.com/overnest/strongdoc-go-sdk/api](
 
 Website: [strongsalt.com](https://www.strongsalt.com "Strongsalt website")
 
+GoDoc: [https://godoc.org/github.com/overnest/strongdoc-go-sdk](https://godoc.org/github.com/overnest/strongdoc-go-sdk)
+
 ## Installation
 
 The API is available as a Go Module. You must first do:
