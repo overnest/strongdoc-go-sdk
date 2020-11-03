@@ -71,6 +71,17 @@ func testAccounts(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, account)
 
+       fmt.Println("Account Info: ", account.OrgID, account.OrgAddress,
+               account.Subscription.Status, account.Subscription.Type,
+               account.MultiLevelShare)
+       for _, org := range account.SharableOrgs {
+               fmt.Println("    Sharable Org: ", org)
+       }
+       for _, pay := range account.Payments {
+               fmt.Println("    Account Payments: ", pay.Status, pay.Amount,
+                       pay.BilledAt, pay.PeriodEnd, pay.PeriodStart)
+       }
+
 	user, err := api.GetUserInfo(sdc)
 	assert.NoError(t, err)
 	assert.NotNil(t, user)
