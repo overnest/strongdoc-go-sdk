@@ -18,13 +18,8 @@ type DocumentResult struct {
 
 // Search searches for the queries in the uploaded and encrypted documents.
 // The list of document IDs and scores are included in the result.
-func Search(query string) ([]*DocumentResult, error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return nil, err
-	}
-
-	result, err := sdc.Search(context.Background(),
+func Search(sdc client.StrongDocClient, query string) ([]*DocumentResult, error) {
+	result, err := sdc.GetGrpcClient().Search(context.Background(),
 		&proto.SearchReq{Query: query})
 	if err != nil {
 		return nil, err

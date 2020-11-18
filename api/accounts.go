@@ -17,7 +17,8 @@ import (
 
 // RegisterOrganization creates an organization. The user who
 // created the organization is automatically an administrator.
-func RegisterOrganization(orgName, orgAddr, orgEmail, adminName, adminPassword, adminEmail, source, sourceData string,
+func RegisterOrganization(sdc client.StrongDocClient,
+	orgName, orgAddr, orgEmail, adminName, adminPassword, adminEmail, source, sourceData string,
 	kdfMeta []byte, userPubKey []byte, encUserPriKey []byte, orgPubKey []byte, encOrgPriKey []byte) (orgID, adminID string, err error) {
 
 	srpSession, err := srp.NewFromVersion(1)
@@ -27,11 +28,7 @@ func RegisterOrganization(orgName, orgAddr, orgEmail, adminName, adminPassword, 
 	srpVerifier, err := srpSession.Verifier([]byte(""), []byte(adminPassword))
 	_, verifierString := srpVerifier.Encode()
 
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-	resp, err := sdc.RegisterOrganization(context.Background(), &proto.RegisterOrganizationReq{
+	resp, err := sdc.GetGrpcClient().RegisterOrganization(context.Background(), &proto.RegisterOrganizationReq{
 		OrgName:         orgName,
 		OrgAddr:         orgAddr,
 		OrgEmail:        orgEmail,
@@ -64,13 +61,8 @@ func RegisterOrganization(orgName, orgAddr, orgEmail, adminName, adminPassword, 
 // users, documents, and other data that it owns.
 //
 // Requires administrator privileges.
-func RemoveOrganization(force bool) (success bool, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
-	resp, err := sdc.RemoveOrganization(context.Background(), &proto.RemoveOrganizationReq{
+func RemoveOrganization(sdc client.StrongDocClient, force bool) (success bool, err error) {
+	resp, err := sdc.GetGrpcClient().RemoveOrganization(context.Background(), &proto.RemoveOrganizationReq{
 		Force: force,
 	})
 	if err != nil {
@@ -83,11 +75,7 @@ func RemoveOrganization(force bool) (success bool, err error) {
 // InviteUser sends invitation email to potential user
 //
 // Requires administrator privileges.
-func InviteUser(email string, expireTime int64) (bool, error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return false, err
-	}
+func InviteUser(sdc client.StrongDocClient, email string, expireTime int64) (bool, error) {
 	req := &proto.InviteUserReq{
 		Email:      email,
 		ExpireTime: expireTime,
@@ -109,11 +97,7 @@ type Invitation struct {
 // ListInvitations lists active non-expired invitations
 //
 // Requires administrator privileges.
-func ListInvitations() ([]Invitation, error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return nil, err
-	}
+func ListInvitations(sdc client.StrongDocClient) ([]Invitation, error) {
 	req := &proto.ListInvitationsReq{}
 	res, err := sdc.ListInvitations(context.Background(), req)
 	if err != nil {
@@ -129,11 +113,7 @@ func ListInvitations() ([]Invitation, error) {
 // RevokeInvitation revoke invitation
 //
 // Requires administrator privileges.
-func RevokeInvitation(email string) (bool, bool, error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return false, false, err
-	}
+func RevokeInvitation(sdc client.StrongDocClient, email string) (bool, bool, error) {
 	req := &proto.RevokeInvitationReq{
 		Email: email,
 	}
@@ -148,7 +128,8 @@ func RevokeInvitation(email string) (bool, bool, error) {
 // a user with an existing username throws an error.
 //
 // Does not require Login
-func RegisterWithInvitation(invitationCode string, orgID string, userName string, userPassword string, userEmail string,
+func RegisterWithInvitation(sdc client.StrongDocClient,
+	invitationCode string, orgID string, userName string, userPassword string, userEmail string,
 	kdfMetaBytes []byte, pubKeyBytes []byte, encPriKeyBytes []byte) (string, string, bool, error) {
 
 	srpSession, err := srp.NewFromVersion(1)
@@ -158,10 +139,6 @@ func RegisterWithInvitation(invitationCode string, orgID string, userName string
 	srpVerifier, err := srpSession.Verifier([]byte(""), []byte(userPassword))
 	_, verifierString := srpVerifier.Encode()
 
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return "", "", false, err
-	}
 	req := &proto.RegisterUserReq{
 		InvitationCode: invitationCode,
 		OrgID:          orgID,
@@ -177,7 +154,7 @@ func RegisterWithInvitation(invitationCode string, orgID string, userName string
 			SrpVerifier:  verifierString,
 		},
 	}
-	res, err := sdc.RegisterUser(context.Background(), req)
+	res, err := sdc.GetGrpcClient().RegisterUser(context.Background(), req)
 	if err != nil {
 		return "", "", false, err
 	}
@@ -192,13 +169,9 @@ type User struct {
 }
 
 // ListUsers lists the users of the organization
-func ListUsers() (users []User, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
+func ListUsers(sdc client.StrongDocClient) (users []User, err error) {
 	req := &proto.ListUsersReq{}
-	res, err := sdc.ListUsers(context.Background(), req)
+	res, err := sdc.GetGrpcClient().ListUsers(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -216,16 +189,11 @@ func ListUsers() (users []User, err error) {
 // their former organization.
 //
 // Requires administrator privileges.
-func RemoveUser(user string) (count int64, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
+func RemoveUser(sdc client.StrongDocClient, user string) (count int64, err error) {
 	req := &proto.RemoveUserReq{
 		UserID: user,
 	}
-	res, err := sdc.RemoveUser(context.Background(), req)
+	res, err := sdc.GetGrpcClient().RemoveUser(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -237,16 +205,11 @@ func RemoveUser(user string) (count int64, err error) {
 // privilege level.
 //
 // Requires administrator privileges.
-func PromoteUser(userID string) (success bool, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
+func PromoteUser(sdc client.StrongDocClient, userID string) (success bool, err error) {
 	req := &proto.PromoteUserReq{
 		UserID: userID,
 	}
-	res, err := sdc.PromoteUser(context.Background(), req)
+	res, err := sdc.GetGrpcClient().PromoteUser(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -258,16 +221,11 @@ func PromoteUser(userID string) (success bool, err error) {
 // privilege level.
 //
 // Requires administrator privileges.
-func DemoteUser(userID string) (success bool, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
+func DemoteUser(sdc client.StrongDocClient, userID string) (success bool, err error) {
 	req := &proto.DemoteUserReq{
 		UserID: userID,
 	}
-	res, err := sdc.DemoteUser(context.Background(), req)
+	res, err := sdc.GetGrpcClient().DemoteUser(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -276,16 +234,11 @@ func DemoteUser(userID string) (success bool, err error) {
 }
 
 // AddSharableOrg adds a sharable Organization.
-func AddSharableOrg(orgID string) (success bool, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
+func AddSharableOrg(sdc client.StrongDocClient, orgID string) (success bool, err error) {
 	req := &proto.AddSharableOrgReq{
 		NewOrgID: orgID,
 	}
-	res, err := sdc.AddSharableOrg(context.Background(), req)
+	res, err := sdc.GetGrpcClient().AddSharableOrg(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -295,16 +248,11 @@ func AddSharableOrg(orgID string) (success bool, err error) {
 }
 
 // RemoveSharableOrg removes a sharable Organization.
-func RemoveSharableOrg(orgID string) (success bool, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
+func RemoveSharableOrg(sdc client.StrongDocClient, orgID string) (success bool, err error) {
 	req := &proto.RemoveSharableOrgReq{
 		RemoveOrgID: orgID,
 	}
-	res, err := sdc.RemoveSharableOrg(context.Background(), req)
+	res, err := sdc.GetGrpcClient().RemoveSharableOrg(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -314,16 +262,11 @@ func RemoveSharableOrg(orgID string) (success bool, err error) {
 }
 
 // SetMultiLevelSharing sets MultiLevel Sharing.
-func SetMultiLevelSharing(enable bool) (success bool, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
+func SetMultiLevelSharing(sdc client.StrongDocClient, enable bool) (success bool, err error) {
 	req := &proto.SetMultiLevelSharingReq{
 		Enable: enable,
 	}
-	res, err := sdc.SetMultiLevelSharing(context.Background(), req)
+	res, err := sdc.GetGrpcClient().SetMultiLevelSharing(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -371,14 +314,9 @@ type Payment struct {
 }
 
 //GetAccountInfo obtain information about the account
-func GetAccountInfo() (*AccountInfo, error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return nil, err
-	}
-
+func GetAccountInfo(sdc client.StrongDocClient) (*AccountInfo, error) {
 	req := &proto.GetAccountInfoReq{}
-	resp, err := sdc.GetAccountInfo(context.Background(), req)
+	resp, err := sdc.GetGrpcClient().GetAccountInfo(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}
@@ -406,14 +344,9 @@ type UserInfo struct {
 }
 
 //GetUserInfo obtain information about logged user
-func GetUserInfo() (*UserInfo, error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return nil, err
-	}
-
+func GetUserInfo(sdc client.StrongDocClient) (*UserInfo, error) {
 	req := &proto.GetUserInfoReq{}
-	resp, err := sdc.GetUserInfo(context.Background(), req)
+	resp, err := sdc.GetGrpcClient().GetUserInfo(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}

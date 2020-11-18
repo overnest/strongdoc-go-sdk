@@ -59,13 +59,9 @@ type TrafficCosts struct {
 }
 
 //GetBillingDetails list all items of the cost breakdown and also other details such as the billing frequency
-func GetBillingDetails() (bill *BillingDetails, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
+func GetBillingDetails(sdc client.StrongDocClient) (bill *BillingDetails, err error) {
 	req := &proto.GetBillingDetailsReq{}
-	res, err := sdc.GetBillingDetails(context.Background(), req)
+	res, err := sdc.GetGrpcClient().GetBillingDetails(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -89,14 +85,9 @@ type BillingFrequency struct {
 }
 
 //GetBillingFrequencyList obtains the list of billing frequencies (past, current and future)
-func GetBillingFrequencyList() ([]*BillingFrequency, error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return nil, err
-	}
-
+func GetBillingFrequencyList(sdc client.StrongDocClient) ([]*BillingFrequency, error) {
 	req := &proto.GetBillingFrequencyListReq{}
-	resp, err := sdc.GetBillingFrequencyList(context.Background(), req)
+	resp, err := sdc.GetGrpcClient().GetBillingFrequencyList(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}
@@ -110,19 +101,14 @@ func GetBillingFrequencyList() ([]*BillingFrequency, error) {
 }
 
 //SetNextBillingFrequency changes the next billing frequency
-func SetNextBillingFrequency(freq proto.TimeInterval, validFrom time.Time) (*BillingFrequency, error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return nil, err
-	}
-
+func SetNextBillingFrequency(sdc client.StrongDocClient, freq proto.TimeInterval, validFrom time.Time) (*BillingFrequency, error) {
 	from, err := ptypes.TimestampProto(validFrom)
 	if err != nil {
 		return nil, err
 	}
 
 	req := &proto.SetNextBillingFrequencyReq{Frequency: freq, ValidFrom: from}
-	resp, err := sdc.SetNextBillingFrequency(context.Background(), req)
+	resp, err := sdc.GetGrpcClient().SetNextBillingFrequency(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}
@@ -162,19 +148,14 @@ type TrafficDetail struct {
 }
 
 //GetLargeTraffic obtains the list of large traffic usages
-func GetLargeTraffic(at time.Time) (*LargeTraffic, error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return nil, err
-	}
-
+func GetLargeTraffic(sdc client.StrongDocClient, at time.Time) (*LargeTraffic, error) {
 	atproto, err := ptypes.TimestampProto(at)
 	if err != nil {
 		return nil, err
 	}
 
 	req := &proto.GetLargeTrafficReq{At: atproto}
-	resp, err := sdc.GetLargeTraffic(context.Background(), req)
+	resp, err := sdc.GetGrpcClient().GetLargeTraffic(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}

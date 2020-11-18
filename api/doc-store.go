@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
+
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/proto"
 	"github.com/overnest/strongdoc-go-sdk/utils"
@@ -13,13 +15,8 @@ import (
 
 // UploadDocument uploads a document to Strongdoc-provided storage.
 // It then returns a docId that uniquely identifies the document.
-func UploadDocument(docName string, plaintext []byte) (docID string, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
-	stream, err := sdc.UploadDocumentStream(context.Background())
+func UploadDocument(sdc client.StrongDocClient, docName string, plaintext []byte) (docID string, err error) {
+	stream, err := sdc.GetGrpcClient().UploadDocumentStream(context.Background())
 	if err != nil {
 		err = fmt.Errorf("UploadDocument err: [%v]", err)
 		return
@@ -74,13 +71,8 @@ func UploadDocument(docName string, plaintext []byte) (docID string, err error) 
 // It accepts an io.Reader (which should contain the plaintext) and the document name.
 //
 // It then returns a docID that uniquely identifies the document.
-func UploadDocumentStream(docName string, plainStream io.Reader) (docID string, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
-	stream, err := sdc.UploadDocumentStream(context.Background())
+func UploadDocumentStream(sdc client.StrongDocClient, docName string, plainStream io.Reader) (docID string, err error) {
+	stream, err := sdc.GetGrpcClient().UploadDocumentStream(context.Background())
 	if err != nil {
 		return
 	}
@@ -129,14 +121,9 @@ func UploadDocumentStream(docName string, plainStream io.Reader) (docID string, 
 
 // DownloadDocument downloads a document stored in Strongdoc-provided
 // storage. You must provide it with its docID.
-func DownloadDocument(docID string) (plaintext []byte, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
+func DownloadDocument(sdc client.StrongDocClient, docID string) (plaintext []byte, err error) {
 	req := &proto.DownloadDocStreamReq{DocID: docID}
-	stream, err := sdc.DownloadDocumentStream(context.Background(), req)
+	stream, err := sdc.GetGrpcClient().DownloadDocumentStream(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -165,14 +152,9 @@ func DownloadDocument(docID string) (plaintext []byte, err error) {
 //
 // It then returns an io.Reader object that contains the plaintext of
 // the Reqed document.
-func DownloadDocumentStream(docID string) (plainStream io.Reader, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
+func DownloadDocumentStream(sdc client.StrongDocClient, docID string) (plainStream io.Reader, err error) {
 	req := &proto.DownloadDocStreamReq{DocID: docID}
-	stream, err := sdc.DownloadDocumentStream(context.Background(), req)
+	stream, err := sdc.GetGrpcClient().DownloadDocumentStream(context.Background(), req)
 	if err != nil {
 		return
 	}
@@ -234,31 +216,21 @@ func (stream *downloadStream) Read(p []byte) (n int, err error) {
 // a document that belongs to you. If you are an administrator,
 // you can remove all the documents of the organization
 // for which you are an administrator.
-func RemoveDocument(docID string) error {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return err
-	}
-
+func RemoveDocument(sdc client.StrongDocClient, docID string) error {
 	req := &proto.RemoveDocumentReq{DocID: docID}
-	_, err = sdc.RemoveDocument(context.Background(), req)
+	_, err := sdc.GetGrpcClient().RemoveDocument(context.Background(), req)
 	return err
 }
 
 // ShareDocument shares the document with other users.
 // Note that the user that you are sharing with be be in an organization
 // that has been declared available for sharing with the Add Sharable Organizations function.
-func ShareDocument(docID, userID string) (success bool, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return false, err
-	}
-
+func ShareDocument(sdc client.StrongDocClient, docID, userID string) (success bool, err error) {
 	req := &proto.ShareDocumentReq{
 		DocID:  docID,
 		UserID: userID,
 	}
-	res, err := sdc.ShareDocument(context.Background(), req)
+	res, err := sdc.GetGrpcClient().ShareDocument(context.Background(), req)
 	if err != nil {
 		fmt.Printf("Failed to share: %v", err)
 		return
@@ -269,17 +241,12 @@ func ShareDocument(docID, userID string) (success bool, err error) {
 
 // UnshareDocument rescinds permission granted earlier, removing other users'
 // access to those documents.
-func UnshareDocument(docID, userID string) (count int64, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return 0, err
-	}
-
+func UnshareDocument(sdc client.StrongDocClient, docID, userID string) (count int64, err error) {
 	req := &proto.UnshareDocumentReq{
 		DocID:  docID,
 		UserID: userID,
 	}
-	res, err := sdc.UnshareDocument(context.Background(), req)
+	res, err := sdc.GetGrpcClient().UnshareDocument(context.Background(), req)
 
 	count = res.Count
 	return
@@ -297,14 +264,9 @@ type Document struct {
 
 // ListDocuments returns a slice of Document objects, representing
 // the documents accessible by the user.
-func ListDocuments() (docs []Document, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return nil, err
-	}
-
+func ListDocuments(sdc client.StrongDocClient) (docs []Document, err error) {
 	req := &proto.ListDocumentsReq{}
-	res, err := sdc.ListDocuments(context.Background(), req)
+	res, err := sdc.GetGrpcClient().ListDocuments(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}
@@ -315,4 +277,41 @@ func ListDocuments() (docs []Document, err error) {
 	}
 
 	return *documents.(*[]Document), nil
+}
+
+// DocActionHistory contains the document information
+type DocActionHistory struct {
+	// The document ID.
+	DocID string
+
+	UserID string
+	// The document name.
+	DocName string
+
+	ActionTime timestamp.Timestamp
+
+	ActionType string
+
+	OtherUserID string
+}
+
+// ListDocActionHistory returns a slice of Document objects, representing
+// the documents accessible by the user.
+func ListDocActionHistory(sdc client.StrongDocClient) ([]DocActionHistory, int32, int32, error) {
+	req := &proto.ListDocActionHistoryReq{}
+	res, err := sdc.GetGrpcClient().ListDocActionHistory(context.Background(), req)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	docActionHistoryListReq := res.GetDocActionHistoryList()
+	temp, err := utils.ConvertStruct(docActionHistoryListReq, []DocActionHistory{})
+	resultTotalCount := res.GetResultTotalCount()
+	offset := res.GetOffset()
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	// return *docActionHistoryList.(*[]DocActionHistory), nil
+	return *temp.(*[]DocActionHistory), resultTotalCount, offset, nil
 }
