@@ -3,12 +3,14 @@ package api
 import (
 	"context"
 	"encoding/base64"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"time"
+
+	"github.com/golang/protobuf/ptypes/timestamp"
 
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/proto"
 	"github.com/overnest/strongdoc-go-sdk/utils"
+	"github.com/overnest/strongsalt-crypto-go/pake/srp"
 )
 
 // todo RegisterOrganization removed from sdk
@@ -17,6 +19,13 @@ import (
 // created the organization is automatically an administrator.
 func RegisterOrganization(orgName, orgAddr, orgEmail, adminName, adminPassword, adminEmail, source, sourceData string,
 	kdfMeta []byte, userPubKey []byte, encUserPriKey []byte, orgPubKey []byte, encOrgPriKey []byte) (orgID, adminID string, err error) {
+
+	srpSession, err := srp.NewFromVersion(1)
+	if err != nil {
+		return
+	}
+	srpVerifier, err := srpSession.Verifier([]byte(""), []byte(adminPassword))
+	_, verifierString := srpVerifier.Encode()
 
 	sdc, err := client.GetStrongDocClient()
 	if err != nil {
@@ -33,11 +42,16 @@ func RegisterOrganization(orgName, orgAddr, orgEmail, adminName, adminPassword, 
 		MultiLevelShare: false,
 		Source:          source,
 		SourceData:      sourceData,
-		KdfMetadata: 	 base64.URLEncoding.EncodeToString(kdfMeta), //todo base64
+		KdfMetadata:     base64.URLEncoding.EncodeToString(kdfMeta), //todo base64
 		UserPubKey:      base64.URLEncoding.EncodeToString(userPubKey),
 		EncUserPriKey:   base64.URLEncoding.EncodeToString(encUserPriKey),
 		OrgPubKey:       base64.URLEncoding.EncodeToString(orgPubKey),
 		EncOrgPriKey:    base64.URLEncoding.EncodeToString(encOrgPriKey),
+		AdminLoginData: &proto.RegisterLoginData{
+			LoginType:    proto.LoginType_SRP,
+			LoginVersion: 1,
+			SrpVerifier:  verifierString,
+		},
 	})
 	if err != nil {
 		return
@@ -69,13 +83,13 @@ func RemoveOrganization(force bool) (success bool, err error) {
 // InviteUser sends invitation email to potential user
 //
 // Requires administrator privileges.
-func InviteUser(email string, expireTime int64) (bool, error){
+func InviteUser(email string, expireTime int64) (bool, error) {
 	sdc, err := client.GetStrongDocClient()
 	if err != nil {
 		return false, err
 	}
 	req := &proto.InviteUserReq{
-		Email: email,
+		Email:      email,
 		ExpireTime: expireTime,
 	}
 	res, err := sdc.InviteUser(context.Background(), req)
@@ -87,7 +101,7 @@ func InviteUser(email string, expireTime int64) (bool, error){
 
 // Invitation is the registration invitation
 type Invitation struct {
-	Email   string
+	Email      string
 	ExpireTime *timestamp.Timestamp
 	CreateTime *timestamp.Timestamp
 }
@@ -95,7 +109,7 @@ type Invitation struct {
 // ListInvitations lists active non-expired invitations
 //
 // Requires administrator privileges.
-func ListInvitations() ([]Invitation, error){
+func ListInvitations() ([]Invitation, error) {
 	sdc, err := client.GetStrongDocClient()
 	if err != nil {
 		return nil, err
@@ -115,7 +129,7 @@ func ListInvitations() ([]Invitation, error){
 // RevokeInvitation revoke invitation
 //
 // Requires administrator privileges.
-func RevokeInvitation(email string) (bool, bool, error){
+func RevokeInvitation(email string) (bool, bool, error) {
 	sdc, err := client.GetStrongDocClient()
 	if err != nil {
 		return false, false, err
@@ -136,19 +150,32 @@ func RevokeInvitation(email string) (bool, bool, error){
 // Does not require Login
 func RegisterWithInvitation(invitationCode string, orgID string, userName string, userPassword string, userEmail string,
 	kdfMetaBytes []byte, pubKeyBytes []byte, encPriKeyBytes []byte) (string, string, bool, error) {
+
+	srpSession, err := srp.NewFromVersion(1)
+	if err != nil {
+		return "", "", false, err
+	}
+	srpVerifier, err := srpSession.Verifier([]byte(""), []byte(userPassword))
+	_, verifierString := srpVerifier.Encode()
+
 	sdc, err := client.GetStrongDocClient()
 	if err != nil {
 		return "", "", false, err
 	}
 	req := &proto.RegisterUserReq{
 		InvitationCode: invitationCode,
-		OrgID: orgID,
-		Email: userEmail,
-		KdfMetadata: base64.URLEncoding.EncodeToString(kdfMetaBytes),
-		UserPubKey: base64.URLEncoding.EncodeToString(pubKeyBytes),
-		EncUserPriKey: base64.URLEncoding.EncodeToString(encPriKeyBytes),
-		UserName: userName,
-		Password: userPassword,
+		OrgID:          orgID,
+		Email:          userEmail,
+		KdfMetadata:    base64.URLEncoding.EncodeToString(kdfMetaBytes),
+		UserPubKey:     base64.URLEncoding.EncodeToString(pubKeyBytes),
+		EncUserPriKey:  base64.URLEncoding.EncodeToString(encPriKeyBytes),
+		UserName:       userName,
+		Password:       userPassword,
+		LoginData: &proto.RegisterLoginData{
+			LoginType:    proto.LoginType_SRP,
+			LoginVersion: 1,
+			SrpVerifier:  verifierString,
+		},
 	}
 	res, err := sdc.RegisterUser(context.Background(), req)
 	if err != nil {

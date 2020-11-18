@@ -12,6 +12,7 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	ssc "github.com/overnest/strongsalt-crypto-go"
 	sscKdf "github.com/overnest/strongsalt-crypto-go/kdf"
+	"github.com/overnest/strongsalt-crypto-go/pake/srp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -137,6 +138,21 @@ func (c *strongDocManagerObj) Login(userID, password, orgID, keyPassword string)
 	}
 
 	noAuthClient := proto.NewStrongDocServiceClient(noAuthConn)
+
+	prepareRes, err := noAuthClient.PrepareLogin(context.Background(), &proto.PrepareLoginReq{
+		EmailOrUserID: userID,
+		OrgID:         orgID,
+	})
+	if err != nil {
+		err = fmt.Errorf("Login err: [%v]", err)
+		return
+	}
+
+	switch prepareRes.GetLoginType() {
+	case proto.LoginType_SRP:
+		return c.loginSRP(noAuthClient, prepareRes.GetUserID(), password, orgID, prepareRes.GetLoginVersion())
+	}
+
 	res, err := noAuthClient.Login(context.Background(), &proto.LoginReq{
 		UserID: userID, Password: password, OrgID: orgID})
 	if err != nil {
@@ -175,6 +191,84 @@ func (c *strongDocManagerObj) Login(userID, password, orgID, keyPassword string)
 		}
 		c.passwordKey = passwordKey
 		c.passwordKeyID = res.GetKeyID()
+	}
+	return
+}
+
+func (c *strongDocManagerObj) loginSRP(sdClient proto.StrongDocServiceClient, userID, password, orgID string, version int32) (token string, err error) {
+	srpSession, err := srp.NewFromVersion(version)
+	if err != nil {
+		return "", err
+	}
+
+	srpClient, err := srpSession.NewClient([]byte(userID), []byte(password))
+	if err != nil {
+		return "", err
+	}
+
+	clientCreds := srpClient.Credentials()
+
+	initRes, err := sdClient.SrpInit(context.Background(), &proto.SrpInitReq{
+		UserID:      userID,
+		OrgID:       orgID,
+		ClientCreds: clientCreds,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	clientProof, err := srpClient.Generate(initRes.GetServerCreds())
+	if err != nil {
+		return "", err
+	}
+
+	proofRes, err := sdClient.SrpProof(context.Background(), &proto.SrpProofReq{
+		UserID:      userID,
+		LoginID:     initRes.GetLoginID(),
+		ClientProof: clientProof,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	ok := srpClient.ServerOk(proofRes.GetServerProof())
+	if !ok {
+		return "", fmt.Errorf("Server failed to verify its identity.")
+	}
+
+	loginRes := proofRes.GetLoginResponse()
+
+	token = loginRes.GetToken()
+	config := serviceLocations[c.location]
+	authConn, err := getAuthConn(token, config.HostPort, config.Cert)
+	if err != nil {
+		return
+	}
+
+	// Close existing authenticated connection
+	if c.authConn != nil {
+		c.authConn.Close()
+	}
+
+	c.authConn = authConn
+	c.authToken = loginRes.GetToken()
+
+	encodedSerialKdfMeta := loginRes.GetKdfMeta()
+	if encodedSerialKdfMeta != "" {
+		serialKdfMeta, err := base64.URLEncoding.DecodeString(encodedSerialKdfMeta)
+		if err != nil {
+			return "", err
+		}
+		userKdf, err := sscKdf.DeserializeKdf(serialKdfMeta)
+		if err != nil {
+			return "", err
+		}
+		passwordKey, err := userKdf.GenerateKey([]byte(password))
+		if err != nil {
+			return "", err
+		}
+		c.passwordKey = passwordKey
+		c.passwordKeyID = loginRes.GetKeyID()
 	}
 	return
 }
