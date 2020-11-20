@@ -80,7 +80,7 @@ func InviteUser(sdc client.StrongDocClient, email string, expireTime int64) (boo
 		Email:      email,
 		ExpireTime: expireTime,
 	}
-	res, err := sdc.InviteUser(context.Background(), req)
+	res, err := sdc.GetGrpcClient().InviteUser(context.Background(), req)
 	if err != nil {
 		return false, err
 	}
@@ -99,7 +99,7 @@ type Invitation struct {
 // Requires administrator privileges.
 func ListInvitations(sdc client.StrongDocClient) ([]Invitation, error) {
 	req := &proto.ListInvitationsReq{}
-	res, err := sdc.ListInvitations(context.Background(), req)
+	res, err := sdc.GetGrpcClient().ListInvitations(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func RevokeInvitation(sdc client.StrongDocClient, email string) (bool, bool, err
 	req := &proto.RevokeInvitationReq{
 		Email: email,
 	}
-	res, err := sdc.RevokeInvitation(context.Background(), req)
+	res, err := sdc.GetGrpcClient().RevokeInvitation(context.Background(), req)
 	if err != nil {
 		return false, false, err
 	}

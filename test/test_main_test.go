@@ -1,11 +1,12 @@
 package test
 
 import (
-	"github.com/overnest/strongdoc-go-sdk/api"
-	"github.com/overnest/strongdoc-go-sdk/client"
 	"log"
 	"os"
 	"testing"
+
+	"github.com/overnest/strongdoc-go-sdk/api"
+	"github.com/overnest/strongdoc-go-sdk/client"
 )
 
 const (
@@ -13,12 +14,12 @@ const (
 )
 
 /**
-	register orgs and users
+register orgs and users
 */
-func testSetup(numOfOrgs int, numOfUsersPerOrg int) ([]*testOrg, [][]*testUser, []string, error) {
-	_, err := client.InitStrongDocManager(client.LOCAL, false)
+func testSetup(numOfOrgs int, numOfUsersPerOrg int) (client.StrongDocClient, []*testOrg, [][]*testUser, []string, error) {
+	sdc, err := client.InitStrongDocClient(client.LOCAL, false)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	orgs, orgUsers := initData(numOfOrgs, numOfUsersPerOrg)
 	var registeredOrgIds []string
@@ -28,51 +29,51 @@ func testSetup(numOfOrgs int, numOfUsersPerOrg int) ([]*testOrg, [][]*testUser, 
 		usersInOrg := orgUsers[i]
 		// register org and admin
 		adminData := usersInOrg[0]
-		if err := registerOrgAndAdmin(orgData, adminData); err != nil {
-			return nil, nil, nil, err
+		if err := registerOrgAndAdmin(sdc, orgData, adminData); err != nil {
+			return nil, nil, nil, nil, err
 		}
 		registeredOrgIds = append(registeredOrgIds, orgData.OrgID)
 		if numOfUsersPerOrg <= 1 {
 			continue
 		}
 		// login as admin of this org
-		_, err := api.Login(adminData.UserID, adminData.Password, orgData.OrgID, adminData.PasswordKeyPwd)
+		_, err := api.Login(sdc, adminData.UserID, adminData.Password, orgData.OrgID, adminData.PasswordKeyPwd)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		// register normal users
 		for j := 1; j < len(usersInOrg); j++ {
 			// invite new user
 			userData := usersInOrg[j]
-			_, err = api.InviteUser(userData.Email, TestInvitationExpireTime)
+			_, err = api.InviteUser(sdc, userData.Email, TestInvitationExpireTime)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 			if err := generateUserClientKeys(userData); err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 			// new user register with invitation
-			newUserID, newUserOrgID, _, err := api.RegisterWithInvitation(TestInvitationCode, orgData.OrgID, userData.Name,
-				userData.Password,  userData.Email, userData.serialKdf, userData.pubKey, userData.encPriKey)
+			newUserID, newUserOrgID, _, err := api.RegisterWithInvitation(sdc, TestInvitationCode, orgData.OrgID, userData.Name,
+				userData.Password, userData.Email, userData.serialKdf, userData.pubKey, userData.encPriKey)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 			userData.UserID = newUserID
 			userData.OrgID = newUserOrgID
 		}
 		// logout
-		_, err = api.Logout()
+		_, err = api.Logout(sdc)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 	}
-	return orgs, orgUsers, registeredOrgIds, err
+	return sdc, orgs, orgUsers, registeredOrgIds, err
 }
 
 // hard remove registered org
-func testTeardown(orgid []string ) error {
+func testTeardown(orgid []string) error {
 	// hard remove organization
-	if err :=  HardRemoveOrgs(orgid); err != nil {
+	if err := HardRemoveOrgs(orgid); err != nil {
 		log.Println("failed to tear down")
 		return err
 	}
@@ -84,7 +85,7 @@ func HardRemoveOrgs(orgids []string) error {
 	if err := superUserLogin(); err != nil {
 		return err
 	}
-	for _, orgid := range(orgids) {
+	for _, orgid := range orgids {
 		hardRemoveOrg(orgid)
 	}
 	return superUserLogout()
