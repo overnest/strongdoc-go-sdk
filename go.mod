@@ -9,8 +9,9 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/overnest/strongsalt-crypto-go v0.0.0-20200923230158-e5c887d19009
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/udhos/equalfile v0.3.0
 	golang.org/x/net v0.0.0-20200222125558-5a598a2470a0 // indirect
 	golang.org/x/sys v0.0.0-20200223170610-d5e6a3e2c0ae // indirect
