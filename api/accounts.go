@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"encoding/base64"
+	ssc "github.com/overnest/strongsalt-crypto-go"
+
 	"time"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -205,16 +207,41 @@ func RemoveUser(sdc client.StrongDocClient, user string) (count int64, err error
 // privilege level.
 //
 // Requires administrator privileges.
-func PromoteUser(sdc client.StrongDocClient, userID string) (success bool, err error) {
-	req := &proto.PromoteUserReq{
+func PromoteUser(sdc client.StrongDocClient, userID string) ( bool, bool, error) {
+	preparePromoteReq := &proto.PreparePromoteUserReq{
 		UserID: userID,
 	}
-	res, err := sdc.GetGrpcClient().PromoteUser(context.Background(), req)
+	preparePromoteRes, err := sdc.GetGrpcClient().PreparePromoteUser(context.Background(), preparePromoteReq)
 	if err != nil {
-		return
+		return false, true, err
 	}
-	success = res.Success
-	return
+	passwordKey := sdc.GetPasswordKey()
+	// decode
+	encOrgKey := preparePromoteRes.GetEncOrgKey()
+	encUserPriKeyBytes, err := base64.URLEncoding.DecodeString(preparePromoteRes.GetEncUserPriKey())
+	encOrgPriKeyBytes, err := base64.URLEncoding.DecodeString(encOrgKey.GetEncKey())
+	newUserPubKeyBytes, err := base64.URLEncoding.DecodeString(preparePromoteRes.GetNewUserPubKey())
+	// decrypt admin private key
+	decryptedUserKeyBytes, err :=  passwordKey.Decrypt(encUserPriKeyBytes)
+	// deserialize user public key
+	adminKey, err := ssc.DeserializeKey(decryptedUserKeyBytes)
+	// decrypte org private key
+	orgPriKeyBytes, err := adminKey.Decrypt(encOrgPriKeyBytes)
+	// deserialize user key
+	userKey, err := ssc.DeserializeKey(newUserPubKeyBytes)
+	// re-encrypt org private key
+	reEncryptedOrgKey, err := userKey.Encrypt(orgPriKeyBytes)
+
+	promoteReq := &proto.PromoteUserReq{
+		EncryptedKey: &proto.EncryptedKey{
+			EncKey: base64.URLEncoding.EncodeToString(reEncryptedOrgKey),
+			EncryptorID: encOrgKey.EncryptorID,
+			OwnerID: encOrgKey.OwnerID,
+			KeyID: encOrgKey.KeyID,
+		},
+	}
+	promoteRes, err := sdc.GetGrpcClient().PromoteUser(context.Background(), promoteReq)
+	return promoteRes.GetSuccess(), promoteRes.GetStartOver(), err
 }
 
 // DemoteUser demotes an administrator to regular user level.

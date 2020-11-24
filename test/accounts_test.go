@@ -189,23 +189,23 @@ func TestLogin(t *testing.T) {
 	defer HardRemoveOrgs([]string{orgData.OrgID})
 
 	// login with wrong password
-	token, err := api.Login(sdc, userData.UserID, "wrongPassword", orgData.OrgID, userData.PasswordKeyPwd)
+	token, err := api.Login(sdc, userData.UserID, "wrongPassword", orgData.OrgID)
 	//assert.ErrorContains(t, err, "Password does not match")
 	assert.Assert(t, err != nil)
 
 	// login with wrong userID
-	token, err = api.Login(sdc, "wrongUserID", userData.Password, orgData.OrgID, userData.PasswordKeyPwd)
+	token, err = api.Login(sdc, "wrongUserID", userData.Password, orgData.OrgID)
 	//assert.ErrorContains(t, err, "Not a valid form")
 	assert.Assert(t, err != nil)
 
 	// login succeed
-	token, err = api.Login(sdc, userData.UserID, userData.Password, orgData.OrgID, userData.PasswordKeyPwd)
+	token, err = api.Login(sdc, userData.UserID, userData.Password, orgData.OrgID)
 	assert.NilError(t, err)
 	assert.Check(t, token != "", "empty token")
 	_, err = api.Logout(sdc)
 	assert.NilError(t, err)
 
-	token, err = api.Login(sdc, userData.UserID, userData.Password, orgData.OrgID, userData.PasswordKeyPwd)
+	token, err = api.Login(sdc, userData.UserID, userData.Password, orgData.OrgID)
 	assert.NilError(t, err)
 	assert.Check(t, token != "", "empty token")
 	_, err = api.Logout(sdc)
@@ -223,11 +223,11 @@ func TestBusyLogin(t *testing.T) {
 	assert.NilError(t, err)
 	defer HardRemoveOrgs([]string{orgData.OrgID})
 
-	_, err = api.Login(sdc, userData.UserID, userData.Password, orgData.OrgID, userData.PasswordKeyPwd)
+	_, err = api.Login(sdc, userData.UserID, userData.Password, orgData.OrgID)
 	assert.NilError(t, err)
 	_, err = api.Logout(sdc)
 	assert.NilError(t, err)
-	_, err = api.Login(sdc, userData.UserID, userData.Password, orgData.OrgID, userData.PasswordKeyPwd)
+	_, err = api.Login(sdc, userData.UserID, userData.Password, orgData.OrgID)
 	assert.NilError(t, err)
 	_, err = api.Logout(sdc)
 	assert.NilError(t, err)
@@ -253,7 +253,7 @@ func TestInviteUser(t *testing.T) {
 	defer HardRemoveOrgs([]string{orgData.OrgID})
 
 	// admin login
-	token, err := api.Login(sdc, userData.UserID, userData.Password, orgData.OrgID, userData.PasswordKeyPwd)
+	token, err := api.Login(sdc, userData.UserID, userData.Password, orgData.OrgID)
 	assert.NilError(t, err)
 	assert.Check(t, token != "", "empty token")
 
@@ -297,7 +297,7 @@ func TestListInvitations(t *testing.T) {
 	defer HardRemoveOrgs([]string{orgData.OrgID})
 
 	// admin login
-	token, err := api.Login(sdc, adminData.UserID, adminData.Password, orgData.OrgID, adminData.PasswordKeyPwd)
+	token, err := api.Login(sdc, adminData.UserID, adminData.Password, orgData.OrgID)
 	assert.NilError(t, err)
 	assert.Check(t, token != "", "empty token")
 
@@ -334,7 +334,7 @@ func TestRevokeInvitation(t *testing.T) {
 	defer HardRemoveOrgs([]string{orgData.OrgID})
 
 	// admin login
-	token, err := api.Login(sdc, adminData.UserID, adminData.Password, orgData.OrgID, adminData.PasswordKeyPwd)
+	token, err := api.Login(sdc, adminData.UserID, adminData.Password, orgData.OrgID)
 	assert.NilError(t, err)
 	assert.Check(t, token != "", "empty token")
 
@@ -398,7 +398,7 @@ func TestRegisterWithInvitation(t *testing.T) {
 	defer HardRemoveOrgs([]string{org.OrgID})
 
 	// adminUser invite user
-	token, err := api.Login(sdc, admin.UserID, admin.Password, admin.OrgID, admin.PasswordKeyPwd)
+	token, err := api.Login(sdc, admin.UserID, admin.Password, admin.OrgID)
 	assert.NilError(t, err)
 	assert.Check(t, token != "")
 	succ, err := api.InviteUser(sdc, newUser.Email, TestInvitationExpireTime)
@@ -426,4 +426,30 @@ func TestRegisterWithInvitation(t *testing.T) {
 	_, _, succ, err = api.RegisterWithInvitation(sdc, TestInvitationCode, admin.OrgID, newUser.Name, newUser.Password, newUser.Email, newUser.serialKdf, newUser.pubKey, newUser.encPriKey)
 	assert.ErrorContains(t, err, "already belongs to an org")
 
+}
+
+func TestPromoteDemote(t *testing.T) {
+	// set up and tear down
+	sdc, registeredOrgs, registeredOrgUsers, orgids, err := testSetup(1, 2) // 1: number of orgs, 2: number of users per org
+	assert.NilError(t, err)
+	defer testTeardown(orgids)
+
+	t.Run("promoteUser test", func(t *testing.T) {
+		// admin login
+		org := registeredOrgs[0]
+		admin := registeredOrgUsers[0][0]
+		_, err = api.Login(sdc, admin.UserID, admin.Password, org.OrgID)
+		user := registeredOrgUsers[0][1]
+		// promote
+		succ, startOver, err := api.PromoteUser(sdc, user.UserID)
+		assert.Equal(t, succ, true)
+		assert.Equal(t, startOver, false)
+		assert.NilError(t, err)
+		// demote
+		succ, err = api.DemoteUser(sdc, user.UserID)
+		assert.Equal(t, succ, true)
+		assert.NilError(t, err)
+		// logout
+		api.Logout(sdc)
+	})
 }
