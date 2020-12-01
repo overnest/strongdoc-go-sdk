@@ -7,7 +7,7 @@ import (
 )
 
 type configData struct {
-	Superuser    superuser   `json:"superuser"`
+	Superuser superuser `json:"superuser"`
 }
 type superuser struct {
 	Name   string `json:"name"`
@@ -22,7 +22,7 @@ func setEnv(key string, value string) error {
 
 // load config file
 func loadConfig(configFileName string) error {
-	jsonFile, err := os.Open(configFileName+".json")
+	jsonFile, err := os.Open(configFileName + ".json")
 	if err != nil {
 		return err
 	}
