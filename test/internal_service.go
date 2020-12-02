@@ -9,21 +9,21 @@ import (
 )
 
 /**
-	implementations for InternalService
- */
+implementations for InternalService
+*/
 
 const (
-	LOGIN_API = "http://localhost:8081/v1/account/login"
-	LOGOUT_API = "http://localhost:8081/v1/account/logout"
-	REMOVE_ORG_API = "http://localhost:8081/v1/organization"
-	USER_ID = "userid"
-	PASSWORD = "passwd"
-	AUTHENTICATION = "authorization"
-	AUTHENTICATION_BEARER = "bearer"
-	SUPER_USER_ID = "SUPER_USER_ID"
-	SUPER_USER_PASSWORD = "SUPER_USER_PASSWORD"
-	MaxIdleConnections int = 20
-	RequestTimeout     int = 5
+	LOGIN_API                 = "http://localhost:8081/v1/account/login"
+	LOGOUT_API                = "http://localhost:8081/v1/account/logout"
+	REMOVE_ORG_API            = "http://localhost:8081/v1/organization"
+	USER_ID                   = "userid"
+	PASSWORD                  = "passwd"
+	AUTHENTICATION            = "authorization"
+	AUTHENTICATION_BEARER     = "bearer"
+	SUPER_USER_ID             = "SUPER_USER_ID"
+	SUPER_USER_PASSWORD       = "SUPER_USER_PASSWORD"
+	MaxIdleConnections    int = 20
+	RequestTimeout        int = 5
 )
 
 type TokenData struct {
@@ -39,7 +39,6 @@ func getClient() *http.Client {
 	}
 	return internalServiceClient
 }
-
 
 func initializeService() *http.Client {
 	client := &http.Client{

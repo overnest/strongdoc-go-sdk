@@ -35,7 +35,7 @@ func TestStreamErr(t *testing.T) {
 	t.Run("test stream error handling", func(t *testing.T) {
 		admin := registeredOrgUsers[0][0]
 		// admin login
-		_, err := api.Login(sdc, admin.UserID, admin.Password, admin.OrgID, admin.PasswordKeyPwd)
+		_, err := api.Login(sdc, admin.UserID, admin.Password, admin.OrgID)
 		assert.NilError(t, err)
 		defer api.Logout(sdc)
 		testStreamWithWrongDocId(t, sdc)

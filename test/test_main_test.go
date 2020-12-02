@@ -37,7 +37,7 @@ func testSetup(numOfOrgs int, numOfUsersPerOrg int) (client.StrongDocClient, []*
 			continue
 		}
 		// login as admin of this org
-		_, err := api.Login(sdc, adminData.UserID, adminData.Password, orgData.OrgID, adminData.PasswordKeyPwd)
+		_, err := api.Login(sdc, adminData.UserID, adminData.Password, orgData.OrgID)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -49,12 +49,8 @@ func testSetup(numOfOrgs int, numOfUsersPerOrg int) (client.StrongDocClient, []*
 			if err != nil {
 				return nil, nil, nil, nil, err
 			}
-			if err := generateUserClientKeys(userData); err != nil {
-				return nil, nil, nil, nil, err
-			}
 			// new user register with invitation
-			newUserID, newUserOrgID, _, err := api.RegisterWithInvitation(sdc, TestInvitationCode, orgData.OrgID, userData.Name,
-				userData.Password, userData.Email, userData.serialKdf, userData.pubKey, userData.encPriKey)
+			newUserID, newUserOrgID, _, err := api.RegisterUser(sdc, TestInvitationCode, orgData.OrgID, userData.Name, userData.Password, userData.Email)
 			if err != nil {
 				return nil, nil, nil, nil, err
 			}

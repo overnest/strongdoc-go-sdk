@@ -63,7 +63,7 @@ var client StrongDocClient = nil
 
 // StrongDocClient encapsulates the client object that allows connection to the remote service
 type StrongDocClient interface {
-	Login(userID, password, orgID, keyPassword string) (token string, err error)
+	Login(userID, password, orgID string) (token string, err error)
 	GetNoAuthConn() *grpc.ClientConn
 	GetAuthConn() *grpc.ClientConn
 	GetGrpcClient() proto.StrongDocServiceClient
@@ -138,7 +138,7 @@ func GetStrongDocGrpcClient() (proto.StrongDocServiceClient, error) {
 }
 
 // Login attempts a log in. If successful, it generates an authenticatecd GRPC connection
-func (c *strongDocClientObj) Login(userID, password, orgID, keyPassword string) (token string, err error) {
+func (c *strongDocClientObj) Login(userID, password, orgID string) (token string, err error) {
 	token = ""
 	noAuthConn := c.GetNoAuthConn()
 	if noAuthConn == nil || err != nil {
@@ -194,7 +194,7 @@ func (c *strongDocClientObj) Login(userID, password, orgID, keyPassword string) 
 		if err != nil {
 			return "", err
 		}
-		passwordKey, err := userKdf.GenerateKey([]byte(keyPassword))
+		passwordKey, err := userKdf.GenerateKey([]byte(password))
 		if err != nil {
 			return "", err
 		}
@@ -281,6 +281,7 @@ func (c *strongDocClientObj) loginSRP(userID, password, orgID string, version in
 	}
 	return
 }
+
 
 // GetNoAuthConn get the unauthenticated GRPC connection. This is always available, but will not work in most API calls
 func (c *strongDocClientObj) GetNoAuthConn() *grpc.ClientConn {
