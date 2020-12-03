@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"io/ioutil"
 
 	"github.com/overnest/strongdoc-go-sdk/api"
 	"github.com/overnest/strongdoc-go-sdk/client"
@@ -59,15 +60,19 @@ func testE2EEUpload(t *testing.T, sdc client.StrongDocClient) {
 	assert.NilError(t, err)
 	assert.Equal(t, len(docs), 1)
 
+	downReader, err := api.DownloadDocumentStream(sdc, uploadDocID)
+	assert.NilError(t, err)
+	downBytes, err := ioutil.ReadAll(downReader)
+	assert.NilError(t, err)
+	print(string(downBytes))
+	print(string([]byte("Testing Testing 123")))
+
 	err = api.RemoveDocument(sdc, uploadDocID)
 	assert.NilError(t, err)
 
 	// docs, err = api.ListDocuments()
 	// assert.NoError(t, err)
 	// assert.Equal(t, len(docs), 0)
-
-	// downBytes, err = api.DownloadDocument(uploadDocID)
-	// assert.Error(t, err)
 
 	// file, err := os.Open(TestDoc1)
 	// assert.NoError(t, err)

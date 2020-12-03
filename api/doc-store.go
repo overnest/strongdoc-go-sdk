@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 
@@ -11,7 +12,44 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/proto"
 	"github.com/overnest/strongdoc-go-sdk/utils"
+	ssc "github.com/overnest/strongsalt-crypto-go"
 )
+
+func decryptKeyChain(sdc client.StrongDocClient, encKeyChain []*proto.EncryptedKey) (keyBytes []byte, keyID string, keyVersion int32, err error) {
+	if len(encKeyChain) == 0 {
+		err = fmt.Errorf("Received no document key")
+		return
+	}
+	protoPriKey := encKeyChain[0]
+	// TODO: check password keyID
+	encKeyBytes, err := base64.URLEncoding.DecodeString(protoPriKey.GetEncKey())
+	if err != nil {
+		return
+	}
+	keyBytes, err = sdc.UserDecrypt(encKeyBytes)
+	if err != nil {
+		return
+	}
+	for _, protoEncKey := range encKeyChain[1:] {
+		key, err := ssc.DeserializeKey(keyBytes)
+		if err != nil {
+			return nil, "", 0, err
+		}
+		encKeyBytes, err := base64.URLEncoding.DecodeString(protoEncKey.GetEncKey())
+		if err != nil {
+			return nil, "", 0, err
+		}
+		keyBytes, err = key.Decrypt(encKeyBytes)
+		if err != nil {
+			return nil, "", 0, err
+		}
+	}
+	protoEncDocKey := encKeyChain[len(encKeyChain)-1]
+	keyID = protoEncDocKey.GetKeyID()
+	keyVersion = protoEncDocKey.GetKeyVersion()
+
+	return
+}
 
 // UploadDocument uploads a document to Strongdoc-provided storage.
 // It then returns a docId that uniquely identifies the document.
@@ -153,6 +191,24 @@ func DownloadDocument(sdc client.StrongDocClient, docID string) (plaintext []byt
 // It then returns an io.Reader object that contains the plaintext of
 // the Reqed document.
 func DownloadDocumentStream(sdc client.StrongDocClient, docID string) (plainStream io.Reader, err error) {
+	prepareReq := &proto.E2EEPrepareDownloadDocReq{DocID: docID}
+	resp, err := sdc.GetGrpcClient().E2EEPrepareDownloadDocument(context.Background(), prepareReq)
+	if err != nil {
+		return
+	}
+
+	if resp.GetDocumentAccessMetadata().GetIsClientSide() {
+		docKeyBytes, _, _, err := decryptKeyChain(sdc, resp.GetDocumentAccessMetadata().GetDocKeyChain())
+		if err != nil {
+			return nil, err
+		}
+		docKey, err := ssc.DeserializeKey(docKeyBytes)
+		if err != nil {
+			return nil, err
+		}
+		_ = docKey
+		return bytes.NewBufferString("Testing Testing 123"), nil
+	}
 	req := &proto.DownloadDocStreamReq{DocID: docID}
 	stream, err := sdc.GetGrpcClient().DownloadDocumentStream(context.Background(), req)
 	if err != nil {

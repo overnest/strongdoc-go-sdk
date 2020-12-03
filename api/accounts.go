@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/base64"
+
 	cryptoKey "github.com/overnest/strongsalt-crypto-go"
 	cryptoKdf "github.com/overnest/strongsalt-crypto-go/kdf"
 
@@ -276,14 +277,13 @@ func PromoteUser(sdc client.StrongDocClient, userIDOrEmail string) (success, res
 	if err != nil {
 		return false, true, err
 	}
-	passwordKey := sdc.GetPasswordKey()
 	// decode
 	encOrgKey := preparePromoteRes.GetEncOrgKey()
 	encUserPriKeyBytes, err := base64.URLEncoding.DecodeString(preparePromoteRes.GetEncUserPriKey())
 	encOrgPriKeyBytes, err := base64.URLEncoding.DecodeString(encOrgKey.GetEncKey())
 	newUserPubKeyBytes, err := base64.URLEncoding.DecodeString(preparePromoteRes.GetNewUserPubKey())
 	// decrypt admin private key
-	decryptedUserKeyBytes, err := passwordKey.Decrypt(encUserPriKeyBytes)
+	decryptedUserKeyBytes, err := sdc.UserDecrypt(encUserPriKeyBytes)
 	// deserialize user public key
 	adminKey, err := cryptoKey.DeserializeKey(decryptedUserKeyBytes)
 	// decrypte org private key

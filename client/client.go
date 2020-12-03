@@ -68,8 +68,9 @@ type StrongDocClient interface {
 	GetAuthConn() *grpc.ClientConn
 	GetGrpcClient() proto.StrongDocServiceClient
 	Close()
-	GetPasswordKey() *ssc.StrongSaltKey // TODO: This should eventually be hidden from user
-	GetPasswordKeyID() string           // This should eventually be hidden from user
+	UserEncrypt([]byte) ([]byte, error)
+	UserDecrypt([]byte) ([]byte, error)
+	GetUserKeyID() string
 }
 
 // InitStrongDocClient initializes a singleton StrongDocClient
@@ -282,7 +283,6 @@ func (c *strongDocClientObj) loginSRP(userID, password, orgID string, version in
 	return
 }
 
-
 // GetNoAuthConn get the unauthenticated GRPC connection. This is always available, but will not work in most API calls
 func (c *strongDocClientObj) GetNoAuthConn() *grpc.ClientConn {
 	return c.noAuthConn
@@ -311,11 +311,19 @@ func (c *strongDocClientObj) Close() {
 	}
 }
 
-func (c *strongDocClientObj) GetPasswordKey() *ssc.StrongSaltKey {
+/*func (c *strongDocClientObj) GetPasswordKey() *ssc.StrongSaltKey {
 	return c.passwordKey
+}*/
+
+func (c *strongDocClientObj) UserEncrypt(plaintext []byte) ([]byte, error) {
+	return c.passwordKey.Encrypt(plaintext)
 }
 
-func (c *strongDocClientObj) GetPasswordKeyID() string {
+func (c *strongDocClientObj) UserDecrypt(ciphertext []byte) ([]byte, error) {
+	return c.passwordKey.Decrypt(ciphertext)
+}
+
+func (c *strongDocClientObj) GetUserKeyID() string {
 	return c.passwordKeyID
 }
 
