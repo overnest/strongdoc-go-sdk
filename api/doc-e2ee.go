@@ -13,127 +13,13 @@ import (
 	// "github.com/overnest/strongdoc-go-sdk/utils"
 )
 
-type EncryptedKey struct {
+/*type EncryptedKey struct {
 	encKey           string
 	encryptorID      string
 	encryptorVersion int32
 	keyID            string
 	keyVersion       int32
 	ownerID          string
-}
-
-// UploadDocument uploads a document to Strongdoc-provided storage.
-// It then returns a docId that uniquely identifies the document.
-/*func E2EEUploadDocument_Old(docName string, plainStream io.Reader) (docID string, err error) {
-	sdc, err := client.GetStrongDocClient()
-	if err != nil {
-		return
-	}
-
-	passwordKey := sdc.GetPasswordKey()
-
-	stream, err := sdc.GetGrpcClient().E2EEUploadDocumentStream(context.Background())
-	if err != nil {
-		err = fmt.Errorf("UploadDocument err: [%v]", err)
-		return
-	}
-
-	preReq := &proto.E2EEUploadDocStreamReq{
-		StagesOfUploading: &proto.E2EEUploadDocStreamReq_PreMetaData_{
-			PreMetaData: &proto.E2EEUploadDocStreamReq_PreMetaData{
-				DocName: docName,
-				// IsEncryptedByClient: true,
-			},
-		},
-	}
-
-	err = stream.Send(preReq)
-	if err != nil {
-		err = fmt.Errorf("UploadDocument stage PreMetaData err: [%v]", err)
-		return
-	}
-
-	userPrivKeysReq := &proto.GetUserPrivateKeysReq{}
-	userPrivKeysResp, err := sdc.GetGrpcClient().GetUserPrivateKeys(context.Background(), userPrivKeysReq)
-	if err != nil {
-		err = fmt.Errorf("UploadDocument cannot get user private keys")
-		return
-	}
-	userPrivKeys := userPrivKeysResp.GetEncryptedKeys()
-	docKey, err := ssc.GenerateKey(ssc.Type_Secretbox)
-	if err != nil {
-		return "", fmt.Errorf("UploadDocument cannot generate document key")
-	}
-	docKeySerialized, err := docKey.Serialize()
-	if err != nil {
-		err = fmt.Errorf("UploadDocument cannot serialize document key")
-		return
-	}
-
-	encKeyListReq := &proto.E2EEUploadDocStreamReq{
-		StagesOfUploading: &proto.E2EEUploadDocStreamReq_EncDocKeys{
-			EncDocKeys: &proto.E2EEUploadDocStreamReq_EncKeyList{
-				EncDocKeys: make([]*proto.EncryptedKey, 3),
-			},
-		},
-	}
-
-	for _, userPrivKey := range userPrivKeys {
-		// TODO: Check user password key version and id
-		decryptedUserPrivKey, err := passwordKey.Decrypt([]byte(userPrivKey.GetEncKey()))
-		if err != nil {
-			return "", fmt.Errorf("UploadDocument cannot decrypt user private key")
-		}
-		userPrivKey, err := ssc.DeserializeKey(decryptedUserPrivKey)
-		if err != nil {
-			return "", fmt.Errorf("UploadDocument cannot deserialize user private key")
-		}
-		encryptedDocKey, err := userPrivKey.Encrypt(docKeySerialized)
-		if err != nil {
-			return "", fmt.Errorf("UploadDocument cannot encrypt document key")
-		}
-	}
-
-	block := make([]byte, blockSize)
-	for {
-		n, inerr := plainStream.Read(block)
-		if inerr == nil || inerr == io.EOF {
-			if n > 0 {
-				dataReq := &proto.E2EEUploadDocStreamReq{
-					StagesOfUploading: &proto.E2EEUploadDocStreamReq_CipherText{
-						//TODO: need encryption
-						CipherText: block[:n]}}
-				if err = stream.Send(dataReq); err != nil {
-					return "", err
-				}
-			}
-			if inerr == io.EOF {
-				break
-			}
-		} else {
-			err = inerr
-			return
-		}
-	}
-
-	if err = stream.CloseSend(); err != nil {
-		err = fmt.Errorf("UploadDocument err: [%v]", err)
-		return
-	}
-
-	resp, err := stream.CloseAndRecv()
-	if err != nil {
-		err = fmt.Errorf("UploadDocument err: [%v]", err)
-		return
-	}
-
-	if resp == nil {
-		err = fmt.Errorf("UploadDocument Resp is nil: [%v]", err)
-		return
-	}
-
-	docID = resp.GetDocID()
-	return
 }*/
 
 // UploadDocument uploads a document to Strongdoc-provided storage.
@@ -158,7 +44,7 @@ func E2EEUploadDocument(sdc client.StrongDocClient, docName string, plainStream 
 	}
 
 	preReq := &proto.E2EEUploadDocStreamReq{
-		StageData: &proto.E2EEUploadDocStreamReq_PreMetaData{
+		UploadReqStageData: &proto.E2EEUploadDocStreamReq_PreMetaData{
 			PreMetaData: &proto.E2EEUploadDocStreamReq_PreMetaDataType{
 				DocName: docName,
 			},
@@ -205,7 +91,7 @@ func E2EEUploadDocument(sdc client.StrongDocClient, docName string, plainStream 
 		}
 
 		req := &proto.E2EEUploadDocStreamReq{
-			StageData: &proto.E2EEUploadDocStreamReq_EncDocKeys{
+			UploadReqStageData: &proto.E2EEUploadDocStreamReq_EncDocKeys{
 				EncDocKeys: &proto.E2EEUploadDocStreamReq_EncKeyList{
 					EncDocKeys: protoEncDocKeys,
 				},
@@ -222,21 +108,89 @@ func E2EEUploadDocument(sdc client.StrongDocClient, docName string, plainStream 
 		}
 	}
 
-	req := &proto.E2EEUploadDocStreamReq{
-		StageData: &proto.E2EEUploadDocStreamReq_CipherText{
-			CipherText: []byte("TODO: actual data"),
+	encryptor, err := docKey.EncryptStream()
+	if err != nil {
+		return
+	}
+
+	nonce := encryptor.GetNonce()
+	n, err := docKey.MACWrite(nonce)
+	if err != nil {
+		return
+	}
+	if n != len(nonce) {
+		err = fmt.Errorf("UploadDocument wrong number of bytes written to MAC. Expected: %v. Actual: %v.", len(nonce), n)
+	}
+
+	dataReq := &proto.E2EEUploadDocStreamReq{
+		UploadReqStageData: &proto.E2EEUploadDocStreamReq_CipherText{
+			CipherText: nonce,
 		},
 	}
 
-	err = stream.Send(req)
+	err = stream.Send(dataReq)
 	if err != nil {
 		err = fmt.Errorf("UploadDocument error sending ciphertext: [%v]", err)
 		return
 	}
 
-	_, err = docKey.MACWrite([]byte("TODO: actual data"))
-	if err != nil {
-		return "", fmt.Errorf("UploadDocument error writing ciphertext to MAC: [%v]", err)
+	block := make([]byte, blockSize)
+	for {
+		n, inerr := plainStream.Read(block)
+		if inerr == nil || inerr == io.EOF {
+			ciphertext := make([]byte, n)
+			if n > 0 {
+				m, xerr := encryptor.Write(block[:n])
+				if xerr != nil {
+					err = xerr
+					return
+				}
+				if m != n {
+					err = fmt.Errorf("Wrote wrong number of bytes to encryptor. %v instead of %v", m, n)
+					return
+				}
+				m, xerr = encryptor.Read(ciphertext)
+				if xerr != nil {
+					err = xerr
+					return
+				}
+				ciphertext = ciphertext[:m]
+			} else {
+				data, xerr := encryptor.ReadLast()
+				if xerr != nil {
+					err = xerr
+					return
+				}
+				ciphertext = data
+			}
+			if len(ciphertext) > 0 {
+				n, err = docKey.MACWrite(ciphertext)
+				if err != nil {
+					return "", fmt.Errorf("UploadDocument error writing ciphertext to MAC: [%v]", err)
+				}
+				if n != len(ciphertext) {
+					return "", fmt.Errorf("UploadDocument: Wrong number of bytes written to MAC. Expected: %v. Actual: %v.", len(ciphertext), n)
+				}
+
+				dataReq := &proto.E2EEUploadDocStreamReq{
+					UploadReqStageData: &proto.E2EEUploadDocStreamReq_CipherText{
+						CipherText: ciphertext,
+					},
+				}
+
+				err = stream.Send(dataReq)
+				if err != nil {
+					err = fmt.Errorf("UploadDocument error sending ciphertext: [%v]", err)
+					return
+				}
+			}
+			if inerr == io.EOF {
+				break
+			}
+		} else {
+			err = inerr
+			return
+		}
 	}
 
 	docMAC, err := docKey.MACSum(nil)
@@ -245,8 +199,8 @@ func E2EEUploadDocument(sdc client.StrongDocClient, docName string, plainStream 
 		return
 	}
 
-	req = &proto.E2EEUploadDocStreamReq{
-		StageData: &proto.E2EEUploadDocStreamReq_PostMetaData{
+	req := &proto.E2EEUploadDocStreamReq{
+		UploadReqStageData: &proto.E2EEUploadDocStreamReq_PostMetaData{
 			PostMetaData: &proto.E2EEUploadDocStreamReq_PostMetaDataType{
 				MacOfCipherText: base64.URLEncoding.EncodeToString(docMAC),
 			},
@@ -265,6 +219,19 @@ func E2EEUploadDocument(sdc client.StrongDocClient, docName string, plainStream 
 	}
 	docID = resp.GetDocID()
 
-	stream.CloseSend()
+	if err = stream.CloseSend(); err != nil {
+		return "", err
+	}
+
+	_, err = stream.Recv()
+	if err == io.EOF {
+		err = nil
+	}
+	if err != nil {
+		return "", err
+	}
+
 	return
 }
+
+//func e2eeDownloadDocumentStream(sdc client.StrongDocClient, docID string, prepareResp *proto.E2EEPrepareDownloadDocResp) (io.Reader, error)

@@ -206,8 +206,30 @@ func DownloadDocumentStream(sdc client.StrongDocClient, docID string) (plainStre
 		if err != nil {
 			return nil, err
 		}
-		_ = docKey
-		return bytes.NewBufferString("Testing Testing 123"), nil
+		decryptor, err := docKey.DecryptStream(0)
+		if err != nil {
+			return nil, err
+		}
+
+		mac, err := base64.URLEncoding.DecodeString(resp.GetDocumentAccessMetadata().GetMac())
+		if err != nil {
+			return nil, err
+		}
+
+		req := &proto.E2EEDownloadDocStreamReq{DocID: docID}
+		stream, err := sdc.GetGrpcClient().E2EEDownloadDocumentStream(context.Background(), req)
+		if err != nil {
+			return nil, err
+		}
+
+		return &e2eeDownloadStream{
+			grpcStream: &stream,
+			grpcEOF:    false,
+			decryptor:  decryptor,
+			macKey:     docKey,
+			mac:        mac,
+			docID:      docID,
+		}, nil
 	}
 	req := &proto.DownloadDocStreamReq{DocID: docID}
 	stream, err := sdc.GetGrpcClient().DownloadDocumentStream(context.Background(), req)
@@ -265,6 +287,71 @@ func (stream *downloadStream) Read(p []byte) (n int, err error) {
 	}
 
 	return 0, nil
+}
+
+type e2eeDownloadStream struct {
+	grpcStream *proto.StrongDocService_E2EEDownloadDocumentStreamClient
+	grpcEOF    bool
+	decryptor  *ssc.Decryptor
+	macKey     *ssc.StrongSaltKey
+	mac        []byte
+	docID      string
+}
+
+func (stream *e2eeDownloadStream) Read(p []byte) (n int, err error) {
+	n, err = stream.decryptor.Read(p)
+	if err != nil {
+		return 0, err
+	}
+	if n > 0 {
+		return n, nil
+	}
+
+	if stream.grpcEOF {
+		return 0, io.EOF
+	}
+
+	for n == 0 {
+		resp, err := (*stream.grpcStream).Recv()
+		if err != nil {
+			if err != io.EOF {
+				return 0, err
+			}
+			stream.grpcEOF = true
+			err = stream.decryptor.CloseWrite()
+			if err != nil {
+				return 0, err
+			}
+			ok, err := stream.macKey.MACVerify(stream.mac)
+			if err != nil {
+				return 0, fmt.Errorf("Document integrity check failed with error: %v", err)
+			}
+			if !ok {
+				return 0, fmt.Errorf("Document integrity check failed.")
+			}
+		}
+		if resp != nil {
+			ciphertext := resp.GetCipherText()
+			x, err := stream.decryptor.Write(ciphertext)
+			if err != nil {
+				return 0, err
+			}
+			if x < len(ciphertext) {
+				return 0, fmt.Errorf("Incorrect number of bytes written to decryptor. Exected: %v. Actual: %v.", len(ciphertext), x)
+			}
+			x, err = stream.macKey.MACWrite(ciphertext)
+			if err != nil {
+				return 0, err
+			}
+			if x < len(ciphertext) {
+				return 0, fmt.Errorf("Incorrect number of bytes written to MAC Key. Exected: %v. Actual: %v.", len(ciphertext), x)
+			}
+		}
+
+		n, err = stream.decryptor.Read(p)
+	}
+
+	return
 }
 
 // RemoveDocument deletes a document from Strongdoc-provided

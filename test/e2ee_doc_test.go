@@ -1,8 +1,9 @@
 package test
 
 import (
-	"fmt"
+	"bytes"
 	"io/ioutil"
+	"path"
 
 	"github.com/overnest/strongdoc-go-sdk/api"
 	"github.com/overnest/strongdoc-go-sdk/client"
@@ -40,21 +41,31 @@ import (
 
 // }
 
-func testE2EEUpload(t *testing.T, sdc client.StrongDocClient) {
-	// txtBytes, err := ioutil.ReadFile(fileName)
-	// assert.NilError(t, err)
+func testE2EEUploadDownload(t *testing.T, sdc client.StrongDocClient, uploader, downloader *testUser, filename string) {
+	txtBytes, err := ioutil.ReadFile(filename)
+	assert.NilError(t, err)
 
-	file, err := os.Open(TestDoc1)
+	//fmt.Printf("file len: %v\n", len(txtBytes))
+
+	file, err := os.Open(filename)
 	assert.NilError(t, err)
 	defer file.Close()
 
-	uploadDocID, err := api.E2EEUploadDocument(sdc, "TestDoc1", file)
+	_, err = api.Login(sdc, uploader.UserID, uploader.Password, uploader.OrgID)
 	assert.NilError(t, err)
-	fmt.Println(uploadDocID)
+	defer api.Logout(sdc)
 
-	// downBytes, err := api.E2EEDownloadDocument(uploadDocID)
-	// assert.NilError(t, err)
-	// assert.Equal(t, txtBytes, downBytes)
+	uploadDocID, err := api.E2EEUploadDocument(sdc, path.Base(filename), file)
+	assert.NilError(t, err)
+	//fmt.Println(uploadDocID)
+
+	if uploader != downloader {
+		_, err = api.Logout(sdc)
+		assert.NilError(t, err)
+
+		_, err := api.Login(sdc, downloader.UserID, downloader.Password, downloader.OrgID)
+		assert.NilError(t, err)
+	}
 
 	docs, err := api.ListDocuments(sdc)
 	assert.NilError(t, err)
@@ -62,34 +73,34 @@ func testE2EEUpload(t *testing.T, sdc client.StrongDocClient) {
 
 	downReader, err := api.DownloadDocumentStream(sdc, uploadDocID)
 	assert.NilError(t, err)
-	downBytes, err := ioutil.ReadAll(downReader)
+	plaintext, err := ioutil.ReadAll(downReader)
 	assert.NilError(t, err)
-	print(string(downBytes))
-	print(string([]byte("Testing Testing 123")))
+	//fmt.Printf("plaintext len: %v\n", len(plaintext))
+	assert.Assert(t, bytes.Equal(txtBytes, plaintext), "Plaintext doesn't match")
 
 	err = api.RemoveDocument(sdc, uploadDocID)
 	assert.NilError(t, err)
 
-	// docs, err = api.ListDocuments()
-	// assert.NoError(t, err)
-	// assert.Equal(t, len(docs), 0)
-
-	// file, err := os.Open(TestDoc1)
-	// assert.NoError(t, err)
-	// defer file.Close()
+	docs, err = api.ListDocuments(sdc)
+	assert.NilError(t, err)
+	assert.Equal(t, len(docs), 0)
 }
 
-func TestE2EEUpload(t *testing.T) {
-	sdc, _, registeredOrgUsers, orgids, err := testSetup(1, 1)
+func testE2EEAdminDownload(t *testing.T, sdc client.StrongDocClient, docID string) {
+
+}
+
+func TestE2EEUploadDownload(t *testing.T) {
+	sdc, _, registeredOrgUsers, orgids, err := testSetup(1, 2)
 	assert.NilError(t, err)
 	defer testTeardown(orgids)
-	t.Run("test e2ee upload", func(t *testing.T) {
+	t.Run("test e2ee upload download", func(t *testing.T) {
 		admin := registeredOrgUsers[0][0]
-		// admin login
-		_, err := api.Login(sdc, admin.UserID, admin.Password, admin.OrgID)
-		assert.NilError(t, err)
-		defer api.Logout(sdc)
-		testE2EEUpload(t, sdc)
+		notAdmin := registeredOrgUsers[0][1]
+
+		testE2EEUploadDownload(t, sdc, admin, admin, TestDoc1)
+		testE2EEUploadDownload(t, sdc, notAdmin, admin, TestDoc1)
+		//testE2EEUploadDownload(t, sdc, notAdmin, admin, "../testDocuments/smallpicture.bmp")
 	})
 
 }
