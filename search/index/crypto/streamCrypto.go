@@ -22,8 +22,8 @@ type StreamCrypto interface {
 type streamCrypto struct {
 	key        *sscrypto.StrongSaltKey
 	nonce      []byte
-	initOffset uint64
-	curOffset  uint64
+	initOffset int64
+	curOffset  int64
 	writer     io.Writer
 	writerat   io.WriterAt
 	reader     io.Reader
@@ -45,7 +45,7 @@ func CreateNonce(key *sscrypto.StrongSaltKey) ([]byte, error) {
 }
 
 // CreateStreamCrypto creates an streaming crypto for encryption writing encrypted data to the provided storage
-func CreateStreamCrypto(key *sscrypto.StrongSaltKey, nonce []byte, store interface{}, initOffset uint64) (StreamCrypto, error) {
+func CreateStreamCrypto(key *sscrypto.StrongSaltKey, nonce []byte, store interface{}, initOffset int64) (StreamCrypto, error) {
 	if _, ok := store.(io.Writer); store != nil && !ok {
 		return nil, errors.Errorf("The storage interface must implement io.Writer")
 	}
@@ -54,7 +54,7 @@ func CreateStreamCrypto(key *sscrypto.StrongSaltKey, nonce []byte, store interfa
 }
 
 // OpenStreamCrypto opens a streaming crypto for decryption or reading decrypted from an encrypted storage
-func OpenStreamCrypto(key *sscrypto.StrongSaltKey, nonce []byte, store interface{}, initOffset uint64) (StreamCrypto, error) {
+func OpenStreamCrypto(key *sscrypto.StrongSaltKey, nonce []byte, store interface{}, initOffset int64) (StreamCrypto, error) {
 	if _, ok := store.(io.Reader); store != nil && !ok {
 		return nil, errors.Errorf("The storage interface must implement io.Reader")
 	}
@@ -62,7 +62,7 @@ func OpenStreamCrypto(key *sscrypto.StrongSaltKey, nonce []byte, store interface
 	return initStreamCrypto(key, nonce, store, initOffset)
 }
 
-func initStreamCrypto(key *sscrypto.StrongSaltKey, nonce []byte, store interface{}, initOffset uint64) (StreamCrypto, error) {
+func initStreamCrypto(key *sscrypto.StrongSaltKey, nonce []byte, store interface{}, initOffset int64) (StreamCrypto, error) {
 	if key.Type.Name != sscrypto.Type_XChaCha20.Name {
 		return nil, errors.Errorf("Key %v passed in, but requires %v key", key.Type.Name, sscrypto.Type_XChaCha20.Name)
 	}
@@ -105,7 +105,7 @@ func (crypto *streamCrypto) GetNonce() []byte {
 	return crypto.nonce
 }
 
-func (crypto *streamCrypto) calcBlockCounter(offset uint64) (blockCount int32, blockOffset int) {
+func (crypto *streamCrypto) calcBlockCounter(offset int64) (blockCount int32, blockOffset int) {
 	blockCount = int32(int64(offset) / int64(crypto.key.BlockSize()))
 	blockOffset = int(int64(offset) % int64(crypto.key.BlockSize()))
 	return
@@ -119,7 +119,7 @@ func (crypto *streamCrypto) Encrypt(plaintext []byte) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New(err)
 	}
-	crypto.curOffset += uint64(len(plaintext))
+	crypto.curOffset += int64(len(plaintext))
 	return ciphertext[blockOffset:], nil
 }
 
@@ -145,7 +145,7 @@ func (crypto *streamCrypto) Decrypt(ciphertext []byte) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New(err)
 	}
-	crypto.curOffset += uint64(len(ciphertext))
+	crypto.curOffset += int64(len(ciphertext))
 	return plaintext[blockOffset:], nil
 }
 
@@ -178,7 +178,7 @@ func (crypto *streamCrypto) Read(plaintext []byte) (n int, err error) {
 // this function does not store state, and will not effect the
 // result of any other function call
 func (crypto *streamCrypto) DecryptAt(ciphertext []byte, offset int64) ([]byte, error) {
-	blockCount, blockOffset := crypto.calcBlockCounter(uint64(offset))
+	blockCount, blockOffset := crypto.calcBlockCounter(offset)
 	ciphertextPadded := append(make([]byte, blockOffset), ciphertext...)
 	plaintext, err := crypto.GetKey().DecryptIC(ciphertextPadded, crypto.GetNonce(), blockCount)
 	if err != nil {
@@ -212,7 +212,7 @@ func (crypto *streamCrypto) ReadAt(plaintext []byte, off int64) (n int, err erro
 }
 
 func (crypto *streamCrypto) EncryptAt(plaintext []byte, offset int64) ([]byte, error) {
-	blockCount, blockOffset := crypto.calcBlockCounter(uint64(offset))
+	blockCount, blockOffset := crypto.calcBlockCounter(offset)
 	plaintextPadded := append(make([]byte, blockOffset), plaintext...)
 	ciphertext, err := crypto.GetKey().EncryptIC(plaintextPadded, crypto.GetNonce(), blockCount)
 	if err != nil {
@@ -247,7 +247,7 @@ func (crypto *streamCrypto) Seek(offset int64) (n int64, err error) {
 		}
 	}
 
-	crypto.curOffset = crypto.initOffset + uint64(offset)
+	crypto.curOffset = crypto.initOffset + offset
 	return n, nil
 }
 

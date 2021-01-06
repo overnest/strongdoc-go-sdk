@@ -155,7 +155,7 @@ func testReadWriteEncrypt(t *testing.T, initOffset int64) {
 	assert.NilError(t, err)
 	nonce, err := CreateNonce(key)
 	assert.NilError(t, err)
-	crypto, err := CreateStreamCrypto(key, nonce, file, uint64(initOffset))
+	crypto, err := CreateStreamCrypto(key, nonce, file, initOffset)
 	assert.NilError(t, err)
 
 	// Random sized writes with readat verification
@@ -199,7 +199,7 @@ func testReadWriteEncrypt(t *testing.T, initOffset int64) {
 		assert.Equal(t, n, len(garbage))
 	}
 
-	crypto, err = OpenStreamCrypto(key, nonce, file, uint64(initOffset))
+	crypto, err = OpenStreamCrypto(key, nonce, file, initOffset)
 	assert.NilError(t, err)
 
 	// Do random read and writes in different locations

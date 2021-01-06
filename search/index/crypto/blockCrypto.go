@@ -1,190 +1,145 @@
 package crypto
 
 import (
-	"io"
+	"encoding/json"
 
 	ssblocks "github.com/overnest/strongsalt-common-go/blocks"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
-	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
 
 	"github.com/go-errors/errors"
 )
+
+//////////////////////////////////////////////////////////////////
+//
+//                     Block Crypto Version
+//
+//////////////////////////////////////////////////////////////////
 
 const (
 	BLOCK_CRYPTO_V1     = uint32(1)
 	BLOCK_CRYPT_VERSION = BLOCK_CRYPTO_V1
 )
 
+// BlockCryptoVersion stores the block crypto version
+type BlockCryptoVersion interface {
+	GetVersion() uint32
+}
+
+// BlockCryptoVersionS is the structure to embed in other structure
+type BlockCryptoVersionS struct {
+	BlockCryptoVersion uint32
+}
+
+// GetVersion gets the version
+func (bcv *BlockCryptoVersionS) GetVersion() uint32 {
+	return bcv.BlockCryptoVersion
+}
+
+// Serialize serializes the blockCryptoVersion object
+func (bcv *BlockCryptoVersionS) Serialize() ([]byte, error) {
+	b, err := json.Marshal(bcv)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+	return b, nil
+}
+
+// Deserialize deserializes the blockCryptoVersion object
+func (bcv *BlockCryptoVersionS) Deserialize(data []byte) (BlockCryptoVersion, error) {
+	err := json.Unmarshal(data, bcv)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+	return bcv, nil
+}
+
+// DeserializeBlockCryptoVersion deserializes the BlockCryptoVersion object
+func DeserializeBlockCryptoVersion(data []byte) (BlockCryptoVersion, error) {
+	bcv := &BlockCryptoVersionS{}
+	return bcv.Deserialize(data)
+}
+
+//////////////////////////////////////////////////////////////////
+//
+//                      Block Crypto Headers
+//
+//////////////////////////////////////////////////////////////////
+
+// BlockCryptoPlainHdrBody contains information needed to encrypt/decrypt StrongSalt block stream
+type BlockCryptoPlainHdrBody interface {
+	BlockCryptoVersion
+	Serialize() ([]byte, error)
+	Deserialize(data []byte) (BlockCryptoPlainHdrBody, error)
+}
+
+// DeserializeBlockCryptoPlainHdrBody deserializes the block crypto plaintext header object
+func DeserializeBlockCryptoPlainHdrBody(data []byte) (BlockCryptoPlainHdrBody, error) {
+	version, err := DeserializeBlockCryptoVersion(data)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	switch version.GetVersion() {
+	case BLOCK_CRYPTO_V1:
+		body := &BlockCryptoPlainHdrBodyV1S{}
+		return body.Deserialize(data)
+	default:
+		return nil, errors.Errorf("Unsupported block crypto plaintext header version %v",
+			version.GetVersion())
+	}
+}
+
+// BlockCryptoCipherHdrBody contains information needed to encrypt/decrypt StrongSalt block stream
+type BlockCryptoCipherHdrBody interface {
+	BlockCryptoVersion
+	Serialize() ([]byte, error)
+	Deserialize(data []byte) (BlockCryptoCipherHdrBody, error)
+}
+
+// DeserializeBlockCryptoCipherHdrBody deserializes the block crypto ciphertext header object
+func DeserializeBlockCryptoCipherHdrBody(data []byte) (BlockCryptoCipherHdrBody, error) {
+	version, err := DeserializeBlockCryptoVersion(data)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	switch version.GetVersion() {
+	case BLOCK_CRYPTO_V1:
+		body := &BlockCryptoCipherHdrBodyV1S{}
+		return body.Deserialize(data)
+	default:
+		return nil, errors.Errorf("Unsupported block crypto plaintext header version %v",
+			version.GetVersion())
+	}
+}
+
+//////////////////////////////////////////////////////////////////
+//
+//                          Block Crypto
+//
+//////////////////////////////////////////////////////////////////
+
 // BlockCrypto is used to encrypt/decrypt StrongSalt block stream
 type BlockCrypto interface {
 	GetKey() *sscrypto.StrongSaltKey
 	GetNonce() []byte
-	Encrypt(plaintext []byte) ([]byte, error)
-	EncryptAt(ciphertext []byte, blockID int64) ([]byte, error)
-	Decrypt(ciphertext []byte) ([]byte, error)
-	DecryptAt(ciphertext []byte, blockID int64) ([]byte, error)
+	GetPlainHeaderBody() BlockCryptoPlainHdrBody
+	GetPlainHeaderData() []byte
+	GetCipherHeaderBody() BlockCryptoCipherHdrBody
+	GetCipherHeaderData() []byte
+	Write(blockdata []byte) (err error)
+	Read() (blockdata []byte, err error)
+	ReadAt(blockID uint32) (blockdata []byte, err error)
 }
 
 type blockCrypto struct {
-	key           *sscrypto.StrongSaltKey
-	nonce         []byte
-	plainHdrBody  []byte
-	cipherHdrBody []byte
-	offset        int64
-	writer        ssblocks.BlockListWriterV1
-	reader        ssblocks.BlockListReaderV1
-}
-
-// BlockPlainHdrBody contains information needed to encrypt/decrypt StrongSalt block stream
-type BlockPlainHdrBody interface {
-	SetBlockCryptoVersion(version uint32)
-	GetBlockCryptoVersion() uint32
-	SetKeyType(keyType string)
-	GetKeyType() string
-	SetNonce(nonce []byte)
-	GetNonce() []byte
-	Serialize() ([]byte, error)
-	Deserialize(data []byte) (BlockPlainHdrBody, error)
-}
-
-// BlockCipherHdrBody contains information needed to encrypt/decrypt StrongSalt block stream
-type BlockCipherHdrBody interface {
-	SetBlockCryptoVersion(version uint32)
-	GetBlockCryptoVersion() uint32
-	Serialize() ([]byte, error)
-	Deserialize(data []byte) (BlockPlainHdrBody, error)
-}
-
-func createNonce(key *sscrypto.StrongSaltKey) ([]byte, error) {
-	if midStreamKey, ok := key.Key.(sscryptointf.KeyMidstream); ok {
-		nonce, err := midStreamKey.GenerateNonce()
-		if err != nil {
-			return nil, errors.New(err)
-		}
-		return nonce, nil
-	}
-
-	return nil, errors.Errorf("StrongSalt key is not of type KeyMidstream")
-}
-
-// CreateBlockCrypto   Create an block crypto
-func CreateBlockCrypto(key *sscrypto.StrongSaltKey, paddedBlockSize uint32,
-	plainHdrBody BlockPlainHdrBody, cipherHdrBody BlockCipherHdrBody,
-	store interface{}) (BlockCrypto, error) {
-
-	if key.Type != sscrypto.Type_XChaCha20 {
-		return nil, errors.Errorf("Key type %v is not supported. The only supported key type is %v",
-			key.Type.Name, sscrypto.Type_XChaCha20.Name)
-	}
-
-	nonce, err := createNonce(key)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
-	cipherHdrBody.SetBlockCryptoVersion(BLOCK_CRYPT_VERSION)
-	plainHdrBody.SetBlockCryptoVersion(BLOCK_CRYPT_VERSION)
-	plainHdrBody.SetKeyType(key.Type.Name)
-	plainHdrBody.SetNonce(nonce)
-
-	plainSerial, err := plainHdrBody.Serialize()
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
-	cipherSerial, err := cipherHdrBody.Serialize()
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
-	writer, ok := store.(io.Writer)
-	if !ok {
-		return nil, errors.Errorf("The passed in storage does not implement io.Writer")
-	}
-
-	n, err := writer.Write(plainSerial)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	if n != len(plainSerial) {
-		return nil, errors.Errorf("Failed to write the entire plaintext header")
-	}
-
-	crypto := &blockCrypto{
-		key:           key,
-		nonce:         nonce,
-		plainHdrBody:  plainSerial,
-		cipherHdrBody: cipherSerial,
-		offset:        0,
-		writer:        nil,
-		reader:        nil,
-	}
-
-	crypto.writer, err = ssblocks.NewBlockListWriterV1(store, paddedBlockSize, 0)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
-	return crypto, nil
-}
-
-func (crypto *blockCrypto) GetKey() *sscrypto.StrongSaltKey {
-	return crypto.key
-}
-
-func (crypto *blockCrypto) GetNonce() []byte {
-	return crypto.nonce
-}
-
-func (crypto *blockCrypto) calcBlockCounter(offset int64) (blockCount int32, blockOffset int) {
-	blockCount = int32(offset / int64(crypto.key.BlockSize()))
-	blockOffset = int(offset % int64(crypto.key.BlockSize()))
-	return
-}
-
-// Encrypt   Encrypt data using block crypto
-func (crypto *blockCrypto) Encrypt(plaintext []byte) ([]byte, error) {
-	blockCount, blockOffset := crypto.calcBlockCounter(crypto.offset)
-	plaintextPadded := append(make([]byte, blockOffset), plaintext...)
-	ciphertext, err := crypto.GetKey().EncryptIC(plaintextPadded, crypto.GetNonce(), blockCount)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	crypto.offset += int64(len(plaintext))
-	return ciphertext[blockOffset:], nil
-}
-
-// Decrypt   Decrypt data using block crypto
-func (crypto *blockCrypto) Decrypt(ciphertext []byte) ([]byte, error) {
-	blockCount, blockOffset := crypto.calcBlockCounter(crypto.offset)
-	ciphertextPadded := append(make([]byte, blockOffset), ciphertext...)
-	plaintext, err := crypto.GetKey().DecryptIC(ciphertextPadded, crypto.GetNonce(), blockCount)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	crypto.offset += int64(len(ciphertext))
-	return plaintext[blockOffset:], nil
-}
-
-// DecryptAt decrypts data starting at the given offset. Note that
-// this function does not store state, and will not effect the
-// result of any other function call
-func (crypto *blockCrypto) DecryptAt(ciphertext []byte, offset int64) ([]byte, error) {
-	blockCount, blockOffset := crypto.calcBlockCounter(offset)
-	ciphertextPadded := append(make([]byte, blockOffset), ciphertext...)
-	plaintext, err := crypto.GetKey().DecryptIC(ciphertextPadded, crypto.GetNonce(), blockCount)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	return plaintext[blockOffset:], nil
-}
-
-func (crypto *blockCrypto) EncryptAt(plaintext []byte, offset int64) ([]byte, error) {
-	blockCount, blockOffset := crypto.calcBlockCounter(offset)
-	plaintextPadded := append(make([]byte, blockOffset), plaintext...)
-	ciphertext, err := crypto.GetKey().EncryptIC(plaintextPadded, crypto.GetNonce(), blockCount)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	return ciphertext[blockOffset:], nil
+	key                 *sscrypto.StrongSaltKey
+	nonce               []byte
+	plainHdrBody        BlockCryptoPlainHdrBody
+	plainHdrBodySerial  []byte
+	cipherHdrBody       BlockCryptoCipherHdrBody
+	cipherHdrBodySerial []byte
+	initOffset          int64
+	writer              ssblocks.BlockListWriterV1
+	reader              ssblocks.BlockListReaderV1
 }
