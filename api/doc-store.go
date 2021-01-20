@@ -5,9 +5,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io"
-
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"io"
 
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/proto"
@@ -369,33 +368,166 @@ func RemoveDocument(sdc client.StrongDocClient, docID string) error {
 	return err
 }
 
-// ShareDocument shares the document with other users.
-// Note that the user that you are sharing with be be in an organization
-// that has been declared available for sharing with the Add Sharable Organizations function.
-func ShareDocument(sdc client.StrongDocClient, docID, userID string) (success bool, err error) {
-	req := &proto.ShareDocumentReq{
-		DocID:  docID,
-		UserID: userID,
+func BulkShareDocWithUsers(sdc client.StrongDocClient, docID string, receiverIDs []string) (
+	isAccessible, isSharable bool, sharedReceivers, alreadyAccessibleUsers, unsharableReceivers map[string]bool, err error) {
+	return bulkShareDoc(sdc, docID, proto.AccessType_USER, receiverIDs)
+}
+
+func BulkShareDocWithOrgs(sdc client.StrongDocClient, docID string, receiverIDs []string) (
+	isAccessible, isSharable bool, sharedReceivers, alreadyAccessibleOrgs, unsharableReceivers map[string]bool, err error) {
+	return bulkShareDoc(sdc, docID, proto.AccessType_ORG, receiverIDs)
+}
+
+/**
+bulkShareDoc shares the document with other receivers.
+return
+isAccessible: whether logged-in user can access the document
+isSharable: whether logged-in is allowed to share the document
+sharedReceivers: receiverIDs who has been successfully shared with
+alreadyAccessibleReceivers: receiverIDs who already have access to the document, no need to share
+unsharableReceivers: receiverIDs which are not allowed to be given the document
+*/
+func bulkShareDoc(sdc client.StrongDocClient, docID string, receiverType proto.AccessType, receiverIDs []string) (
+	isAccessible bool, isSharable bool, sharedReceivers, alreadyAccessibleReceivers, unsharableReceivers map[string]bool, err error) {
+	sharedReceivers = make(map[string]bool)
+	alreadyAccessibleReceivers = make(map[string]bool)
+	unsharableReceivers = make(map[string]bool)
+	prepareShareReq := &proto.PrepareShareDocumentReq{
+		DocID:        docID,
+		ReceiverType: receiverType,
+		ReceiverIDs:  receiverIDs,
 	}
-	res, err := sdc.GetGrpcClient().ShareDocument(context.Background(), req)
+	prepareShareRes, err := sdc.GetGrpcClient().PrepareShareDocument(context.Background(), prepareShareReq)
 	if err != nil {
-		fmt.Printf("Failed to share: %v", err)
 		return
 	}
-	success = res.Success
+	accessMeta := prepareShareRes.GetAccessMetaData()
+
+	isAccessible = accessMeta.GetIsAccessible()
+	isSharable = accessMeta.GetIsSharable()
+
+	// user has no access to the doc or cannot share the document
+	if !isAccessible || !isSharable {
+		return
+	}
+	// receivers who already have access, no need to share
+	for _, receiverID := range prepareShareRes.GetReceiversWithDoc() {
+		alreadyAccessibleReceivers[receiverID] = true
+	}
+	// receivers who cannot be shared with this doc
+	for _, receiverID := range prepareShareRes.GetUnsharableReceivers() {
+		unsharableReceivers[receiverID] = true
+	}
+
+	// the document is encrypted on client side
+	if accessMeta.GetIsClientSide() {
+		var docKeyBytes []byte
+		var keyID string
+		var keyVersion int32
+		docKeyBytes, keyID, keyVersion, err = decryptKeyChain(sdc, accessMeta.GetDocKeyChain())
+		if err != nil {
+			return
+		}
+
+		for _, encryptor := range prepareShareRes.GetEncryptors() {
+
+			for true { // todo
+				var keyBytes []byte
+				keyBytes, err = base64.URLEncoding.DecodeString(encryptor.Key)
+				if err != nil {
+					return
+				}
+				var pubKey *ssc.StrongSaltKey
+				pubKey, err = ssc.DeserializeKey(keyBytes)
+				if err != nil {
+					return
+				}
+				var encDocKeyBytes []byte
+				encDocKeyBytes, err = pubKey.Encrypt(docKeyBytes)
+				shareDocReq := &proto.ShareDocumentReq{
+					DocID:        docID,
+					ReceiverType: receiverType,
+					ReceiverID:   encryptor.OwnerID, // receiverID
+
+					EncDocKey: &proto.EncryptedKey{
+						EncryptorID:      encryptor.KeyID,                                   // shareUser or shareOrg public key ID
+						EncKey:           base64.URLEncoding.EncodeToString(encDocKeyBytes), // encrypted data
+						EncryptorVersion: encryptor.Version,                                 // encryptor (public key) version
+						KeyID:            keyID,
+						KeyVersion:       keyVersion,
+					},
+				}
+				var shareDocRes *proto.ShareDocumentResp
+				shareDocRes, err = sdc.GetGrpcClient().ShareDocument(context.Background(), shareDocReq)
+				if err != nil {
+					return
+				}
+				if shareDocRes.GetPubKey() != nil {
+					encryptor = shareDocRes.GetPubKey()
+				} else {
+					if shareDocRes.GetReceiverAlreadyAccessible() {
+						alreadyAccessibleReceivers[encryptor.OwnerID] = true
+					} else if shareDocRes.GetReceiverUnsharable() {
+						unsharableReceivers[encryptor.OwnerID] = true
+					} else if shareDocRes.GetSuccess() {
+						sharedReceivers[encryptor.OwnerID] = true
+					}
+					break
+				}
+			}
+
+		}
+
+	} else {
+		// the document is encrypted on server side
+		for _, receiverID := range receiverIDs {
+			shareDocReq := &proto.ShareDocumentReq{
+				DocID:        docID,
+				ReceiverType: receiverType,
+				ReceiverID:   receiverID,
+			}
+			var shareDocRes *proto.ShareDocumentResp
+			shareDocRes, err = sdc.GetGrpcClient().ShareDocument(context.Background(), shareDocReq)
+			if err != nil {
+				return
+			}
+			if shareDocRes.GetReceiverAlreadyAccessible() {
+				alreadyAccessibleReceivers[receiverID] = true
+			} else if shareDocRes.GetReceiverUnsharable() {
+				unsharableReceivers[receiverID] = true
+			} else if shareDocRes.GetSuccess() {
+				sharedReceivers[receiverID] = true
+			}
+
+		}
+
+	}
 	return
 }
 
-// UnshareDocument rescinds permission granted earlier, removing other users'
-// access to those documents.
-func UnshareDocument(sdc client.StrongDocClient, docID, userID string) (count int64, err error) {
+// UnshareWithUser rescinds permission granted earlier, removing other user's access to the document.
+func UnshareWithUser(sdc client.StrongDocClient, docID, userIDOrEmail string) (succ bool, alreadyNoAccess, allowed bool, err error) {
+	return unshareDocument(sdc, docID, proto.AccessType_USER, userIDOrEmail)
+}
+
+// UnshareWithOrg rescinds permission granted earlier, removing other org's access to the document.
+func UnshareWithOrg(sdc client.StrongDocClient, docID, orgID string) (succ bool, alreadyNoAccess, allowed bool, err error) {
+	return unshareDocument(sdc, docID, proto.AccessType_ORG, orgID)
+}
+
+func unshareDocument(sdc client.StrongDocClient, docID string, receiverType proto.AccessType, receiverID string) (succ, alreadyNoAccess, allowed bool, err error) {
 	req := &proto.UnshareDocumentReq{
-		DocID:  docID,
-		UserID: userID,
+		DocID:        docID,
+		ReceiverType: receiverType,
+		ReceiverID:   receiverID,
 	}
 	res, err := sdc.GetGrpcClient().UnshareDocument(context.Background(), req)
-
-	count = res.Count
+	if err != nil {
+		return
+	}
+	succ = res.GetSuccess()
+	alreadyNoAccess = res.GetAlreadyUnshared()
+	allowed = res.GetAllowed()
 	return
 }
 
