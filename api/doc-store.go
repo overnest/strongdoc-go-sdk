@@ -461,7 +461,11 @@ func bulkShareDoc(sdc client.StrongDocClient, docID string, receiverType proto.A
 				if shareDocRes.GetPubKey() != nil {
 					encryptor = shareDocRes.GetPubKey()
 				} else {
-					if shareDocRes.GetSuccess() {
+					if shareDocRes.GetReceiverAlreadyAccessible() {
+						alreadyAccessibleReceivers[encryptor.OwnerID] = true
+					} else if shareDocRes.GetReceiverUnsharable() {
+						unsharableReceivers[encryptor.OwnerID] = true
+					} else if shareDocRes.GetSuccess() {
 						sharedReceivers[encryptor.OwnerID] = true
 					}
 					break
@@ -487,8 +491,7 @@ func bulkShareDoc(sdc client.StrongDocClient, docID string, receiverType proto.A
 				alreadyAccessibleReceivers[receiverID] = true
 			} else if shareDocRes.GetReceiverUnsharable() {
 				unsharableReceivers[receiverID] = true
-			}
-			if shareDocRes.GetSuccess() {
+			} else if shareDocRes.GetSuccess() {
 				sharedReceivers[receiverID] = true
 			}
 
