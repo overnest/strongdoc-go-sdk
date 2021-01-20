@@ -2,12 +2,13 @@ package test
 
 import (
 	"fmt"
-	"github.com/overnest/strongdoc-go-sdk/api"
-	"github.com/overnest/strongdoc-go-sdk/client"
-	"gotest.tools/assert"
 	"log"
 	"os"
 	"testing"
+
+	"github.com/overnest/strongdoc-go-sdk/api"
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"gotest.tools/assert"
 )
 
 /**
@@ -19,7 +20,7 @@ const TestDocName = "TestDoc"
 const TestSearchQuery = "Privacy"
 
 func addSharableOrg(sdc client.StrongDocClient, user *testUser, org *testOrg) (succ bool, err error) {
-	_, err = api.Login(sdc, user.UserID, user.Password, user.OrgID)
+	err = api.Login(sdc, user.UserID, user.Password, user.OrgID)
 	if err != nil {
 		return
 	}
@@ -31,7 +32,7 @@ func addSharableOrg(sdc client.StrongDocClient, user *testUser, org *testOrg) (s
 
 func setMultiLevelShare(sdc client.StrongDocClient, user *testUser) (succ bool, err error) {
 	// org1 admin set multiLevelShare enabled and add sharableOrg
-	_, err = api.Login(sdc, user.UserID, user.Password, user.OrgID)
+	err = api.Login(sdc, user.UserID, user.Password, user.OrgID)
 	if err != nil {
 		return
 	}
@@ -41,7 +42,7 @@ func setMultiLevelShare(sdc client.StrongDocClient, user *testUser) (succ bool, 
 
 // share document with another user
 func shareWithUser(sdc client.StrongDocClient, docID string, fromUser *testUser, toUserIDorEmail string) (isAccessible, isSharable bool, sharedReceivers, alreadyAccessibleUsers, unsharableUsers map[string]bool, err error) {
-	_, err = api.Login(sdc, fromUser.UserID, fromUser.Password, fromUser.OrgID)
+	err = api.Login(sdc, fromUser.UserID, fromUser.Password, fromUser.OrgID)
 	if err != nil {
 		return
 	}
@@ -51,7 +52,7 @@ func shareWithUser(sdc client.StrongDocClient, docID string, fromUser *testUser,
 
 // unshare document with another user
 func unshareWithUser(sdc client.StrongDocClient, docID string, fromUser *testUser, UserIDorEmail string) (succ bool, alreadyNoAccess, allowed bool, err error) {
-	_, err = api.Login(sdc, fromUser.UserID, fromUser.Password, fromUser.OrgID)
+	err = api.Login(sdc, fromUser.UserID, fromUser.Password, fromUser.OrgID)
 	if err != nil {
 		return
 	}
@@ -61,7 +62,7 @@ func unshareWithUser(sdc client.StrongDocClient, docID string, fromUser *testUse
 
 // share document with another org
 func shareWithOrg(sdc client.StrongDocClient, docID string, fromUser *testUser, toOrg *testOrg) (isAccessible, isSharable bool, sharedReceivers, alreadyAccessibleOrgs, unsharableOrgs map[string]bool, err error) {
-	_, err = api.Login(sdc, fromUser.UserID, fromUser.Password, fromUser.OrgID)
+	err = api.Login(sdc, fromUser.UserID, fromUser.Password, fromUser.OrgID)
 	if err != nil {
 		return
 	}
@@ -71,7 +72,7 @@ func shareWithOrg(sdc client.StrongDocClient, docID string, fromUser *testUser, 
 
 // unshare document with another org
 func unshareWithOrg(sdc client.StrongDocClient, docID string, fromUser *testUser, orgID string) (succ bool, alreadyNoAccess, allowed bool, err error) {
-	_, err = api.Login(sdc, fromUser.UserID, fromUser.Password, fromUser.OrgID)
+	err = api.Login(sdc, fromUser.UserID, fromUser.Password, fromUser.OrgID)
 	if err != nil {
 		return
 	}
@@ -80,7 +81,7 @@ func unshareWithOrg(sdc client.StrongDocClient, docID string, fromUser *testUser
 }
 
 func checkDocAccess(t *testing.T, sdc client.StrongDocClient, docID string, testUser *testUser) (bool, error) {
-	_, err := api.Login(sdc, testUser.UserID, testUser.Password, testUser.OrgID)
+	err := api.Login(sdc, testUser.UserID, testUser.Password, testUser.OrgID)
 	if err != nil {
 		return false, err
 	}
@@ -99,7 +100,7 @@ func checkDocAccess(t *testing.T, sdc client.StrongDocClient, docID string, test
 }
 
 func search(sdc client.StrongDocClient, user *testUser, query string) (hits []*api.DocumentResult, err error) {
-	_, err = api.Login(sdc, user.UserID, user.Password, user.OrgID)
+	err = api.Login(sdc, user.UserID, user.Password, user.OrgID)
 	if err != nil {
 		return
 	}
@@ -108,7 +109,7 @@ func search(sdc client.StrongDocClient, user *testUser, query string) (hits []*a
 }
 
 func uploadDocument(sdc client.StrongDocClient, uploader *testUser, E2E bool) (uploadDocID string, err error) {
-	_, err = api.Login(sdc, uploader.UserID, uploader.Password, uploader.OrgID)
+	err = api.Login(sdc, uploader.UserID, uploader.Password, uploader.OrgID)
 	if err != nil {
 		return
 	}

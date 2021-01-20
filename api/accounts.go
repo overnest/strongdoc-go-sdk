@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 
 	cryptoKey "github.com/overnest/strongsalt-crypto-go"
 	cryptoKdf "github.com/overnest/strongsalt-crypto-go/kdf"
@@ -270,7 +269,7 @@ func RemoveUser(sdc client.StrongDocClient, user string) (count int64, err error
 // privilege level.
 //
 // Requires administrator privileges.
-func PromoteUser(sdc client.StrongDocClient, userIDOrEmail string) (success bool, err error) {
+/*func PromoteUser(sdc client.StrongDocClient, userIDOrEmail string) (success bool, err error) {
 	preparePromoteReq := &proto.PreparePromoteUserReq{
 		UserID: userIDOrEmail,
 	}
@@ -291,7 +290,8 @@ func PromoteUser(sdc client.StrongDocClient, userIDOrEmail string) (success bool
 		}
 		// decode
 		encOrgKey := preparePromoteRes.GetEncOrgKey()
-		if encOrgKey.EncryptorID != sdc.GetUserKeyID() {
+
+		if .EncryptorID != sdc.GetUserKeyID() {
 			return false, fmt.Errorf("User information out of date. User must log out and log back in again before continuing.")
 		}
 
@@ -350,7 +350,7 @@ func PromoteUser(sdc client.StrongDocClient, userIDOrEmail string) (success bool
 		done = !promoteRes.GetStartOver()
 	}
 	return
-}
+}*/
 
 // DemoteUser demotes an administrator to regular user level.
 // privilege level.

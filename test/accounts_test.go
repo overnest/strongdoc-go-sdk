@@ -334,7 +334,7 @@ func TestRegisterWithInvitation(t *testing.T) {
 
 }
 
-func TestPromoteDemote(t *testing.T) {
+/*func TestPromoteDemote(t *testing.T) {
 	// init client
 	sdc, err := client.InitStrongDocClient(client.LOCAL, false)
 	assert.NilError(t, err)
@@ -369,7 +369,7 @@ func TestPromoteDemote(t *testing.T) {
 	assert.NilError(t, err)
 	// admin logout
 	api.Logout(sdc)
-}
+}*/
 
 func TestChangePassword(t *testing.T) {
 	// init client
