@@ -51,7 +51,7 @@ func testE2EEUploadDownload(t *testing.T, sdc client.StrongDocClient, uploader, 
 	assert.NilError(t, err)
 	defer file.Close()
 
-	_, err = api.Login(sdc, uploader.UserID, uploader.Password, uploader.OrgID)
+	err = api.Login(sdc, uploader.UserID, uploader.Password, uploader.OrgID)
 	assert.NilError(t, err)
 	defer api.Logout(sdc)
 
@@ -63,7 +63,7 @@ func testE2EEUploadDownload(t *testing.T, sdc client.StrongDocClient, uploader, 
 		_, err = api.Logout(sdc)
 		assert.NilError(t, err)
 
-		_, err := api.Login(sdc, downloader.UserID, downloader.Password, downloader.OrgID)
+		err := api.Login(sdc, downloader.UserID, downloader.Password, downloader.OrgID)
 		assert.NilError(t, err)
 	}
 

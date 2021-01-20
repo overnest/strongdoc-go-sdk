@@ -21,7 +21,11 @@ func decryptKeyChain(sdc client.StrongDocClient, encKeyChain []*proto.EncryptedK
 		return
 	}
 	protoPriKey := encKeyChain[0]
-	// TODO: check password keyID
+	if protoPriKey.EncryptorID != sdc.GetUserKeyID() {
+		err = fmt.Errorf("Error decrypting user keys: User information out of date. User must log out and log back in again to continue.")
+		return
+	}
+
 	encKeyBytes, err := base64.URLEncoding.DecodeString(protoPriKey.GetEncKey())
 	if err != nil {
 		return

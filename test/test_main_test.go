@@ -37,7 +37,7 @@ func testSetup(numOfOrgs int, numOfUsersPerOrg int) (client.StrongDocClient, []*
 			continue
 		}
 		// login as admin of this org
-		_, err := api.Login(sdc, adminData.UserID, adminData.Password, orgData.OrgID)
+		err := api.Login(sdc, adminData.UserID, adminData.Password, orgData.OrgID)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 
 	cryptoKey "github.com/overnest/strongsalt-crypto-go"
 	cryptoKdf "github.com/overnest/strongsalt-crypto-go/kdf"
@@ -19,7 +20,7 @@ import (
 
 // generate client-side keys for user
 func generateUserClientKeys(password string) (kdfMetaBytes, userPublicKeyBytes, encUserPriKeyBytes []byte, userKey *cryptoKey.StrongSaltKey, err error) {
-	userKdf, err := cryptoKdf.New(cryptoKdf.Type_Pbkdf2, cryptoKey.Type_Secretbox)
+	userKdf, err := cryptoKdf.New(cryptoKdf.Type_Argon2, cryptoKey.Type_Secretbox)
 	if err != nil {
 		return
 	}
@@ -107,10 +108,10 @@ func RegisterOrganization(sdc client.StrongDocClient,
 		EncUserPriKey:   base64.URLEncoding.EncodeToString(encUserPriKey),
 		OrgPubKey:       base64.URLEncoding.EncodeToString(orgPubKey),
 		EncOrgPriKey:    base64.URLEncoding.EncodeToString(encOrgPriKey),
-		AdminLoginData: &proto.RegisterLoginData{
-			LoginType:    proto.LoginType_SRP,
-			LoginVersion: 1,
-			SrpVerifier:  verifierString,
+		AdminAuthData: &proto.RegisterAuthData{
+			AuthType:    proto.AuthType_AUTH_SRP,
+			AuthVersion: 1,
+			SrpVerifier: verifierString,
 		},
 	})
 	if err != nil {
@@ -212,10 +213,10 @@ func RegisterUser(sdc client.StrongDocClient,
 		UserPubKey:     base64.URLEncoding.EncodeToString(pubKeyBytes),
 		EncUserPriKey:  base64.URLEncoding.EncodeToString(encPriKeyBytes),
 		UserName:       userName,
-		LoginData: &proto.RegisterLoginData{
-			LoginType:    proto.LoginType_SRP,
-			LoginVersion: 1,
-			SrpVerifier:  verifierString,
+		AuthData: &proto.RegisterAuthData{
+			AuthType:    proto.AuthType_AUTH_SRP,
+			AuthVersion: 1,
+			SrpVerifier: verifierString,
 		},
 	}
 	res, err := sdc.GetGrpcClient().RegisterUser(context.Background(), req)
@@ -269,40 +270,86 @@ func RemoveUser(sdc client.StrongDocClient, user string) (count int64, err error
 // privilege level.
 //
 // Requires administrator privileges.
-func PromoteUser(sdc client.StrongDocClient, userIDOrEmail string) (success, restart bool, err error) {
+func PromoteUser(sdc client.StrongDocClient, userIDOrEmail string) (success bool, err error) {
 	preparePromoteReq := &proto.PreparePromoteUserReq{
 		UserID: userIDOrEmail,
 	}
-	preparePromoteRes, err := sdc.GetGrpcClient().PreparePromoteUser(context.Background(), preparePromoteReq)
-	if err != nil {
-		return false, true, err
-	}
-	// decode
-	encOrgKey := preparePromoteRes.GetEncOrgKey()
-	encUserPriKeyBytes, err := base64.URLEncoding.DecodeString(preparePromoteRes.GetEncUserPriKey())
-	encOrgPriKeyBytes, err := base64.URLEncoding.DecodeString(encOrgKey.GetEncKey())
-	newUserPubKeyBytes, err := base64.URLEncoding.DecodeString(preparePromoteRes.GetNewUserPubKey())
-	// decrypt admin private key
-	decryptedUserKeyBytes, err := sdc.UserDecrypt(encUserPriKeyBytes)
-	// deserialize user public key
-	adminKey, err := cryptoKey.DeserializeKey(decryptedUserKeyBytes)
-	// decrypte org private key
-	orgPriKeyBytes, err := adminKey.Decrypt(encOrgPriKeyBytes)
-	// deserialize user key
-	userKey, err := cryptoKey.DeserializeKey(newUserPubKeyBytes)
-	// re-encrypt org private key
-	reEncryptedOrgKey, err := userKey.Encrypt(orgPriKeyBytes)
 
-	promoteReq := &proto.PromoteUserReq{
-		EncryptedKey: &proto.EncryptedKey{
-			EncKey:      base64.URLEncoding.EncodeToString(reEncryptedOrgKey),
-			EncryptorID: encOrgKey.EncryptorID,
-			OwnerID:     encOrgKey.OwnerID,
-			KeyID:       encOrgKey.KeyID,
-		},
+	done := false
+	attempts := 0
+	maxAttempts := 5
+
+	for !done {
+		if attempts >= maxAttempts {
+			return false, fmt.Errorf("PromotUser: Max attempts exceeded. Some other process may be making changes to user keys.")
+		}
+		attempts += 1
+
+		preparePromoteRes, err := sdc.GetGrpcClient().PreparePromoteUser(context.Background(), preparePromoteReq)
+		if err != nil {
+			return false, err
+		}
+		// decode
+		encOrgKey := preparePromoteRes.GetEncOrgKey()
+		if encOrgKey.EncryptorID != sdc.GetUserKeyID() {
+			return false, fmt.Errorf("User information out of date. User must log out and log back in again before continuing.")
+		}
+
+		encUserPriKeyBytes, err := base64.URLEncoding.DecodeString(preparePromoteRes.GetEncUserPriKey())
+		if err != nil {
+			return false, err
+		}
+		encOrgPriKeyBytes, err := base64.URLEncoding.DecodeString(encOrgKey.GetEncKey())
+		if err != nil {
+			return false, err
+		}
+		newUserPubKeyBytes, err := base64.URLEncoding.DecodeString(preparePromoteRes.GetNewUserPubKey())
+		if err != nil {
+			return false, err
+		}
+		// decrypt admin private key
+		decryptedUserKeyBytes, err := sdc.UserDecrypt(encUserPriKeyBytes)
+		if err != nil {
+			return false, err
+		}
+		// deserialize user public key
+		adminKey, err := cryptoKey.DeserializeKey(decryptedUserKeyBytes)
+		if err != nil {
+			return false, err
+		}
+		// decrypte org private key
+		orgPriKeyBytes, err := adminKey.Decrypt(encOrgPriKeyBytes)
+		if err != nil {
+			return false, err
+		}
+		// deserialize user key
+		userKey, err := cryptoKey.DeserializeKey(newUserPubKeyBytes)
+		if err != nil {
+			return false, err
+		}
+		// re-encrypt org private key
+		reEncryptedOrgKey, err := userKey.Encrypt(orgPriKeyBytes)
+		if err != nil {
+			return false, err
+		}
+
+		promoteReq := &proto.PromoteUserReq{
+			EncryptedKey: &proto.EncryptedKey{
+				EncKey:      base64.URLEncoding.EncodeToString(reEncryptedOrgKey),
+				EncryptorID: encOrgKey.EncryptorID,
+				OwnerID:     encOrgKey.OwnerID,
+				KeyID:       encOrgKey.KeyID,
+			},
+		}
+		promoteRes, err := sdc.GetGrpcClient().PromoteUser(context.Background(), promoteReq)
+		if err != nil {
+			return false, err
+		}
+
+		success = promoteRes.GetSuccess()
+		done = !promoteRes.GetStartOver()
 	}
-	promoteRes, err := sdc.GetGrpcClient().PromoteUser(context.Background(), promoteReq)
-	return promoteRes.GetSuccess(), promoteRes.GetStartOver(), err
+	return
 }
 
 // DemoteUser demotes an administrator to regular user level.
@@ -445,4 +492,8 @@ func GetUserInfo(sdc client.StrongDocClient) (*UserInfo, error) {
 	}
 
 	return user.(*UserInfo), nil
+}
+
+func ChangePassword(sdc client.StrongDocClient, oldPassword, newPassword string) error {
+	return sdc.ChangePassword(oldPassword, newPassword)
 }

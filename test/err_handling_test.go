@@ -1,7 +1,6 @@
 package test
 
 import (
-	"io"
 	"os"
 	"path"
 	"testing"
@@ -23,9 +22,10 @@ func testStreamWithWrongDocId(t *testing.T, sdc client.StrongDocClient) {
 	assert.NilError(t, err)
 	defer downloadFile.Close()
 	downloadStream, err := api.DownloadDocumentStream(sdc, docID+"wrongID")
-	assert.NilError(t, err) // error here
-	_, err = io.Copy(downloadFile, downloadStream)
-	assert.ErrorContains(t, err, "Can not find document") // not here
+	assert.ErrorContains(t, err, "Cannot find document") // error here
+	assert.Equal(t, nil, downloadStream)
+	//_, err = io.Copy(downloadFile, downloadStream)
+	//assert.NilError(t, err) // not here
 }
 
 func TestStreamErr(t *testing.T) {
@@ -35,7 +35,7 @@ func TestStreamErr(t *testing.T) {
 	t.Run("test stream error handling", func(t *testing.T) {
 		admin := registeredOrgUsers[0][0]
 		// admin login
-		_, err := api.Login(sdc, admin.UserID, admin.Password, admin.OrgID)
+		err := api.Login(sdc, admin.UserID, admin.Password, admin.OrgID)
 		assert.NilError(t, err)
 		defer api.Logout(sdc)
 		testStreamWithWrongDocId(t, sdc)
