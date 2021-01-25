@@ -5,8 +5,9 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"io"
+
+	"github.com/golang/protobuf/ptypes/timestamp"
 
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/proto"
@@ -198,6 +199,10 @@ func DownloadDocumentStream(sdc client.StrongDocClient, docID string) (plainStre
 	resp, err := sdc.GetGrpcClient().E2EEPrepareDownloadDocument(context.Background(), prepareReq)
 	if err != nil {
 		return
+	}
+
+	if !resp.GetDocumentAccessMetadata().GetIsAccessible() {
+		return nil, fmt.Errorf("Cannot access document %v", docID)
 	}
 
 	if resp.GetDocumentAccessMetadata().GetIsClientSide() {

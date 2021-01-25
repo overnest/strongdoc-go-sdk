@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 
 	cryptoKey "github.com/overnest/strongsalt-crypto-go"
 	cryptoKdf "github.com/overnest/strongsalt-crypto-go/kdf"
@@ -269,7 +270,7 @@ func RemoveUser(sdc client.StrongDocClient, user string) (count int64, err error
 // privilege level.
 //
 // Requires administrator privileges.
-/*func PromoteUser(sdc client.StrongDocClient, userIDOrEmail string) (success bool, err error) {
+func PromoteUser(sdc client.StrongDocClient, userIDOrEmail string) (success bool, err error) {
 	preparePromoteReq := &proto.PreparePromoteUserReq{
 		UserID: userIDOrEmail,
 	}
@@ -289,56 +290,38 @@ func RemoveUser(sdc client.StrongDocClient, user string) (count int64, err error
 			return false, err
 		}
 		// decode
-		encOrgKey := preparePromoteRes.GetEncOrgKey()
 
-		if .EncryptorID != sdc.GetUserKeyID() {
-			return false, fmt.Errorf("User information out of date. User must log out and log back in again before continuing.")
+		orgKeyBytes, orgKeyId, orgKeyVersion, err := decryptKeyChain(sdc, preparePromoteRes.GetEncOrgKeyChain())
+		if err != nil {
+			return false, err
 		}
 
-		encUserPriKeyBytes, err := base64.URLEncoding.DecodeString(preparePromoteRes.GetEncUserPriKey())
-		if err != nil {
-			return false, err
-		}
-		encOrgPriKeyBytes, err := base64.URLEncoding.DecodeString(encOrgKey.GetEncKey())
-		if err != nil {
-			return false, err
-		}
-		newUserPubKeyBytes, err := base64.URLEncoding.DecodeString(preparePromoteRes.GetNewUserPubKey())
-		if err != nil {
-			return false, err
-		}
-		// decrypt admin private key
-		decryptedUserKeyBytes, err := sdc.UserDecrypt(encUserPriKeyBytes)
-		if err != nil {
-			return false, err
-		}
-		// deserialize user public key
-		adminKey, err := cryptoKey.DeserializeKey(decryptedUserKeyBytes)
-		if err != nil {
-			return false, err
-		}
-		// decrypte org private key
-		orgPriKeyBytes, err := adminKey.Decrypt(encOrgPriKeyBytes)
-		if err != nil {
-			return false, err
-		}
 		// deserialize user key
-		userKey, err := cryptoKey.DeserializeKey(newUserPubKeyBytes)
+		protoPubKey := preparePromoteRes.GetNewUserPubKey()
+
+		pubKeyBytes, err := base64.URLEncoding.DecodeString(protoPubKey.GetKey())
+		if err != nil {
+			return false, err
+		}
+		userKey, err := cryptoKey.DeserializeKey(pubKeyBytes)
 		if err != nil {
 			return false, err
 		}
 		// re-encrypt org private key
-		reEncryptedOrgKey, err := userKey.Encrypt(orgPriKeyBytes)
+		reEncryptedOrgKey, err := userKey.Encrypt(orgKeyBytes)
 		if err != nil {
 			return false, err
 		}
 
 		promoteReq := &proto.PromoteUserReq{
+			UserID: userIDOrEmail,
 			EncryptedKey: &proto.EncryptedKey{
-				EncKey:      base64.URLEncoding.EncodeToString(reEncryptedOrgKey),
-				EncryptorID: encOrgKey.EncryptorID,
-				OwnerID:     encOrgKey.OwnerID,
-				KeyID:       encOrgKey.KeyID,
+				EncKey:           base64.URLEncoding.EncodeToString(reEncryptedOrgKey),
+				EncryptorID:      protoPubKey.KeyID,
+				EncryptorVersion: protoPubKey.Version,
+				OwnerID:          protoPubKey.OwnerID,
+				KeyID:            orgKeyId,
+				KeyVersion:       orgKeyVersion,
 			},
 		}
 		promoteRes, err := sdc.GetGrpcClient().PromoteUser(context.Background(), promoteReq)
@@ -350,7 +333,7 @@ func RemoveUser(sdc client.StrongDocClient, user string) (count int64, err error
 		done = !promoteRes.GetStartOver()
 	}
 	return
-}*/
+}
 
 // DemoteUser demotes an administrator to regular user level.
 // privilege level.

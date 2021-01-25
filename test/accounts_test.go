@@ -1,7 +1,9 @@
 package test
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"testing"
 
 	"github.com/overnest/strongdoc-go-sdk/api"
@@ -334,7 +336,7 @@ func TestRegisterWithInvitation(t *testing.T) {
 
 }
 
-/*func TestPromoteDemote(t *testing.T) {
+func TestPromoteDemote(t *testing.T) {
 	// init client
 	sdc, err := client.InitStrongDocClient(client.LOCAL, false)
 	assert.NilError(t, err)
@@ -359,17 +361,48 @@ func TestRegisterWithInvitation(t *testing.T) {
 	// admin login
 	api.Login(sdc, admin.UserID, admin.Password, admin.OrgID)
 
+	docBytes := []byte("This is a document.")
+	docID, err := api.UploadDocumentStream(sdc, "testDoc", bytes.NewBuffer(docBytes))
+	assert.NilError(t, err)
+
 	// promote
 	succ, err = api.PromoteUser(sdc, normalUser.UserID)
 	assert.NilError(t, err)
 	assert.Equal(t, succ, true)
+
+	// logout first admin
+	api.Logout(sdc)
+
+	// login promoted user
+	err = api.Login(sdc, normalUser.Email, normalUser.Password, admin.OrgID)
+	assert.NilError(t, err)
+
+	docReader, err := api.DownloadDocumentStream(sdc, docID)
+	assert.NilError(t, err)
+
+	downloadedBytes, err := ioutil.ReadAll(docReader)
+	assert.Assert(t, bytes.Equal(docBytes, downloadedBytes), "Plaintext doesn't match")
+
+	// logout promoted user
+	api.Logout(sdc)
+
+	// login first admin
+	api.Login(sdc, admin.UserID, admin.Password, admin.OrgID)
+
 	// demote
 	succ, err = api.DemoteUser(sdc, normalUser.Email)
-	assert.Equal(t, succ, true)
 	assert.NilError(t, err)
+	assert.Equal(t, succ, true)
+
 	// admin logout
 	api.Logout(sdc)
-}*/
+
+	// login demoted user
+	api.Login(sdc, normalUser.Email, normalUser.Password, admin.OrgID)
+
+	_, err = api.DownloadDocumentStream(sdc, docID)
+	assert.Assert(t, err != nil)
+}
 
 func TestChangePassword(t *testing.T) {
 	// init client
