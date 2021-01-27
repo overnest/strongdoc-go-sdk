@@ -172,7 +172,7 @@ func testReadWriteEncrypt(t *testing.T, initOffset int64) {
 		assert.Equal(t, n, size)
 
 		piece := make([]byte, size)
-		n, err = crypto.ReadAt(piece, int64(offset))
+		n, err = crypto.ReadAt(piece, initOffset+int64(offset))
 		assert.NilError(t, err)
 		assert.Equal(t, n, size)
 
@@ -209,7 +209,7 @@ func testReadWriteEncrypt(t *testing.T, initOffset int64) {
 
 		// Read existing data at offset
 		readData := make([]byte, size)
-		n, err := crypto.ReadAt(readData, int64(offset))
+		n, err := crypto.ReadAt(readData, initOffset+int64(offset))
 		assert.NilError(t, err)
 		assert.Equal(t, n, len(readData))
 		assert.DeepEqual(t, readData, content[offset:offset+size])
@@ -219,13 +219,13 @@ func testReadWriteEncrypt(t *testing.T, initOffset int64) {
 		for i := 0; i < size; i++ {
 			writeData[i] = byte('X')
 		}
-		n, err = crypto.WriteAt(writeData, int64(offset))
+		n, err = crypto.WriteAt(writeData, initOffset+int64(offset))
 		assert.NilError(t, err)
 		assert.Equal(t, n, len(writeData))
 		copy(content[offset:], writeData)
 
 		// Read the new data back at offset
-		n, err = crypto.ReadAt(readData, int64(offset))
+		n, err = crypto.ReadAt(readData, initOffset+int64(offset))
 		assert.NilError(t, err)
 		assert.Equal(t, n, len(readData))
 		assert.DeepEqual(t, readData, content[offset:offset+size])
@@ -238,9 +238,9 @@ func testReadWriteEncrypt(t *testing.T, initOffset int64) {
 
 		// Read existing data at offset
 		readData := make([]byte, size)
-		off, err := crypto.Seek(int64(offset))
+		off, err := crypto.Seek(initOffset + int64(offset))
 		assert.NilError(t, err)
-		assert.Equal(t, off, int64(offset))
+		assert.Equal(t, off, initOffset+int64(offset))
 
 		n, err := crypto.Read(readData)
 		assert.NilError(t, err)

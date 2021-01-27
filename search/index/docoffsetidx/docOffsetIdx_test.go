@@ -1,10 +1,10 @@
 package docoffsetidx
 
 import (
-	"fmt"
 	"io"
+	"os"
 	"testing"
-	
+
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 
@@ -18,49 +18,41 @@ func TestDocOffsetIdx(t *testing.T) {
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	fmt.Println("HELLO")
+	// Create file with encrypted content
+	idxFileName := "/tmp/docoffsetidx_test"
+	idxFile, err := os.Create(idxFileName)
+	assert.NilError(t, err)
+	defer os.Remove(idxFileName)
+	defer idxFile.Close()
 
-	_ = key
-	_ = sourceFilePath
+	doi, err := CreateDocOffsetIdx("docID100", 100, key, idxFile, 0)
+	assert.NilError(t, err)
 
-	// // Create file with encrypted content
-	// idxFileName := "/tmp/docoffsetidx_test"
-	// idxFile, err := os.Create(idxFileName)
-	// assert.NilError(t, err)
-	// defer os.Remove(idxFileName)
-	// defer idxFile.Close()
+	tokenizer, err := utils.OpenFileTokenizer(sourceFilePath)
+	assert.NilError(t, err)
 
-	// doi, err := CreateDocOffsetIdx("docID100", 100, key, idxFile, 0)
-	// assert.NilError(t, err)
+	for token, pos, err := tokenizer.NextToken(); err != io.EOF; token, pos, err = tokenizer.NextToken() {
+		adderr := doi.AddTermOffset(token, uint64(pos.Offset))
+		assert.NilError(t, adderr)
+	}
 
-	// tokenizer, err := utils.OpenFileTokenizer(sourceFilePath)
-	// assert.NilError(t, err)
+	tokenizer.Close()
+	doi.Close()
+	idxFile.Close()
 
-	// for token, pos, err := tokenizer.NextToken(); err != io.EOF; token, pos, err = tokenizer.NextToken() {
-	// 	adderr := doi.AddTermOffset(token, uint64(pos.Offset))
-	// 	assert.NilError(t, adderr)
-	// }
+	idxFile, err = os.OpenFile(idxFileName, os.O_RDWR, 0755)
+	assert.NilError(t, err)
+	defer idxFile.Close()
 
-	// tokenizer.Close()
-	// doi.Close()
-	// idxFile.Close()
+	doiVersion, err := OpenDocOffsetIdx(key, idxFile, 0)
+	assert.NilError(t, err)
 
-	// fmt.Println("-----------------------")
-
-	// idxFile, err = os.OpenFile(idxFileName, os.O_RDWR, 0755)
-	// assert.NilError(t, err)
-	// defer idxFile.Close()
-
-	// doiVersion, err := OpenDocOffsetIdx(key, idxFile, 0)
-	// assert.NilError(t, err)
-
-	// switch doiVersion.GetDoiVersion() {
-	// case DOI_V1:
-	// 	testDocOffsetIdxV1(t, doiVersion, sourceFilePath)
-	// default:
-	// 	assert.Assert(t, false, "Unsupported DOI version %v", doiVersion.GetDoiVersion())
-	// }
-
+	switch doiVersion.GetDoiVersion() {
+	case DOI_V1:
+		testDocOffsetIdxV1(t, doiVersion, sourceFilePath)
+	default:
+		assert.Assert(t, false, "Unsupported DOI version %v", doiVersion.GetDoiVersion())
+	}
 }
 
 func testDocOffsetIdxV1(t *testing.T, doiVersion DoiVersion, sourceFilePath string) {

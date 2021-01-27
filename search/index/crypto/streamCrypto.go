@@ -158,15 +158,15 @@ func (crypto *streamCrypto) Read(plaintext []byte) (n int, err error) {
 	ciphertext := make([]byte, len(plaintext))
 
 	n, err = crypto.reader.Read(ciphertext)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		err = errors.New(err)
 		return
 	}
 
 	var plain []byte
-	plain, err = crypto.Decrypt(ciphertext[:n])
-	if err != nil {
-		err = errors.New(err)
+	plain, derr := crypto.Decrypt(ciphertext[:n])
+	if derr != nil {
+		err = errors.New(derr)
 		return
 	}
 
@@ -194,16 +194,16 @@ func (crypto *streamCrypto) ReadAt(plaintext []byte, off int64) (n int, err erro
 	}
 
 	ciphertext := make([]byte, len(plaintext))
-	n, err = crypto.readerat.ReadAt(ciphertext, int64(crypto.initOffset)+off)
-	if err != nil {
+	n, err = crypto.readerat.ReadAt(ciphertext, off)
+	if err != nil && err != io.EOF {
 		err = errors.New(err)
 		return
 	}
 
 	var plain []byte
-	plain, err = crypto.DecryptAt(ciphertext[:n], off)
-	if err != nil {
-		err = errors.New(err)
+	plain, derr := crypto.DecryptAt(ciphertext[:n], off-crypto.initOffset)
+	if derr != nil {
+		err = errors.New(derr)
 		return
 	}
 
@@ -226,16 +226,16 @@ func (crypto *streamCrypto) WriteAt(plaintext []byte, off int64) (n int, err err
 		return 0, errors.Errorf("The underlying storage does not implement io.WriterAt interface")
 	}
 
-	ciphertext, err := crypto.EncryptAt(plaintext, off)
+	ciphertext, err := crypto.EncryptAt(plaintext, off-crypto.initOffset)
 	if err != nil {
 		return 0, errors.New(err)
 	}
 
-	return crypto.writerat.WriteAt(ciphertext, int64(crypto.initOffset)+off)
+	return crypto.writerat.WriteAt(ciphertext, off)
 }
 
 func (crypto *streamCrypto) Seek(offset int64) (n int64, err error) {
-	if offset < 0 {
+	if offset < 0 || offset < crypto.initOffset {
 		return 0, errors.Errorf("Can not seek past begging of stream")
 	}
 
@@ -247,7 +247,7 @@ func (crypto *streamCrypto) Seek(offset int64) (n int64, err error) {
 		}
 	}
 
-	crypto.curOffset = crypto.initOffset + offset
+	crypto.curOffset = offset
 	return n, nil
 }
 

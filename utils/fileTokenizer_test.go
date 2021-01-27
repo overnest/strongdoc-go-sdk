@@ -60,7 +60,7 @@ func TestFileTokenizer(t *testing.T) {
 	tokenizer, err := OpenFileTokenizer(path)
 	assert.NilError(t, err)
 
-	tokens := make([]string, 0, parsedTokens)
+	tokens1 := make([]string, 0, parsedTokens)
 
 	for i := 0; i < parsedTokens; i++ {
 		token, pos, err := tokenizer.NextToken()
@@ -68,9 +68,25 @@ func TestFileTokenizer(t *testing.T) {
 			break
 		}
 		assert.NilError(t, err)
-		tokens = append(tokens, token)
+		tokens1 = append(tokens1, token)
 		fmt.Println("token", token, pos)
 	}
+
+	err = tokenizer.Reset()
+	assert.NilError(t, err)
+
+	tokens2 := make([]string, 0, parsedTokens)
+	for i := 0; i < parsedTokens; i++ {
+		token, pos, err := tokenizer.NextToken()
+		if err == io.EOF {
+			break
+		}
+		assert.NilError(t, err)
+		tokens2 = append(tokens2, token)
+		fmt.Println("token", token, pos)
+	}
+
+	assert.DeepEqual(t, tokens1, tokens2)
 
 	err = tokenizer.Close()
 	assert.NilError(t, err)

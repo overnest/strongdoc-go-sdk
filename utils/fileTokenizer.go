@@ -18,14 +18,16 @@ var mimeText = regexp.MustCompilePOSIX(`^text\/plain$`)
 // FileTokenizer tokenizes a file
 type FileTokenizer interface {
 	NextToken() (string, *scanner.Position, error)
+	Reset() error
 	Close() error
 }
 
 type fileTokenizer struct {
-	fileName string
-	file     *os.File
-	reader   io.Reader
-	scanner  *scanner.Scanner
+	fileName  string
+	mediaType string
+	file      *os.File
+	reader    io.Reader
+	scanner   *scanner.Scanner
 }
 
 // OpenFileTokenizer opens a file for tokenization
@@ -55,23 +57,11 @@ func OpenFileTokenizer(fileName string) (FileTokenizer, error) {
 		return nil, errors.New(err)
 	}
 
-	tokenizer := &fileTokenizer{fileName: fileName, file: file}
-
-	if mimeText.MatchString(mediaType) {
-		tokenizer.reader = file
-	} else if mimeGzip.MatchString(mediaType) {
-		reader, err := gzip.NewReader(file)
-		if err != nil {
-			return nil, errors.New(err)
-		}
-		tokenizer.reader = reader
-	} else {
-		file.Close()
-		return nil, errors.Errorf("Can not process %v file", contentType)
+	tokenizer := &fileTokenizer{fileName: fileName, mediaType: mediaType, file: file}
+	err = tokenizer.Reset()
+	if err != nil {
+		return nil, errors.New(err)
 	}
-
-	var scanner scanner.Scanner
-	tokenizer.scanner = scanner.Init(tokenizer.reader)
 
 	return tokenizer, nil
 }
@@ -81,6 +71,31 @@ func (token *fileTokenizer) Close() error {
 	if err != nil {
 		return errors.New(err)
 	}
+	return nil
+}
+
+func (token *fileTokenizer) Reset() error {
+	_, err := token.file.Seek(0, io.SeekStart)
+	if err != nil {
+		return errors.New(err)
+	}
+
+	if mimeText.MatchString(token.mediaType) {
+		token.reader = token.file
+	} else if mimeGzip.MatchString(token.mediaType) {
+		reader, err := gzip.NewReader(token.file)
+		if err != nil {
+			return errors.New(err)
+		}
+		token.reader = reader
+	} else {
+		token.file.Close()
+		return errors.Errorf("Can not process %v file", token.mediaType)
+	}
+
+	var scanner scanner.Scanner
+	token.scanner = scanner.Init(token.reader)
+
 	return nil
 }
 
