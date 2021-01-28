@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/overnest/strongdoc-go-sdk/utils"
@@ -68,40 +69,15 @@ func TestTermIdxV1(t *testing.T) {
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	outfile, err := os.Create(outputFileName)
-	assert.NilError(t, err)
-
-	source, err := OpenDocTermSourceTextFileV1(sourceFilePath)
-	assert.NilError(t, err)
-
 	//
 	// Create a document term index
 	//
-	dti, err := CreateDocTermIdxV1(docID, docVer, key, source, outfile, 0)
-	assert.NilError(t, err)
-
-	terms := make([]string, 0)
-
-	err = nil
-	for err == nil {
-		var blk *DocTermIdxBlkV1 = nil
-		blk, err = dti.WriteNextBlock()
-		if err != nil {
-			assert.Equal(t, err, io.EOF)
-		}
-
-		terms = append(terms, blk.Terms...)
-	}
-
-	err = dti.Close()
-	assert.NilError(t, err)
-	err = outfile.Close()
-	assert.NilError(t, err)
+	terms := testCreateTermIndexV1(t, key, sourceFilePath, outputFileName, docID, docVer)
 
 	//
 	// Open the previously written document term index
 	//
-	outfile, err = os.Open(outputFileName)
+	outfile, err := os.Open(outputFileName)
 	assert.NilError(t, err)
 	stat, err := outfile.Stat()
 	assert.NilError(t, err)
@@ -157,4 +133,115 @@ func TestTermIdxV1(t *testing.T) {
 	assert.NilError(t, err)
 	err = outfile.Close()
 	assert.NilError(t, err)
+}
+
+func testCreateTermIndexV1(t *testing.T, key *sscrypto.StrongSaltKey,
+	sourcefile, outputFile string, docID string, docVer uint64) (terms []string) {
+
+	outfile, err := os.Create(outputFile)
+	assert.NilError(t, err)
+
+	source, err := OpenDocTermSourceTextFileV1(sourcefile)
+	assert.NilError(t, err)
+
+	//
+	// Create a document term index
+	//
+	dti, err := CreateDocTermIdxV1(docID, docVer, key, source, outfile, 0)
+	assert.NilError(t, err)
+
+	terms = make([]string, 0, 1000)
+
+	err = nil
+	for err == nil {
+		var blk *DocTermIdxBlkV1 = nil
+		blk, err = dti.WriteNextBlock()
+		if err != nil {
+			assert.Equal(t, err, io.EOF)
+		}
+
+		terms = append(terms, blk.Terms...)
+	}
+
+	err = dti.Close()
+	assert.NilError(t, err)
+	err = outfile.Close()
+	assert.NilError(t, err)
+
+	return
+}
+
+func TestTermIdxDiffV1(t *testing.T) {
+	docID := "DocID1"
+	source1, err := utils.FetchFileLoc("./testDocuments/enwik8.uniq.txt.gz")
+	assert.NilError(t, err)
+	source2, err := utils.FetchFileLoc("./testDocuments/enwik8.uniq.chg.txt.gz")
+	assert.NilError(t, err)
+
+	output1 := "/tmp/TestTermIdxV1_1.txt"
+	output2 := "/tmp/TestTermIdxV1_2.txt"
+
+	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
+	assert.NilError(t, err)
+
+	//
+	// Create a document term index
+	//
+	terms1 := testCreateTermIndexV1(t, key, source1, output1, docID, 1)
+	terms2 := testCreateTermIndexV1(t, key, source2, output2, docID, 2)
+	termap1 := make(map[string]bool)
+	termap2 := make(map[string]bool)
+	addedList := make([]string, 0, 1000)
+	deletedList := make([]string, 0, 1000)
+
+	for _, term := range terms1 {
+		termap1[term] = true
+	}
+	for _, term := range terms2 {
+		termap2[term] = true
+	}
+
+	for term := range termap1 {
+		if !termap2[term] {
+			deletedList = append(deletedList, term)
+		}
+	}
+
+	for term := range termap2 {
+		if !termap1[term] {
+			addedList = append(addedList, term)
+		}
+	}
+
+	sort.Strings(addedList)
+	sort.Strings(deletedList)
+
+	//
+	// Open the previously written document term index
+	//
+	outfile1, err := os.Open(output1)
+	assert.NilError(t, err)
+	defer outfile1.Close()
+	stat1, err := outfile1.Stat()
+	assert.NilError(t, err)
+
+	dtiv1, err := OpenDocTermIdx(key, outfile1, 0, uint64(stat1.Size()))
+	assert.NilError(t, err)
+	assert.Equal(t, dtiv1.GetDtiVersion(), uint32(1))
+
+	outfile2, err := os.Open(output2)
+	assert.NilError(t, err)
+	defer outfile2.Close()
+	stat2, err := outfile2.Stat()
+	assert.NilError(t, err)
+
+	dtiv2, err := OpenDocTermIdx(key, outfile2, 0, uint64(stat2.Size()))
+	assert.NilError(t, err)
+	assert.Equal(t, dtiv2.GetDtiVersion(), uint32(1))
+
+	added, deleted, err := DiffDocTermIdx(dtiv1, dtiv2)
+	assert.NilError(t, err)
+
+	assert.DeepEqual(t, addedList, added)
+	assert.DeepEqual(t, deletedList, deleted)
 }
