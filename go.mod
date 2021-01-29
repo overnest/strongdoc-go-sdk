@@ -10,7 +10,7 @@ require (
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/overnest/strongdoc v0.0.0-20201210012129-4d740edc3e4e
-	github.com/overnest/strongsalt-common-go v0.0.6-0.20210128220705-7e9be21f935d
+	github.com/overnest/strongsalt-common-go v0.0.6-0.20210129205722-812015cdd5c4
 	github.com/overnest/strongsalt-crypto-go v0.0.0-20201209211329-ebbb719c09c0
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/stretchr/testify v1.6.1

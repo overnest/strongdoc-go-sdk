@@ -91,17 +91,17 @@ func TestTermIdxSourcesV1(t *testing.T) {
 
 	assert.DeepEqual(t, doiTerms, txtTerms)
 
-	// Reset DOI Source
-	err = sourceDoi.Reset()
-	assert.NilError(t, err)
-	doiTermsNew := gatherTermsFromSource(t, sourceDoi)
-	assert.DeepEqual(t, doiTerms, doiTermsNew)
-
 	// Reset Text File Source
 	err = sourceTxt.Reset()
 	assert.NilError(t, err)
 	txtTermsNew := gatherTermsFromSource(t, sourceTxt)
 	assert.DeepEqual(t, txtTerms, txtTermsNew)
+
+	// Reset DOI Source
+	err = sourceDoi.Reset()
+	assert.NilError(t, err)
+	doiTermsNew := gatherTermsFromSource(t, sourceDoi)
+	assert.DeepEqual(t, doiTerms, doiTermsNew)
 }
 
 func createTestDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string, docVer uint64,

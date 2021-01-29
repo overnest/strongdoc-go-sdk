@@ -4,7 +4,6 @@ import (
 	"io"
 
 	"github.com/go-errors/errors"
-	"github.com/overnest/strongdoc/crypto/common"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
 )
@@ -12,11 +11,18 @@ import (
 // StreamCrypto is a streaming crypto interface that implements both the StrongSalt style crypto and
 // traditional golang reader/readerat/writer/writerat/seeker interface
 type StreamCrypto interface {
-	common.StrongSaltCrypto
+	GetKey() *sscrypto.StrongSaltKey
+	GetNonce() []byte
+	Encrypt(plaintext []byte) ([]byte, error)
+	EncryptAt(ciphertext []byte, offset int64) ([]byte, error)
+	Decrypt(ciphertext []byte) ([]byte, error)
+	DecryptAt(ciphertext []byte, offset int64) ([]byte, error)
+	End() ([]byte, error)
 	io.Reader
 	io.ReaderAt
 	io.Writer
 	io.WriterAt
+	io.Seeker
 }
 
 type streamCrypto struct {
@@ -234,7 +240,11 @@ func (crypto *streamCrypto) WriteAt(plaintext []byte, off int64) (n int, err err
 	return crypto.writerat.WriteAt(ciphertext, off)
 }
 
-func (crypto *streamCrypto) Seek(offset int64) (n int64, err error) {
+func (crypto *streamCrypto) Seek(offset int64, whence int) (n int64, err error) {
+	if whence != io.SeekStart {
+		return 0, errors.Errorf("The streaming crypto seeker only supports io.SeekStart")
+	}
+
 	if offset < 0 || offset < crypto.initOffset {
 		return 0, errors.Errorf("Can not seek past begging of stream")
 	}

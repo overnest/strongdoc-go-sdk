@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"io"
 	"math/rand"
 	"os"
 	"testing"
@@ -59,14 +60,14 @@ func testEncryptDecrypt(t *testing.T) {
 
 	ciphertext, err := crypto.Encrypt(content)
 	assert.NilError(t, err)
-	_, err = crypto.Seek(0)
+	_, err = crypto.Seek(0, io.SeekStart)
 	assert.NilError(t, err)
 	plaintext, err := crypto.Decrypt(ciphertext)
 	assert.NilError(t, err)
 	assert.DeepEqual(t, content, plaintext)
 
 	// Random sized encryption
-	_, err = crypto.Seek(0)
+	_, err = crypto.Seek(0, io.SeekStart)
 	remain := len(content)
 	offset := int(0)
 	for remain > 0 {
@@ -84,7 +85,7 @@ func testEncryptDecrypt(t *testing.T) {
 	}
 
 	// Random sized decryption
-	_, err = crypto.Seek(0)
+	_, err = crypto.Seek(0, io.SeekStart)
 	remain = len(content)
 	offset = 0
 	for remain > 0 {
@@ -238,7 +239,7 @@ func testReadWriteEncrypt(t *testing.T, initOffset int64) {
 
 		// Read existing data at offset
 		readData := make([]byte, size)
-		off, err := crypto.Seek(initOffset + int64(offset))
+		off, err := crypto.Seek(initOffset+int64(offset), io.SeekStart)
 		assert.NilError(t, err)
 		assert.Equal(t, off, initOffset+int64(offset))
 
