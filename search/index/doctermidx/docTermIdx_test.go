@@ -7,6 +7,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/overnest/strongdoc-go-sdk/search/index/docoffsetidx"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 
@@ -14,8 +15,8 @@ import (
 )
 
 func TestTermIdxBlockV1(t *testing.T) {
-	sourceFileName := "./testDocuments/enwik8.txt.gz"
-	sourceFilePath, err := utils.FetchFileLoc(sourceFileName)
+	sourceFilePath, err := utils.FetchFileLoc("./testDocuments/enwik8.txt.gz")
+	assert.NilError(t, err)
 
 	outputFileName := "/tmp/TestTermIdxBlockV1.txt"
 	outfile, err := os.Create(outputFileName)
@@ -57,6 +58,91 @@ func TestTermIdxBlockV1(t *testing.T) {
 	}
 }
 
+func TestTermIdxSourcesV1(t *testing.T) {
+	sourceFile, err := utils.FetchFileLoc("./testDocuments/enwik8.txt.gz")
+	assert.NilError(t, err)
+
+	doiFileName := "/tmp/TestDocOffsetIdx"
+
+	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
+	assert.NilError(t, err)
+
+	// Create Document Offset Index
+	createTestDocOffsetIndex(t, key, "DocID", 100, sourceFile, doiFileName)
+	defer os.Remove(doiFileName)
+
+	// Open Document Offset Index
+	doiFile, err := os.Open(doiFileName)
+	assert.NilError(t, err)
+	doiv, err := docoffsetidx.OpenDocOffsetIdx(key, doiFile, 0)
+	assert.NilError(t, err)
+
+	// Create DOI source
+	sourceDoi, err := OpenDocTermSourceDocOffsetV1(doiv)
+	assert.NilError(t, err)
+	defer sourceDoi.Close()
+	doiTerms := gatherTermsFromSource(t, sourceDoi)
+
+	// Create Text File source
+	sourceTxt, err := OpenDocTermSourceTextFileV1(sourceFile)
+	assert.NilError(t, err)
+	defer sourceTxt.Close()
+	txtTerms := gatherTermsFromSource(t, sourceTxt)
+
+	assert.DeepEqual(t, doiTerms, txtTerms)
+
+	// Reset DOI Source
+	err = sourceDoi.Reset()
+	assert.NilError(t, err)
+	doiTermsNew := gatherTermsFromSource(t, sourceDoi)
+	assert.DeepEqual(t, doiTerms, doiTermsNew)
+
+	// Reset Text File Source
+	err = sourceTxt.Reset()
+	assert.NilError(t, err)
+	txtTermsNew := gatherTermsFromSource(t, sourceTxt)
+	assert.DeepEqual(t, txtTerms, txtTermsNew)
+}
+
+func createTestDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string, docVer uint64,
+	sourceFile, outputFile string) {
+
+	idxFile, err := os.Create(outputFile)
+	assert.NilError(t, err)
+	defer idxFile.Close()
+
+	doi, err := docoffsetidx.CreateDocOffsetIdx(docID, docVer, key, idxFile, 0)
+	assert.NilError(t, err)
+
+	tokenizer, err := utils.OpenFileTokenizer(sourceFile)
+	assert.NilError(t, err)
+
+	for token, pos, err := tokenizer.NextToken(); err != io.EOF; token, pos, err = tokenizer.NextToken() {
+		adderr := doi.AddTermOffset(token, uint64(pos.Offset))
+		assert.NilError(t, adderr)
+	}
+
+	tokenizer.Close()
+	doi.Close()
+	idxFile.Close()
+}
+
+func gatherTermsFromSource(t *testing.T, source DocTermSourceV1) []string {
+	terms := make([]string, 0, 10000000)
+	for true {
+		term, _, err := source.GetNextTerm()
+		if term != "" {
+			terms = append(terms, term)
+		}
+		if err != nil {
+			assert.Equal(t, err, io.EOF)
+			break
+		}
+	}
+	sort.Strings(terms)
+	return terms
+}
+
 func TestTermIdxV1(t *testing.T) {
 	docID := "DocID1"
 	docVer := uint64(1)
@@ -73,6 +159,7 @@ func TestTermIdxV1(t *testing.T) {
 	// Create a document term index
 	//
 	terms := testCreateTermIndexV1(t, key, sourceFilePath, outputFileName, docID, docVer)
+	defer os.Remove(outputFileName)
 
 	//
 	// Open the previously written document term index
@@ -143,6 +230,7 @@ func testCreateTermIndexV1(t *testing.T, key *sscrypto.StrongSaltKey,
 
 	source, err := OpenDocTermSourceTextFileV1(sourcefile)
 	assert.NilError(t, err)
+	defer source.Close()
 
 	//
 	// Create a document term index
@@ -193,6 +281,9 @@ func TestTermIdxDiffV1(t *testing.T) {
 	termap2 := make(map[string]bool)
 	addedList := make([]string, 0, 1000)
 	deletedList := make([]string, 0, 1000)
+
+	defer os.Remove(output1)
+	defer os.Remove(output2)
 
 	for _, term := range terms1 {
 		termap1[term] = true

@@ -12,35 +12,16 @@ import (
 )
 
 func TestDocOffsetIdx(t *testing.T) {
-	sourceFileName := "./testDocuments/enwik8.txt.gz"
-	sourceFilePath, err := utils.FetchFileLoc(sourceFileName)
+	sourceFilePath, err := utils.FetchFileLoc("./testDocuments/enwik8.txt.gz")
+	idxFileName := "/tmp/docoffsetidx_test"
 
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
 	// Create file with encrypted content
-	idxFileName := "/tmp/docoffsetidx_test"
-	idxFile, err := os.Create(idxFileName)
-	assert.NilError(t, err)
-	defer os.Remove(idxFileName)
-	defer idxFile.Close()
+	CreateTestDocOffsetIndex(t, key, "docID100", 100, sourceFilePath, idxFileName)
 
-	doi, err := CreateDocOffsetIdx("docID100", 100, key, idxFile, 0)
-	assert.NilError(t, err)
-
-	tokenizer, err := utils.OpenFileTokenizer(sourceFilePath)
-	assert.NilError(t, err)
-
-	for token, pos, err := tokenizer.NextToken(); err != io.EOF; token, pos, err = tokenizer.NextToken() {
-		adderr := doi.AddTermOffset(token, uint64(pos.Offset))
-		assert.NilError(t, adderr)
-	}
-
-	tokenizer.Close()
-	doi.Close()
-	idxFile.Close()
-
-	idxFile, err = os.OpenFile(idxFileName, os.O_RDWR, 0755)
+	idxFile, err := os.OpenFile(idxFileName, os.O_RDWR, 0755)
 	assert.NilError(t, err)
 	defer idxFile.Close()
 
@@ -53,6 +34,29 @@ func TestDocOffsetIdx(t *testing.T) {
 	default:
 		assert.Assert(t, false, "Unsupported DOI version %v", doiVersion.GetDoiVersion())
 	}
+}
+
+func CreateTestDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string, docVer uint64,
+	sourceFile, outputFile string) {
+
+	idxFile, err := os.Create(outputFile)
+	assert.NilError(t, err)
+	defer idxFile.Close()
+
+	doi, err := CreateDocOffsetIdx(docID, docVer, key, idxFile, 0)
+	assert.NilError(t, err)
+
+	tokenizer, err := utils.OpenFileTokenizer(sourceFile)
+	assert.NilError(t, err)
+
+	for token, pos, err := tokenizer.NextToken(); err != io.EOF; token, pos, err = tokenizer.NextToken() {
+		adderr := doi.AddTermOffset(token, uint64(pos.Offset))
+		assert.NilError(t, adderr)
+	}
+
+	tokenizer.Close()
+	doi.Close()
+	idxFile.Close()
 }
 
 func testDocOffsetIdxV1(t *testing.T, doiVersion DoiVersion, sourceFilePath string) {

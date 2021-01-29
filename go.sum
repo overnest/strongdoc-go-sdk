@@ -239,6 +239,8 @@ github.com/overnest/strongsalt-common-go v0.0.5 h1:lFzgFOmdjC+gFEuflNpaYqS9LxauD
 github.com/overnest/strongsalt-common-go v0.0.5/go.mod h1:GaabWpsf3nixEijlSO8+Qi7koVmxwQHQnzcAsbK9Zws=
 github.com/overnest/strongsalt-common-go v0.0.6-0.20210126220441-5bc4e18a1664 h1:P9bnlpoWA8BeJg8pYXIL6i4GjlKNB1Mj1cwYGdh4wPM=
 github.com/overnest/strongsalt-common-go v0.0.6-0.20210126220441-5bc4e18a1664/go.mod h1:GaabWpsf3nixEijlSO8+Qi7koVmxwQHQnzcAsbK9Zws=
+github.com/overnest/strongsalt-common-go v0.0.6-0.20210128220705-7e9be21f935d h1:hyuT7enUguuHxP5LgmSjtQZCYPpAgF/qByX86Zp2pxQ=
+github.com/overnest/strongsalt-common-go v0.0.6-0.20210128220705-7e9be21f935d/go.mod h1:GaabWpsf3nixEijlSO8+Qi7koVmxwQHQnzcAsbK9Zws=
 github.com/overnest/strongsalt-crypto-go v0.0.0-20201109191759-2cc3816fda29/go.mod h1:g5LzhPQJA6bnyp5nCb5IQVhkzbjFHan0g1jZEnPKrnI=
 github.com/overnest/strongsalt-crypto-go v0.0.0-20201209211329-ebbb719c09c0 h1:Ast+qX+NZ54wKkkqC5vgrqeHsoNf8A0EQmUhglg+JTI=
 github.com/overnest/strongsalt-crypto-go v0.0.0-20201209211329-ebbb719c09c0/go.mod h1:g5LzhPQJA6bnyp5nCb5IQVhkzbjFHan0g1jZEnPKrnI=

@@ -226,12 +226,25 @@ func (idx *DocOffsetIdxV1) ReadNextBlock() (*DocOffsetIdxBlkV1, error) {
 	}
 
 	b, err := idx.Reader.ReadNextBlock()
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return nil, errors.New(err)
 	}
 
-	block := &DocOffsetIdxBlkV1{}
-	return block.Deserialize(b.GetData())
+	if b != nil && len(b.GetData()) > 0 {
+		block := &DocOffsetIdxBlkV1{}
+		return block.Deserialize(b.GetData())
+	}
+
+	return nil, io.EOF
+}
+
+// Reset resets the offset index for reading. Can not be done for writing
+func (idx *DocOffsetIdxV1) Reset() error {
+	if idx.Reader == nil {
+		return errors.Errorf("The document offset index is not open for reading. Can not reset")
+	}
+
+	return idx.Reader.Reset()
 }
 
 // Close writes any residual block data to output stream
