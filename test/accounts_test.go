@@ -2,105 +2,22 @@ package test
 
 import (
 	"bytes"
-	"fmt"
+	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
 	"io/ioutil"
 	"testing"
 
 	"github.com/overnest/strongdoc-go-sdk/api"
-	"github.com/overnest/strongdoc-go-sdk/client"
 	"gotest.tools/assert"
 )
 
-const (
-	TestInvitationCode       = "abcdef" //hard-coded on server side for testing
-	TestInvitationExpireTime = 10
-	TestSource               = "Test Active"
-	TestSourceData           = ""
-)
-
-type testUser struct {
-	// user specified
-	Name           string
-	Email          string
-	Password       string
-	PasswordKeyPwd string
-
-	// returned from server
-	OrgID  string
-	UserID string
-}
-
-type testOrg struct {
-	// user specified
-	Name       string
-	Email      string
-	Address    string
-	Source     string
-	SourceData string
-
-	// returned from server
-	OrgID string
-}
-
-// initialize test data
-func initData(numOfOrgs int, numOfUsersPerOrg int) ([]*testOrg, [][]*testUser) {
-	orgs := make([]*testOrg, numOfOrgs)
-	orgUsers := make([][]*testUser, numOfOrgs*numOfUsersPerOrg)
-
-	for i := 0; i < numOfOrgs; i++ {
-		org := &testOrg{}
-		org.Name = fmt.Sprintf("testOrgName_%v", i+1)
-		org.Email = fmt.Sprintf("testOrgName_%v@example.com", i+1)
-		org.Address = fmt.Sprintf("testOrgAddress_%v", i+1)
-		org.Source = TestSource
-		org.SourceData = TestSourceData
-		orgs[i] = org
-		usersInOrg := make([]*testUser, numOfUsersPerOrg)
-		for j := 0; j < numOfUsersPerOrg; j++ {
-			user := &testUser{}
-			user.Name = fmt.Sprintf("testUserName_org%v_user%v", i+1, j+1)
-			user.Email = fmt.Sprintf("testUserEmail_org%v_user%v@ss.com", i+1, j+1)
-			user.PasswordKeyPwd = fmt.Sprintf("testUserPass_org%v_user%v", i+1, j+1)
-			user.Password = fmt.Sprintf("testUserPass_org%v_user%v", i+1, j+1)
-			usersInOrg[j] = user
-		}
-		orgUsers[i] = usersInOrg
-	}
-	return orgs, orgUsers
-}
-
-// todo: registrationOrg is not supported in sdk, remove later
-// register for an org and admin
-func registerOrgAndAdmin(sdc client.StrongDocClient, orgData *testOrg, userData *testUser) error {
-	orgID, userID, err := api.RegisterOrganization(sdc, orgData.Name, orgData.Address,
-		orgData.Email, userData.Name, userData.Password, userData.Email, orgData.Source, orgData.SourceData)
-	if err != nil {
-		return err
-	}
-	if orgID != orgData.Name {
-		return fmt.Errorf("return wrong orgID")
-	}
-	if userID == "" {
-		return fmt.Errorf("return wrong userID")
-	}
-	orgData.OrgID = orgID
-	userData.UserID = userID
-	userData.OrgID = orgID
-	return nil
-}
-
 func TestLogin(t *testing.T) {
-	// init client
-	sdc, err := client.InitStrongDocClient(client.LOCAL, false)
-	assert.NilError(t, err)
-
-	// register org and admin
-	orgs, orgUsers := initData(1, 1)
+	sdc, orgs, orgUsers := testUtils.PrevTest(t, 1, 1)
 	orgData := orgs[0]
 	userData := orgUsers[0][0]
-	err = registerOrgAndAdmin(sdc, orgData, userData)
+
+	// register org and admin
+	err := testUtils.RegisterOrgAndAdmin(sdc, orgData, userData)
 	assert.NilError(t, err)
-	defer HardRemoveOrgs([]string{orgData.OrgID})
 
 	// login with wrong password
 	err = api.Login(sdc, userData.UserID, "wrongPassword", orgData.OrgID)
@@ -127,15 +44,14 @@ func TestLogin(t *testing.T) {
 }
 
 func TestBusyLogin(t *testing.T) {
-	sdc, err := client.InitStrongDocClient(client.LOCAL, false)
-	assert.NilError(t, err)
+	sdc, orgs, orgUsers := testUtils.PrevTest(t, 1, 1)
 
-	orgs, orgUsers := initData(1, 1)
 	orgData := orgs[0]
 	userData := orgUsers[0][0]
-	err = registerOrgAndAdmin(sdc, orgData, userData)
+
+	// register org and admin
+	err := testUtils.RegisterOrgAndAdmin(sdc, orgData, userData)
 	assert.NilError(t, err)
-	defer HardRemoveOrgs([]string{orgData.OrgID})
 
 	err = api.Login(sdc, userData.UserID, userData.Password, orgData.OrgID)
 	assert.NilError(t, err)
@@ -154,17 +70,14 @@ func TestBusyLogin(t *testing.T) {
 }
 
 func TestInviteUser(t *testing.T) {
-	// init client
-	sdc, err := client.InitStrongDocClient(client.LOCAL, false)
-	assert.NilError(t, err)
+	sdc, orgs, orgUsers := testUtils.PrevTest(t, 1, 2)
 
-	// register org and admin
-	orgs, orgUsers := initData(1, 2)
 	orgData := orgs[0]
 	userData := orgUsers[0][0]
-	err = registerOrgAndAdmin(sdc, orgData, userData)
+
+	// register org and admin
+	err := testUtils.RegisterOrgAndAdmin(sdc, orgData, userData)
 	assert.NilError(t, err)
-	defer HardRemoveOrgs([]string{orgData.OrgID})
 
 	// admin login
 	err = api.Login(sdc, userData.UserID, userData.Password, orgData.OrgID)
@@ -175,19 +88,19 @@ func TestInviteUser(t *testing.T) {
 	newUser := orgUsers[0][1]
 
 	// invite with wrong email format
-	succ, err := api.InviteUser(sdc, "wrongEmail", TestInvitationExpireTime)
+	succ, err := api.InviteUser(sdc, "wrongEmail", testUtils.TestInvitationExpireTime)
 	assert.Check(t, !succ)
 	assert.ErrorContains(t, err, "Invalid email format")
 	// succeed
-	succ, err = api.InviteUser(sdc, newUser.Email, TestInvitationExpireTime)
+	succ, err = api.InviteUser(sdc, newUser.Email, testUtils.TestInvitationExpireTime)
 	assert.NilError(t, err)
 	assert.Equal(t, true, succ)
 	// already exists invitation
-	succ, err = api.InviteUser(sdc, newUser.Email, TestInvitationExpireTime)
+	succ, err = api.InviteUser(sdc, newUser.Email, testUtils.TestInvitationExpireTime)
 	assert.Check(t, !succ)
 	assert.ErrorContains(t, err, "already exists active invitation")
 	// already exists user
-	succ, err = api.InviteUser(sdc, userData.Email, TestInvitationExpireTime)
+	succ, err = api.InviteUser(sdc, userData.Email, testUtils.TestInvitationExpireTime)
 	assert.Check(t, !succ)
 	assert.ErrorContains(t, err, "already belongs to an org")
 
@@ -197,28 +110,24 @@ func TestInviteUser(t *testing.T) {
 }
 
 func TestListInvitations(t *testing.T) {
-	// init client
-	sdc, err := client.InitStrongDocClient(client.LOCAL, false)
-	assert.NilError(t, err)
+	sdc, orgs, orgUsers := testUtils.PrevTest(t, 1, 10)
 
-	// register org and admin
-	nUsers := 10
-	orgs, orgUsers := initData(1, nUsers)
 	orgData := orgs[0]
 	adminData := orgUsers[0][0]
-	err = registerOrgAndAdmin(sdc, orgData, adminData)
+	users := orgUsers[0]
+
+	// register org and admin
+	err := testUtils.RegisterOrgAndAdmin(sdc, orgData, adminData)
 	assert.NilError(t, err)
-	defer HardRemoveOrgs([]string{orgData.OrgID})
 
 	// admin login
 	err = api.Login(sdc, adminData.UserID, adminData.Password, orgData.OrgID)
 	assert.NilError(t, err)
-	//assert.Check(t, token != "", "empty token")
 
 	// invite users
-	for i := 1; i < nUsers; i++ {
+	for i := 1; i < len(users); i++ {
 		newUser := orgUsers[0][i]
-		succ, err := api.InviteUser(sdc, newUser.Email, TestInvitationExpireTime)
+		succ, err := api.InviteUser(sdc, newUser.Email, testUtils.TestInvitationExpireTime)
 		assert.NilError(t, err)
 		assert.Equal(t, true, succ)
 	}
@@ -226,7 +135,7 @@ func TestListInvitations(t *testing.T) {
 	// list invitations
 	invitations, err := api.ListInvitations(sdc)
 	assert.NilError(t, err)
-	assert.Check(t, len(invitations)+1 == nUsers)
+	assert.Check(t, len(invitations)+1 == len(users))
 
 	// 	admin log out
 	_, err = api.Logout(sdc)
@@ -234,28 +143,24 @@ func TestListInvitations(t *testing.T) {
 }
 
 func TestRevokeInvitation(t *testing.T) {
-	// init client
-	sdc, err := client.InitStrongDocClient(client.LOCAL, false)
-	assert.NilError(t, err)
+	sdc, orgs, orgUsers := testUtils.PrevTest(t, 1, 10)
 
-	// register org and admin
-	nUsers := 10
-	orgs, orgUsers := initData(1, nUsers)
 	orgData := orgs[0]
 	adminData := orgUsers[0][0]
-	err = registerOrgAndAdmin(sdc, orgData, adminData)
+	users := orgUsers[0]
+
+	// register org and admin
+	err := testUtils.RegisterOrgAndAdmin(sdc, orgData, adminData)
 	assert.NilError(t, err)
-	defer HardRemoveOrgs([]string{orgData.OrgID})
 
 	// admin login
 	err = api.Login(sdc, adminData.UserID, adminData.Password, orgData.OrgID)
 	assert.NilError(t, err)
-	//assert.Check(t, token != "", "empty token")
 
 	// invite users
-	for i := 1; i < nUsers; i++ {
+	for i := 1; i < len(users); i++ {
 		newUser := orgUsers[0][i]
-		succ, err := api.InviteUser(sdc, newUser.Email, TestInvitationExpireTime)
+		succ, err := api.InviteUser(sdc, newUser.Email, testUtils.TestInvitationExpireTime)
 		assert.NilError(t, err)
 		assert.Equal(t, true, succ)
 	}
@@ -263,7 +168,7 @@ func TestRevokeInvitation(t *testing.T) {
 	// list invitations
 	invitations, err := api.ListInvitations(sdc)
 	assert.NilError(t, err)
-	assert.Check(t, len(invitations)+1 == nUsers) // len(invitations) = 9
+	assert.Check(t, len(invitations)+1 == len(users)) // len(invitations) = 9
 
 	// revoke one invitation
 	succ, codeAlreadyUsed, err := api.RevokeInvitation(sdc, invitations[0].Email)
@@ -274,11 +179,11 @@ func TestRevokeInvitation(t *testing.T) {
 	// list invitations
 	invitations, err = api.ListInvitations(sdc)
 	assert.NilError(t, err)
-	assert.Check(t, len(invitations)+2 == nUsers) // len(invitations) = 8
+	assert.Check(t, len(invitations)+2 == len(users)) // len(invitations) = 8
 
 	// cannot revoke alreadyUsed invitation
 	newUser := orgUsers[0][2]
-	_, _, succ, err = api.RegisterUser(sdc, TestInvitationCode, adminData.OrgID, newUser.Name, newUser.Password, newUser.Email)
+	_, _, succ, err = api.RegisterUser(sdc, testUtils.TestInvitationCode, adminData.OrgID, newUser.Name, newUser.Password, newUser.Email)
 	assert.NilError(t, err)
 	assert.Check(t, succ)
 	succ, codeAlreadyUsed, err = api.RevokeInvitation(sdc, newUser.Email)
@@ -288,7 +193,7 @@ func TestRevokeInvitation(t *testing.T) {
 
 	invitations, err = api.ListInvitations(sdc)
 	assert.NilError(t, err)
-	assert.Check(t, len(invitations)+3 == nUsers) // len(invitations) = 7
+	assert.Check(t, len(invitations)+3 == len(users)) // len(invitations) = 7
 
 	// admin log out
 	_, err = api.Logout(sdc)
@@ -296,24 +201,25 @@ func TestRevokeInvitation(t *testing.T) {
 }
 
 func TestRegisterWithInvitation(t *testing.T) {
-	// init client
-	sdc, err := client.InitStrongDocClient(client.LOCAL, false)
-	assert.NilError(t, err)
+	sdc, orgs, orgUsers := testUtils.PrevTest(t, 1, 2)
 
-	// register org and admin
-	orgs, orgUsers := initData(1, 2)
-	org := orgs[0]
+	orgData := orgs[0]
 	admin := orgUsers[0][0]
 	newUser := orgUsers[0][1]
-	err = registerOrgAndAdmin(sdc, org, admin)
+
+	// register org and admin
+	err := testUtils.RegisterOrgAndAdmin(sdc, orgData, admin)
 	assert.NilError(t, err)
-	defer HardRemoveOrgs([]string{org.OrgID})
+
+	// admin login
+	err = api.Login(sdc, admin.UserID, admin.Password, orgData.OrgID)
+	assert.NilError(t, err)
 
 	// adminUser invite user
 	err = api.Login(sdc, admin.UserID, admin.Password, admin.OrgID)
 	assert.NilError(t, err)
 	//assert.Check(t, token != "")
-	succ, err := api.InviteUser(sdc, newUser.Email, TestInvitationExpireTime)
+	succ, err := api.InviteUser(sdc, newUser.Email, testUtils.TestInvitationExpireTime)
 	assert.NilError(t, err)
 	assert.Check(t, succ, "failed with InvitateUser, succ = false")
 	_, err = api.Logout(sdc)
@@ -323,37 +229,36 @@ func TestRegisterWithInvitation(t *testing.T) {
 	assert.ErrorContains(t, err, " Invitation Code not Match")
 	assert.Check(t, !succ)
 	// register with wrong orgID
-	_, _, succ, err = api.RegisterUser(sdc, TestInvitationCode, "wrongOrgID", newUser.Name, newUser.Password, newUser.Email)
+	_, _, succ, err = api.RegisterUser(sdc, testUtils.TestInvitationCode, "wrongOrgID", newUser.Name, newUser.Password, newUser.Email)
 	assert.ErrorContains(t, err, "No valid Invitation")
 	assert.Check(t, !succ)
 	// succeed
-	_, _, succ, err = api.RegisterUser(sdc, TestInvitationCode, admin.OrgID, newUser.Name, newUser.Password, newUser.Email)
+	_, _, succ, err = api.RegisterUser(sdc, testUtils.TestInvitationCode, admin.OrgID, newUser.Name, newUser.Password, newUser.Email)
 	assert.NilError(t, err)
 	assert.Check(t, succ)
 	// used invitation code
-	_, _, succ, err = api.RegisterUser(sdc, TestInvitationCode, admin.OrgID, newUser.Name, newUser.Password, newUser.Email)
+	_, _, succ, err = api.RegisterUser(sdc, testUtils.TestInvitationCode, admin.OrgID, newUser.Name, newUser.Password, newUser.Email)
 	assert.ErrorContains(t, err, "already belongs to an org")
 
 }
 
 func TestPromoteDemote(t *testing.T) {
-	// init client
-	sdc, err := client.InitStrongDocClient(client.LOCAL, false)
-	assert.NilError(t, err)
+	sdc, orgs, orgUsers := testUtils.PrevTest(t, 1, 2)
 
-	// register org, admin and a normal user
-	orgs, orgUsers := initData(1, 2)
-	org := orgs[0]
+	orgData := orgs[0]
 	admin := orgUsers[0][0]
 	normalUser := orgUsers[0][1]
-	err = registerOrgAndAdmin(sdc, org, admin)
+
+	// register org and admin
+	err := testUtils.RegisterOrgAndAdmin(sdc, orgData, admin)
 	assert.NilError(t, err)
-	defer HardRemoveOrgs([]string{org.OrgID})
+
+	// register a normal user
 	api.Login(sdc, admin.UserID, admin.Password, admin.OrgID)
-	succ, err := api.InviteUser(sdc, normalUser.Email, TestInvitationExpireTime)
+	succ, err := api.InviteUser(sdc, normalUser.Email, testUtils.TestInvitationExpireTime)
 	assert.NilError(t, err)
 	api.Logout(sdc)
-	userID, _, succ, err := api.RegisterUser(sdc, TestInvitationCode, admin.OrgID, normalUser.Name, normalUser.Password, normalUser.Email)
+	userID, _, succ, err := api.RegisterUser(sdc, testUtils.TestInvitationCode, admin.OrgID, normalUser.Name, normalUser.Password, normalUser.Email)
 	assert.NilError(t, err)
 	assert.Check(t, succ)
 	normalUser.UserID = userID
@@ -405,17 +310,15 @@ func TestPromoteDemote(t *testing.T) {
 }
 
 func TestChangePassword(t *testing.T) {
-	// init client
-	sdc, err := client.InitStrongDocClient(client.LOCAL, false)
+	sdc, orgs, orgUsers := testUtils.PrevTest(t, 1, 2)
+
+	orgData := orgs[0]
+	admin := orgUsers[0][0]
+
+	// register org and admin
+	err := testUtils.RegisterOrgAndAdmin(sdc, orgData, admin)
 	assert.NilError(t, err)
 
-	// register org, admin and a normal user
-	orgs, orgUsers := initData(1, 1)
-	org := orgs[0]
-	admin := orgUsers[0][0]
-	err = registerOrgAndAdmin(sdc, org, admin)
-	assert.NilError(t, err)
-	defer HardRemoveOrgs([]string{org.OrgID})
 	api.Login(sdc, admin.UserID, admin.Password, admin.OrgID)
 
 	newPassword := "This is a password."

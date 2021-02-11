@@ -1,4 +1,4 @@
-package test
+package testUtils
 
 import (
 	"encoding/json"
@@ -21,7 +21,7 @@ func setEnv(key string, value string) error {
 }
 
 // load config file
-func loadConfig(configFileName string) error {
+func LoadConfig(configFileName string) error {
 	jsonFile, err := os.Open(configFileName + ".json")
 	if err != nil {
 		return err

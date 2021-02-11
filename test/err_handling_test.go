@@ -1,6 +1,7 @@
 package test
 
 import (
+	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
 	"os"
 	"path"
 	"testing"
@@ -29,9 +30,8 @@ func testStreamWithWrongDocId(t *testing.T, sdc client.StrongDocClient) {
 }
 
 func TestStreamErr(t *testing.T) {
-	sdc, _, registeredOrgUsers, orgids, err := testSetup(1, 1)
-	assert.NilError(t, err)
-	defer testTeardown(orgids)
+	sdc, orgs, registeredOrgUsers := testUtils.PrevTest(t, 1, 1)
+	testUtils.DoRegistration(t, sdc, orgs, registeredOrgUsers)
 	t.Run("test stream error handling", func(t *testing.T) {
 		admin := registeredOrgUsers[0][0]
 		// admin login

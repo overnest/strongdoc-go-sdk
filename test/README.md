@@ -21,10 +21,8 @@ e.g.
 ```
 func TestFoo(t *testing.T) {
 	// set up and tear down
-	registeredOrgs, registeredOrgUsers, orgids, err := testSetup(1, 2) // 1: number of orgs, 2: number of users per org
-	assert.NilError(t, err)
-	defer testTeardown(orgids)
-
+	sdc, registeredOrgs, registeredOrgUsers := testUtils.PrevTest(t, 1, 2) // 1: number of orgs, 2: number of users per org
+	testUtils.DoRegistration(t, sdc, registeredOrgs, registeredOrgUsers)
 	t.Run("example test", func(t *testing.T) {
 		//start test
 		org1 := registeredOrgs[0]
@@ -44,5 +42,5 @@ Failed to TearDown
 
 ----
 tearDown hard remove registered organizations via superUser API  
-- make sure config file(<b>dev.json</b>) is configured correctly and Internal Serive is enabled on server side  
-- the failure of tearDown would raise some unexpected problems, remember to drop the db before restart
+- make sure config file(<b>dev.json</b>) is configured correctly and Internal Service is enabled on server side  
+- the failure of tearDown would raise unexpected problems, sometimes need drop db before restart

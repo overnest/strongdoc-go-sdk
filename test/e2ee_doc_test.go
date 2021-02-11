@@ -2,6 +2,7 @@ package test
 
 import (
 	"bytes"
+	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
 	"io/ioutil"
 	"path"
 
@@ -27,7 +28,7 @@ import (
 	orgs, orgUsers := initData(1, 1)
 	orgData := orgs[0]
 	userData := orgUsers[0][0]
-	err = registerOrgAndAdmin(sdc, orgData, userData)
+	err = RegisterOrgAndAdmin(sdc, orgData, userData)
 	assert.NilError(t, err)
 	// defer HardRemoveOrgs([]string{orgData.OrgID})
 
@@ -41,7 +42,7 @@ import (
 
 // }
 
-func testE2EEUploadDownload(t *testing.T, sdc client.StrongDocClient, uploader, downloader *testUser, filename string) {
+func testE2EEUploadDownload(t *testing.T, sdc client.StrongDocClient, uploader, downloader *testUtils.TestUser, filename string) {
 	txtBytes, err := ioutil.ReadFile(filename)
 	assert.NilError(t, err)
 
@@ -91,9 +92,9 @@ func testE2EEAdminDownload(t *testing.T, sdc client.StrongDocClient, docID strin
 }
 
 func TestE2EEUploadDownload(t *testing.T) {
-	sdc, _, registeredOrgUsers, orgids, err := testSetup(1, 2)
-	assert.NilError(t, err)
-	defer testTeardown(orgids)
+	sdc, orgs, registeredOrgUsers := testUtils.PrevTest(t, 1, 2)
+	testUtils.DoRegistration(t, sdc, orgs, registeredOrgUsers)
+
 	t.Run("test e2ee upload download", func(t *testing.T) {
 		admin := registeredOrgUsers[0][0]
 		notAdmin := registeredOrgUsers[0][1]

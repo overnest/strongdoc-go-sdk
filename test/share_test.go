@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
 	"log"
 	"os"
 	"testing"
@@ -19,7 +20,7 @@ run all tests $go test -run TestShare
 const TestDocName = "TestDoc"
 const TestSearchQuery = "Privacy"
 
-func addSharableOrg(sdc client.StrongDocClient, user *testUser, org *testOrg) (succ bool, err error) {
+func addSharableOrg(sdc client.StrongDocClient, user *testUtils.TestUser, org *testUtils.TestOrg) (succ bool, err error) {
 	err = api.Login(sdc, user.UserID, user.Password, user.OrgID)
 	if err != nil {
 		return
@@ -30,7 +31,7 @@ func addSharableOrg(sdc client.StrongDocClient, user *testUser, org *testOrg) (s
 	return
 }
 
-func setMultiLevelShare(sdc client.StrongDocClient, user *testUser) (succ bool, err error) {
+func setMultiLevelShare(sdc client.StrongDocClient, user *testUtils.TestUser) (succ bool, err error) {
 	// org1 admin set multiLevelShare enabled and add sharableOrg
 	err = api.Login(sdc, user.UserID, user.Password, user.OrgID)
 	if err != nil {
@@ -41,7 +42,7 @@ func setMultiLevelShare(sdc client.StrongDocClient, user *testUser) (succ bool, 
 }
 
 // share document with another user
-func shareWithUser(sdc client.StrongDocClient, docID string, fromUser *testUser, toUserIDorEmail string) (isAccessible, isSharable bool, sharedReceivers, alreadyAccessibleUsers, unsharableUsers map[string]bool, err error) {
+func shareWithUser(sdc client.StrongDocClient, docID string, fromUser *testUtils.TestUser, toUserIDorEmail string) (isAccessible, isSharable bool, sharedReceivers, alreadyAccessibleUsers, unsharableUsers map[string]bool, err error) {
 	err = api.Login(sdc, fromUser.UserID, fromUser.Password, fromUser.OrgID)
 	if err != nil {
 		return
@@ -51,7 +52,7 @@ func shareWithUser(sdc client.StrongDocClient, docID string, fromUser *testUser,
 }
 
 // unshare document with another user
-func unshareWithUser(sdc client.StrongDocClient, docID string, fromUser *testUser, UserIDorEmail string) (succ bool, alreadyNoAccess, allowed bool, err error) {
+func unshareWithUser(sdc client.StrongDocClient, docID string, fromUser *testUtils.TestUser, UserIDorEmail string) (succ bool, alreadyNoAccess, allowed bool, err error) {
 	err = api.Login(sdc, fromUser.UserID, fromUser.Password, fromUser.OrgID)
 	if err != nil {
 		return
@@ -61,7 +62,7 @@ func unshareWithUser(sdc client.StrongDocClient, docID string, fromUser *testUse
 }
 
 // share document with another org
-func shareWithOrg(sdc client.StrongDocClient, docID string, fromUser *testUser, toOrg *testOrg) (isAccessible, isSharable bool, sharedReceivers, alreadyAccessibleOrgs, unsharableOrgs map[string]bool, err error) {
+func shareWithOrg(sdc client.StrongDocClient, docID string, fromUser *testUtils.TestUser, toOrg *testUtils.TestOrg) (isAccessible, isSharable bool, sharedReceivers, alreadyAccessibleOrgs, unsharableOrgs map[string]bool, err error) {
 	err = api.Login(sdc, fromUser.UserID, fromUser.Password, fromUser.OrgID)
 	if err != nil {
 		return
@@ -71,7 +72,7 @@ func shareWithOrg(sdc client.StrongDocClient, docID string, fromUser *testUser, 
 }
 
 // unshare document with another org
-func unshareWithOrg(sdc client.StrongDocClient, docID string, fromUser *testUser, orgID string) (succ bool, alreadyNoAccess, allowed bool, err error) {
+func unshareWithOrg(sdc client.StrongDocClient, docID string, fromUser *testUtils.TestUser, orgID string) (succ bool, alreadyNoAccess, allowed bool, err error) {
 	err = api.Login(sdc, fromUser.UserID, fromUser.Password, fromUser.OrgID)
 	if err != nil {
 		return
@@ -80,7 +81,7 @@ func unshareWithOrg(sdc client.StrongDocClient, docID string, fromUser *testUser
 	return api.UnshareWithOrg(sdc, docID, orgID)
 }
 
-func checkDocAccess(t *testing.T, sdc client.StrongDocClient, docID string, testUser *testUser) (bool, error) {
+func checkDocAccess(t *testing.T, sdc client.StrongDocClient, docID string, testUser *testUtils.TestUser) (bool, error) {
 	err := api.Login(sdc, testUser.UserID, testUser.Password, testUser.OrgID)
 	if err != nil {
 		return false, err
@@ -99,7 +100,7 @@ func checkDocAccess(t *testing.T, sdc client.StrongDocClient, docID string, test
 	return false, nil
 }
 
-func search(sdc client.StrongDocClient, user *testUser, query string) (hits []*api.DocumentResult, err error) {
+func search(sdc client.StrongDocClient, user *testUtils.TestUser, query string) (hits []*api.DocumentResult, err error) {
 	err = api.Login(sdc, user.UserID, user.Password, user.OrgID)
 	if err != nil {
 		return
@@ -108,7 +109,7 @@ func search(sdc client.StrongDocClient, user *testUser, query string) (hits []*a
 	return api.Search(sdc, query)
 }
 
-func uploadDocument(sdc client.StrongDocClient, uploader *testUser, E2E bool) (uploadDocID string, err error) {
+func uploadDocument(sdc client.StrongDocClient, uploader *testUtils.TestUser, E2E bool) (uploadDocID string, err error) {
 	err = api.Login(sdc, uploader.UserID, uploader.Password, uploader.OrgID)
 	if err != nil {
 		return
@@ -127,7 +128,7 @@ func uploadDocument(sdc client.StrongDocClient, uploader *testUser, E2E bool) (u
 	return
 }
 
-func testShareWithoutMultiLevelShare(t *testing.T, sdc client.StrongDocClient, registeredOrgs []*testOrg, registeredOrgUsers [][]*testUser, E2E bool) {
+func testShareWithoutMultiLevelShare(t *testing.T, sdc client.StrongDocClient, registeredOrgs []*testUtils.TestOrg, registeredOrgUsers [][]*testUtils.TestUser, E2E bool) {
 	org1Admin := registeredOrgUsers[0][0]
 	org1User1 := registeredOrgUsers[0][1]
 	org1User2 := registeredOrgUsers[0][2]
@@ -238,7 +239,7 @@ func testShareWithoutMultiLevelShare(t *testing.T, sdc client.StrongDocClient, r
 	assert.Check(t, !access, fmt.Sprintf("user %v should have no access to doc %v after unsharing", org3Admin.Name, docID))
 }
 
-func testShareWithMultiLevelShare(t *testing.T, sdc client.StrongDocClient, registeredOrgs []*testOrg, registeredOrgUsers [][]*testUser, E2E bool) {
+func testShareWithMultiLevelShare(t *testing.T, sdc client.StrongDocClient, registeredOrgs []*testUtils.TestOrg, registeredOrgUsers [][]*testUtils.TestUser, E2E bool) {
 	org1Admin := registeredOrgUsers[0][0]
 	org1User1 := registeredOrgUsers[0][1]
 	org1User2 := registeredOrgUsers[0][2]
@@ -342,9 +343,8 @@ only uploader or admin of uploader's org can share the document
 */
 func TestShare1(t *testing.T) {
 	log.Println("test share server-encrypted document with multiLevelShare disabled")
-	sdc, registeredOrgs, registeredOrgUsers, orgids, err := testSetup(3, 3)
-	assert.NilError(t, err)
-	defer testTeardown(orgids)
+	sdc, registeredOrgs, registeredOrgUsers := testUtils.PrevTest(t, 3, 3)
+	testUtils.DoRegistration(t, sdc, registeredOrgs, registeredOrgUsers)
 	t.Run("test share server-encrypted document with multiLevelShare disabled", func(t *testing.T) {
 		testShareWithoutMultiLevelShare(t, sdc, registeredOrgs, registeredOrgUsers, false)
 	})
@@ -352,9 +352,8 @@ func TestShare1(t *testing.T) {
 
 func TestShare2(t *testing.T) {
 	log.Println("test share client-encrypted document with multiLevelShare disabled")
-	sdc, registeredOrgs, registeredOrgUsers, orgids, err := testSetup(3, 3)
-	assert.NilError(t, err)
-	defer testTeardown(orgids)
+	sdc, registeredOrgs, registeredOrgUsers := testUtils.PrevTest(t, 3, 3)
+	testUtils.DoRegistration(t, sdc, registeredOrgs, registeredOrgUsers)
 	t.Run("test share client-encrypted document with multiLevelShare disabled", func(t *testing.T) {
 		testShareWithoutMultiLevelShare(t, sdc, registeredOrgs, registeredOrgUsers, true)
 	})
@@ -367,9 +366,8 @@ anyone within uploader's organization who has access to the document
 */
 func TestShare3(t *testing.T) {
 	log.Println("test share server-encrypted document with multiLevelShare enabled")
-	sdc, registeredOrgs, registeredOrgUsers, orgids, err := testSetup(3, 4)
-	assert.NilError(t, err)
-	defer testTeardown(orgids)
+	sdc, registeredOrgs, registeredOrgUsers := testUtils.PrevTest(t, 3, 4)
+	testUtils.DoRegistration(t, sdc, registeredOrgs, registeredOrgUsers)
 	t.Run("test share server-encrypted document with multiLevelShare enabled", func(t *testing.T) {
 		testShareWithMultiLevelShare(t, sdc, registeredOrgs, registeredOrgUsers, false)
 	})
@@ -377,9 +375,8 @@ func TestShare3(t *testing.T) {
 
 func TestShare4(t *testing.T) {
 	log.Println("test share client-encrypted document with multiLevelShare enabled")
-	sdc, registeredOrgs, registeredOrgUsers, orgids, err := testSetup(3, 4)
-	assert.NilError(t, err)
-	defer testTeardown(orgids)
+	sdc, registeredOrgs, registeredOrgUsers := testUtils.PrevTest(t, 3, 4)
+	testUtils.DoRegistration(t, sdc, registeredOrgs, registeredOrgUsers)
 	t.Run("test share client-encrypted document with multiLevelShare enabled", func(t *testing.T) {
 		testShareWithMultiLevelShare(t, sdc, registeredOrgs, registeredOrgUsers, true)
 	})
@@ -388,10 +385,8 @@ func TestShare4(t *testing.T) {
 // test server-encrypted document search after sharing
 func TestShareSearch(t *testing.T) {
 	log.Println("test document search after sharing")
-	sdc, registeredOrgs, registeredOrgUsers, orgids, err := testSetup(3, 3)
-
-	assert.NilError(t, err)
-	defer testTeardown(orgids)
+	sdc, registeredOrgs, registeredOrgUsers := testUtils.PrevTest(t, 3, 3)
+	testUtils.DoRegistration(t, sdc, registeredOrgs, registeredOrgUsers)
 	t.Run("test document search", func(t *testing.T) {
 		org1Admin := registeredOrgUsers[0][0]
 		org1User1 := registeredOrgUsers[0][1]
