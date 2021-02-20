@@ -140,7 +140,42 @@ func CreateDocOffsetIdxV1(docID string, docVer uint64, key *sscrypto.StrongSaltK
 }
 
 // OpenDocOffsetIdxV1 opens a document offset index reader V1
-func OpenDocOffsetIdxV1(key *sscrypto.StrongSaltKey, plainHdrBody *DoiPlainHdrBodyV1,
+func OpenDocOffsetIdxV1(key *sscrypto.StrongSaltKey, store interface{}, initOffset int64) (*DocOffsetIdxV1, error) {
+	reader, ok := store.(io.Reader)
+	if !ok {
+		return nil, errors.Errorf("The passed in storage does not implement io.Reader")
+	}
+
+	plainHdr, parsed, err := ssheaders.DeserializePlainHdrStream(reader)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	plainHdrBodyData, err := plainHdr.GetBody()
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	version, err := DeserializeDoiVersion(plainHdrBodyData)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	if version.GetDoiVersion() != DOI_V1 {
+		return nil, errors.Errorf("Document offset index is not version %v", DOI_V1)
+	}
+
+	// Parse plaintext header body
+	plainHdrBody := &DoiPlainHdrBodyV1{}
+	plainHdrBody, err = plainHdrBody.deserialize(plainHdrBodyData)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+	return openDocOffsetIdxV1(key, plainHdrBody, reader, initOffset+int64(parsed))
+}
+
+// openDocOffsetIdxV1 opens a document offset index reader V1
+func openDocOffsetIdxV1(key *sscrypto.StrongSaltKey, plainHdrBody *DoiPlainHdrBodyV1,
 	store interface{}, initOffset int64) (*DocOffsetIdxV1, error) {
 
 	if key.Type != sscrypto.Type_XChaCha20 {
@@ -266,4 +301,14 @@ func (idx *DocOffsetIdxV1) flush(data []byte) error {
 	}
 	idx.Block = nil
 	return nil
+}
+
+// GetDocID gets the document ID
+func (idx *DocOffsetIdxV1) GetDocID() string {
+	return idx.DocID
+}
+
+// GetDocVersion gets the document version
+func (idx *DocOffsetIdxV1) GetDocVersion() uint64 {
+	return idx.DocVer
 }

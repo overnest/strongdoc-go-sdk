@@ -26,9 +26,12 @@ const (
 //
 //////////////////////////////////////////////////////////////////
 
-// DoiVersion store document offset index version
-type DoiVersion interface {
+// DocOffsetIdx store document offset index version
+type DocOffsetIdx interface {
 	GetDoiVersion() uint32
+	GetDocID() string
+	GetDocVersion() uint64
+	Close() error
 }
 
 // DoiVersionS is structure used to store document offset index version
@@ -101,7 +104,7 @@ func CreateDocOffsetIdx(docID string, docVer uint64, key *sscrypto.StrongSaltKey
 }
 
 // OpenDocOffsetIdx opens a document offset index for reading
-func OpenDocOffsetIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset int64) (DoiVersion, error) {
+func OpenDocOffsetIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset int64) (DocOffsetIdx, error) {
 	reader, ok := store.(io.Reader)
 	if !ok {
 		return nil, errors.Errorf("The passed in storage does not implement io.Reader")
@@ -130,7 +133,7 @@ func OpenDocOffsetIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset
 		if err != nil {
 			return nil, errors.New(err)
 		}
-		return OpenDocOffsetIdxV1(key, plainHdrBody, reader, initOffset+int64(parsed))
+		return openDocOffsetIdxV1(key, plainHdrBody, reader, initOffset+int64(parsed))
 	default:
 		return nil, errors.Errorf("Document offset index version %v is not supported",
 			version.GetDoiVersion())

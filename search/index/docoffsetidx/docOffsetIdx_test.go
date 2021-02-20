@@ -19,7 +19,7 @@ func TestDocOffsetIdx(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Create file with encrypted content
-	CreateTestDocOffsetIndex(t, key, "docID100", 100, sourceFilePath, idxFileName)
+	createTestDocOffsetIndex(t, key, "docID100", 100, sourceFilePath, idxFileName)
 
 	idxFile, err := os.OpenFile(idxFileName, os.O_RDWR, 0755)
 	assert.NilError(t, err)
@@ -36,7 +36,7 @@ func TestDocOffsetIdx(t *testing.T) {
 	}
 }
 
-func CreateTestDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string, docVer uint64,
+func createTestDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string, docVer uint64,
 	sourceFile, outputFile string) {
 
 	idxFile, err := os.Create(outputFile)
@@ -59,7 +59,7 @@ func CreateTestDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID s
 	idxFile.Close()
 }
 
-func testDocOffsetIdxV1(t *testing.T, doiVersion DoiVersion, sourceFilePath string) {
+func testDocOffsetIdxV1(t *testing.T, doiVersion DocOffsetIdx, sourceFilePath string) {
 	tokenizer, err := utils.OpenFileTokenizer(sourceFilePath)
 	assert.NilError(t, err)
 	defer tokenizer.Close()

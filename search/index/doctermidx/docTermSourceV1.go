@@ -60,13 +60,13 @@ func (dts *docTermSourceTextFileV1) Close() error {
 // Document Offset Index Source
 //
 type docTermSourceDocOffsetV1 struct {
-	doi      docoffsetidx.DoiVersion
+	doi      docoffsetidx.DocOffsetIdx
 	termsLoc map[string][]uint64
 	terms    []string
 }
 
 // OpenDocTermSourceDocOffsetV1 opens the Document Offset source
-func OpenDocTermSourceDocOffsetV1(doi docoffsetidx.DoiVersion) (DocTermSourceV1, error) {
+func OpenDocTermSourceDocOffsetV1(doi docoffsetidx.DocOffsetIdx) (DocTermSourceV1, error) {
 	switch doi.GetDoiVersion() {
 	case docoffsetidx.DOI_V1:
 		_, ok := doi.(*docoffsetidx.DocOffsetIdxV1)

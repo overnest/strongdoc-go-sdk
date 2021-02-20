@@ -32,7 +32,7 @@ type DocTermIdxBlkV1 struct {
 var baseBlockJSONSize uint64
 
 func init() {
-	base, _ := CreateDockTermIdxBlkV1("", 0).Serialize()
+	base, _ := CreateDocTermIdxBlkV1("", 0).Serialize()
 	baseBlockJSONSize = uint64(len(base))
 }
 
@@ -45,7 +45,7 @@ func init() {
 func DocTermComparatorV1(value interface{}, block blocks.Block) (int, error) {
 	term, _ := value.(string)
 
-	blk := CreateDockTermIdxBlkV1("", 0)
+	blk := CreateDocTermIdxBlkV1("", 0)
 	blk, err := blk.Deserialize(block.GetData())
 	if err != nil {
 		return 0, errors.New(err)
@@ -66,7 +66,7 @@ func DocTermComparatorV1(value interface{}, block blocks.Block) (int, error) {
 	return 0, nil
 }
 
-func CreateDockTermIdxBlkV1(prevHighTerm string, maxDataSize uint64) *DocTermIdxBlkV1 {
+func CreateDocTermIdxBlkV1(prevHighTerm string, maxDataSize uint64) *DocTermIdxBlkV1 {
 	return &DocTermIdxBlkV1{
 		Terms:             []string{},
 		termMap:           make(map[string]bool),

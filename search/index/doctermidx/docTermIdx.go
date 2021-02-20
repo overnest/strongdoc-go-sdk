@@ -17,7 +17,7 @@ const (
 	DTI_BLOCK_V1  = uint32(1)
 	DTI_BLOCK_VER = DTI_BLOCK_V1
 
-	DTI_BLOCK_SIZE_MAX       = uint64(1024 * 1024) // 10MB
+	DTI_BLOCK_SIZE_MAX       = uint64(1024 * 1024) // 1MB
 	DTI_BLOCK_MARGIN_PERCENT = uint64(10)          // 10% margin
 )
 
@@ -27,9 +27,12 @@ const (
 //
 //////////////////////////////////////////////////////////////////
 
-// DtiVersion store document term index version
-type DtiVersion interface {
+// DocTermIdx store document term index version
+type DocTermIdx interface {
 	GetDtiVersion() uint32
+	GetDocID() string
+	GetDocVersion() uint64
+	Close() error
 }
 
 // DtiVersionS is structure used to store document term index version
@@ -96,13 +99,13 @@ func DeserializeBlockVersion(data []byte) (*BlockVersion, error) {
 
 // CreateDocTermIdx creates a new document term index for writing
 func CreateDocTermIdx(docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	source DocTermSourceV1, store interface{}, initOffset int64) (*DocTermIdxV1, error) {
+	source DocTermSourceV1, store interface{}, initOffset int64) (DocTermIdx, error) {
 
 	return CreateDocTermIdxV1(docID, docVer, key, source, store, initOffset)
 }
 
 // OpenDocTermIdx opens a document term index for reading
-func OpenDocTermIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset uint64, endOffset uint64) (DtiVersion, error) {
+func OpenDocTermIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset uint64, endOffset uint64) (DocTermIdx, error) {
 	reader, ok := store.(io.Reader)
 	if !ok {
 		return nil, errors.Errorf("The passed in storage does not implement io.Reader")
@@ -131,7 +134,7 @@ func OpenDocTermIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset u
 		if err != nil {
 			return nil, errors.New(err)
 		}
-		return OpenDocTermIdxV1(key, plainHdrBody, reader, initOffset, endOffset, initOffset+uint64(parsed))
+		return openDocTermIdxV1(key, plainHdrBody, reader, initOffset, endOffset, initOffset+uint64(parsed))
 	default:
 		return nil, errors.Errorf("Document term index version %v is not supported",
 			version.GetDtiVersion())
@@ -139,7 +142,7 @@ func OpenDocTermIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset u
 }
 
 // DiffDocTermIdx diffs the terms indexes
-func DiffDocTermIdx(dtiOld DtiVersion, dtiNew DtiVersion) (added []string, deleted []string, err error) {
+func DiffDocTermIdx(dtiOld DocTermIdx, dtiNew DocTermIdx) (added []string, deleted []string, err error) {
 	var oldTerm *string = nil
 	var newTerm *string = nil
 
@@ -164,7 +167,7 @@ func DiffDocTermIdx(dtiOld DtiVersion, dtiNew DtiVersion) (added []string, delet
 	oldTermIdx := 1
 	newTermIdx := 1
 
-	for oldTerm != nil && newTerm != nil {
+	for oldTerm != nil || newTerm != nil {
 		updateOld := false
 		updateNew := false
 
@@ -227,9 +230,14 @@ func DiffDocTermIdx(dtiOld DtiVersion, dtiNew DtiVersion) (added []string, delet
 	return
 }
 
-func getNextTermList(dti DtiVersion) (terms []string, err error) {
+func getNextTermList(dti DocTermIdx) (terms []string, err error) {
 	terms = nil
 	err = nil
+
+	if dti == nil {
+		err = io.EOF
+		return
+	}
 
 	switch dti.GetDtiVersion() {
 	case DTI_V1:

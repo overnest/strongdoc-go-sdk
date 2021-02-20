@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 
 	"gotest.tools/assert"
@@ -35,13 +36,6 @@ In addition, some modes also allow for the authentication of unencrypted associa
 and these are called AEAD (authenticated encryption with associated data) schemes. For example, 
 EAX mode is a double-pass AEAD scheme while OCB mode is single-pass.
 `
-
-func min(x, y int) int {
-	if x < y {
-		return x
-	}
-	return y
-}
 
 func TestStreamCrypto(t *testing.T) {
 	testEncryptDecrypt(t)
@@ -124,7 +118,7 @@ func testEncryptDecrypt(t *testing.T) {
 
 	// Do DecryptAt for every position
 	for at := 0; at < len(ciphertext); at++ {
-		b, err := crypto.DecryptAt(ciphertext[at:min(at+511, len(ciphertext))], int64(at))
+		b, err := crypto.DecryptAt(ciphertext[at:utils.Min(at+511, len(ciphertext))], int64(at))
 		assert.NilError(t, err)
 
 		c := []byte(plaintext)[at : at+len(b)]
@@ -206,7 +200,7 @@ func testReadWriteEncrypt(t *testing.T, initOffset int64) {
 	// Do random read and writes in different locations
 	for i := 0; i < 100; i++ {
 		offset := rand.Intn(len(content))
-		size := min(rand.Intn(key.BlockSize()*2), len(content)-offset)
+		size := utils.Min(rand.Intn(key.BlockSize()*2), len(content)-offset)
 
 		// Read existing data at offset
 		readData := make([]byte, size)
@@ -235,7 +229,7 @@ func testReadWriteEncrypt(t *testing.T, initOffset int64) {
 	// Do random seeks
 	for i := 0; i < 100; i++ {
 		offset := rand.Intn(len(content))
-		size := min(rand.Intn(key.BlockSize()*2), len(content)-offset)
+		size := utils.Min(rand.Intn(key.BlockSize()*2), len(content)-offset)
 
 		// Read existing data at offset
 		readData := make([]byte, size)

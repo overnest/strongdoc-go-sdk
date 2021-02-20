@@ -38,3 +38,10 @@ func BinarySearchU64(list []uint64, val uint64) int {
 
 	return -1
 }
+
+func Min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}

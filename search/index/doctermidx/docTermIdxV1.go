@@ -145,7 +145,41 @@ func CreateDocTermIdxV1(docID string, docVer uint64, key *sscrypto.StrongSaltKey
 }
 
 // OpenDocTermIdxV1 opens a document offset index reader V1
-func OpenDocTermIdxV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdrBodyV1,
+func OpenDocTermIdxV1(key *sscrypto.StrongSaltKey, store interface{}, initOffset uint64, endOffset uint64) (*DocTermIdxV1, error) {
+	reader, ok := store.(io.Reader)
+	if !ok {
+		return nil, errors.Errorf("The passed in storage does not implement io.Reader")
+	}
+
+	plainHdr, parsed, err := ssheaders.DeserializePlainHdrStream(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	plainHdrBodyData, err := plainHdr.GetBody()
+	if err != nil {
+		return nil, err
+	}
+
+	version, err := DeserializeDtiVersion(plainHdrBodyData)
+	if err != nil {
+		return nil, err
+	}
+
+	if version.GetDtiVersion() != DTI_V1 {
+		return nil, errors.Errorf("Document term index version is not %v", DTI_V1)
+	}
+
+	// Parse plaintext header body
+	plainHdrBody := &DtiPlainHdrBodyV1{}
+	plainHdrBody, err = plainHdrBody.deserialize(plainHdrBodyData)
+	if err != nil {
+		return nil, err
+	}
+	return openDocTermIdxV1(key, plainHdrBody, reader, initOffset, endOffset, initOffset+uint64(parsed))
+}
+
+func openDocTermIdxV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdrBodyV1,
 	store interface{}, initOffset uint64, endOffset uint64, plainHdrOffset uint64) (*DocTermIdxV1, error) {
 
 	if key.Type != sscrypto.Type_XChaCha20 {
@@ -167,18 +201,18 @@ func OpenDocTermIdxV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdrBody
 	// Read the ciphertext header from storage
 	cipherHdr, parsed, err := ssheaders.DeserializeCipherHdrStream(streamCrypto)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, err
 	}
 
 	cipherHdrBodyData, err := cipherHdr.GetBody()
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, err
 	}
 
 	cipherHdrBody := &DtiCipherHdrBodyV1{}
 	cipherHdrBody, err = cipherHdrBody.deserialize(cipherHdrBodyData)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, err
 	}
 
 	// Create a block list reader using the streaming crypto so the blocks will be
@@ -186,7 +220,7 @@ func OpenDocTermIdxV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdrBody
 	reader, err := ssblocks.NewBlockListReader(streamCrypto,
 		plainHdrOffset+uint64(parsed), endOffset)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, err
 	}
 	blockReader, ok := reader.(ssblocks.BlockListReaderV1)
 	if !ok {
@@ -208,7 +242,7 @@ func (idx *DocTermIdxV1) WriteNextBlock() (*DocTermIdxBlkV1, error) {
 	}
 
 	if idx.Block == nil {
-		idx.Block = CreateDockTermIdxBlkV1("", uint64(idx.Writer.GetMaxDataSize()))
+		idx.Block = CreateDocTermIdxBlkV1("", uint64(idx.Writer.GetMaxDataSize()))
 	}
 
 	err := idx.Source.Reset()
@@ -259,7 +293,7 @@ func (idx *DocTermIdxV1) ReadNextBlock() (*DocTermIdxBlkV1, error) {
 	}
 
 	if b != nil && len(b.GetData()) > 0 {
-		block := CreateDockTermIdxBlkV1("", 0)
+		block := CreateDocTermIdxBlkV1("", 0)
 		blk, derr := block.Deserialize(b.GetData())
 		if derr != nil {
 			return nil, errors.New(derr)
@@ -285,6 +319,15 @@ func (idx *DocTermIdxV1) FindTerm(term string) (bool, error) {
 	return (blk != nil), nil
 }
 
+// Reset resets the term index for reading. Can not be done for writing
+func (idx *DocTermIdxV1) Reset() error {
+	if idx.Reader == nil {
+		return errors.Errorf("The document term index is not open for reading. Can not reset")
+	}
+
+	return idx.Reader.Reset()
+}
+
 // Close writes any residual block data to output stream
 func (idx *DocTermIdxV1) Close() error {
 	if idx.Block != nil && idx.Block.totalTerms > 0 {
@@ -307,6 +350,16 @@ func (idx *DocTermIdxV1) flush(data []byte) error {
 		return errors.New(err)
 	}
 
-	idx.Block = CreateDockTermIdxBlkV1(idx.Block.highTerm, uint64(idx.Writer.GetMaxDataSize()))
+	idx.Block = CreateDocTermIdxBlkV1(idx.Block.highTerm, uint64(idx.Writer.GetMaxDataSize()))
 	return nil
+}
+
+// GetDocID gets the document ID
+func (idx *DocTermIdxV1) GetDocID() string {
+	return idx.DocID
+}
+
+// GetDocVersion gets the document version
+func (idx *DocTermIdxV1) GetDocVersion() uint64 {
+	return idx.DocVer
 }

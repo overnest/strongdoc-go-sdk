@@ -1,7 +1,6 @@
 package doctermidx
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"sort"
@@ -27,7 +26,7 @@ func TestTermIdxBlockV1(t *testing.T) {
 	var prevHighTerm string = ""
 
 	for true {
-		dtib := CreateDockTermIdxBlkV1(prevHighTerm, DTI_BLOCK_SIZE_MAX)
+		dtib := CreateDocTermIdxBlkV1(prevHighTerm, DTI_BLOCK_SIZE_MAX)
 
 		tokenizer, err := utils.OpenFileTokenizer(sourceFilePath)
 		assert.NilError(t, err)
@@ -38,11 +37,11 @@ func TestTermIdxBlockV1(t *testing.T) {
 			_ = pos
 		}
 
-		s, err := dtib.Serialize()
+		_, err = dtib.Serialize()
 		assert.NilError(t, err)
 
-		fmt.Println(dtib.lowTerm, dtib.highTerm, len(dtib.Terms), dtib.IsFull())
-		fmt.Println(len(s), dtib.predictedJSONSize, DTI_BLOCK_SIZE_MAX)
+		// fmt.Println(dtib.lowTerm, dtib.highTerm, len(dtib.Terms), dtib.IsFull())
+		// fmt.Println(len(s), dtib.predictedJSONSize, DTI_BLOCK_SIZE_MAX)
 
 		for _, t := range dtib.Terms {
 			outfile.WriteString(t)
@@ -158,7 +157,7 @@ func TestTermIdxV1(t *testing.T) {
 	//
 	// Create a document term index
 	//
-	terms := testCreateTermIndexV1(t, key, sourceFilePath, outputFileName, docID, docVer)
+	terms := createTermIndexV1(t, key, sourceFilePath, outputFileName, docID, docVer)
 	defer os.Remove(outputFileName)
 
 	//
@@ -222,7 +221,7 @@ func TestTermIdxV1(t *testing.T) {
 	assert.NilError(t, err)
 }
 
-func testCreateTermIndexV1(t *testing.T, key *sscrypto.StrongSaltKey,
+func createTermIndexV1(t *testing.T, key *sscrypto.StrongSaltKey,
 	sourcefile, outputFile string, docID string, docVer uint64) (terms []string) {
 
 	outfile, err := os.Create(outputFile)
@@ -260,14 +259,16 @@ func testCreateTermIndexV1(t *testing.T, key *sscrypto.StrongSaltKey,
 }
 
 func TestTermIdxDiffV1(t *testing.T) {
-	docID := "DocID1"
+	docID := "DocIDsomething"
 	source1, err := utils.FetchFileLoc("./testDocuments/enwik8.uniq.txt.gz")
 	assert.NilError(t, err)
 	source2, err := utils.FetchFileLoc("./testDocuments/enwik8.uniq.chg.txt.gz")
 	assert.NilError(t, err)
 
-	output1 := "/tmp/TestTermIdxV1_1.txt"
-	output2 := "/tmp/TestTermIdxV1_2.txt"
+	dtiFileName1 := "/tmp/TestTermIdxV1_1.txt"
+	defer os.Remove(dtiFileName1)
+	dtiFileName2 := "/tmp/TestTermIdxV1_2.txt"
+	defer os.Remove(dtiFileName2)
 
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
@@ -275,64 +276,100 @@ func TestTermIdxDiffV1(t *testing.T) {
 	//
 	// Create a document term index
 	//
-	terms1 := testCreateTermIndexV1(t, key, source1, output1, docID, 1)
-	terms2 := testCreateTermIndexV1(t, key, source2, output2, docID, 2)
-	termap1 := make(map[string]bool)
-	termap2 := make(map[string]bool)
-	addedList := make([]string, 0, 1000)
-	deletedList := make([]string, 0, 1000)
-
-	defer os.Remove(output1)
-	defer os.Remove(output2)
-
-	for _, term := range terms1 {
-		termap1[term] = true
-	}
-	for _, term := range terms2 {
-		termap2[term] = true
-	}
-
-	for term := range termap1 {
-		if !termap2[term] {
-			deletedList = append(deletedList, term)
-		}
-	}
-
-	for term := range termap2 {
-		if !termap1[term] {
-			addedList = append(addedList, term)
-		}
-	}
-
-	sort.Strings(addedList)
-	sort.Strings(deletedList)
+	terms1 := createTermIndexV1(t, key, source1, dtiFileName1, docID, 1)
+	terms2 := createTermIndexV1(t, key, source2, dtiFileName2, docID, 2)
+	addTermList, remTermList := diffTermLists(terms1, terms2)
 
 	//
 	// Open the previously written document term index
 	//
-	outfile1, err := os.Open(output1)
+	dtiFile1, dtiVer1 := openDocumentTermIndex(t, key, dtiFileName1, DTI_V1)
+	defer dtiFile1.Close()
+	dti1 := dtiVer1.(*DocTermIdxV1)
+
+	dtiFile2, dtiVer2 := openDocumentTermIndex(t, key, dtiFileName2, DTI_V1)
+	defer dtiFile2.Close()
+	dti2 := dtiVer2.(*DocTermIdxV1)
+
+	//
+	// Diff nil, dti1
+	//
+	added, deleted, err := DiffDocTermIdx(nil, dtiVer1)
 	assert.NilError(t, err)
-	defer outfile1.Close()
-	stat1, err := outfile1.Stat()
+	assert.DeepEqual(t, added, terms1)
+	assert.DeepEqual(t, deleted, []string{})
+
+	err = dti1.Reset()
 	assert.NilError(t, err)
 
-	dtiv1, err := OpenDocTermIdx(key, outfile1, 0, uint64(stat1.Size()))
+	//
+	// Diff dti1, dti2
+	//
+	added, deleted, err = DiffDocTermIdx(dtiVer1, dtiVer2)
 	assert.NilError(t, err)
-	assert.Equal(t, dtiv1.GetDtiVersion(), uint32(1))
+	assert.DeepEqual(t, added, addTermList)
+	assert.DeepEqual(t, deleted, remTermList)
 
-	outfile2, err := os.Open(output2)
+	err = dti1.Reset()
 	assert.NilError(t, err)
-	defer outfile2.Close()
-	stat2, err := outfile2.Stat()
-	assert.NilError(t, err)
-
-	dtiv2, err := OpenDocTermIdx(key, outfile2, 0, uint64(stat2.Size()))
-	assert.NilError(t, err)
-	assert.Equal(t, dtiv2.GetDtiVersion(), uint32(1))
-
-	added, deleted, err := DiffDocTermIdx(dtiv1, dtiv2)
+	err = dti2.Reset()
 	assert.NilError(t, err)
 
-	assert.DeepEqual(t, addedList, added)
-	assert.DeepEqual(t, deletedList, deleted)
+	//
+	// Diff dti2, nil
+	//
+	added, deleted, err = DiffDocTermIdx(dtiVer2, nil)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, added, []string{})
+	assert.DeepEqual(t, deleted, terms2)
+
+	dti1.Close()
+	dti2.Close()
+}
+
+func diffTermLists(oldTermList, newTermList []string) (addTermList, delTermList []string) {
+	oldTermMap := make(map[string]bool)
+	newTermMap := make(map[string]bool)
+	addTermList = make([]string, 0, 1000)
+	delTermList = make([]string, 0, 1000)
+
+	for _, term := range oldTermList {
+		oldTermMap[term] = true
+	}
+	for _, term := range newTermList {
+		newTermMap[term] = true
+	}
+
+	for term := range oldTermMap {
+		if !newTermMap[term] {
+			delTermList = append(delTermList, term)
+		}
+	}
+
+	for term := range newTermMap {
+		if !oldTermMap[term] {
+			addTermList = append(addTermList, term)
+		}
+	}
+
+	sort.Strings(addTermList)
+	sort.Strings(delTermList)
+
+	return
+}
+
+func openDocumentTermIndex(t *testing.T, key *sscrypto.StrongSaltKey, filename string,
+	dtiVersion uint32) (dtiFile *os.File, dtiVer DocTermIdx) {
+
+	var err error
+	dtiFile, err = os.Open(filename)
+	assert.NilError(t, err)
+	stat, err := dtiFile.Stat()
+	assert.NilError(t, err)
+
+	dtiVer, err = OpenDocTermIdx(key, dtiFile, 0, uint64(stat.Size()))
+	assert.NilError(t, err)
+	assert.Equal(t, dtiVer.GetDtiVersion(), dtiVersion)
+
+	return
 }
