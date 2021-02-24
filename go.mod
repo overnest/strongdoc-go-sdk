@@ -11,17 +11,17 @@ require (
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/overnest/strongsalt-common-go v0.0.6-0.20210129205722-812015cdd5c4
-	github.com/overnest/strongsalt-crypto-go v0.0.0-20201209211329-ebbb719c09c0
+	github.com/overnest/strongsalt-crypto-go v0.0.0-20210111191944-23542459b77c
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/shengdoushi/base58 v1.0.0
 	github.com/stretchr/testify v1.6.1
-	github.com/udhos/equalfile v0.3.0
-	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
+	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381 // indirect
-	golang.org/x/sys v0.0.0-20201109165425-215b40eba54c // indirect
+	golang.org/x/sys v0.0.0-20210112091331-59c308dcf3cc // indirect
 	golang.org/x/text v0.3.3 // indirect
 	google.golang.org/genproto v0.0.0-20200513103714-09dca8ec2884
 	google.golang.org/grpc v1.32.0
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/yaml.v2 v2.2.8 // indirect
 	gotest.tools v2.2.0+incompatible
 )
