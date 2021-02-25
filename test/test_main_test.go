@@ -7,13 +7,9 @@ import (
 	"testing"
 )
 
-const (
-	DefaultConfig = "dev"
-)
-
 // control all tests within package, load config before testing
 func TestMain(m *testing.M) {
-	if err := testUtils.LoadConfig(DefaultConfig); err != nil {
+	if err := testUtils.LoadConfig(testUtils.DefaultConfig); err != nil {
 		log.Println("fail to load config file: ", err)
 		return
 	}

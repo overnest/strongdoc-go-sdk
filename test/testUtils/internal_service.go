@@ -2,7 +2,6 @@ package testUtils
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -68,7 +67,10 @@ func sendRequest(req *http.Request) (*http.Response, error) {
 func superUserLogin() error {
 	// build request
 	if getSuperUserId() == "" || getSuperUserPwd() == "" {
-		return fmt.Errorf("please specify superuser id and superuser password in config file or export ENV varible")
+		err := LoadConfig(DefaultConfig)
+		if err != nil {
+			return err
+		}
 	}
 	req, err := buildRequest("GET",
 		LOGIN_API+"?"+USER_ID+"="+getSuperUserId()+"&"+PASSWORD+"="+getSuperUserPwd(),

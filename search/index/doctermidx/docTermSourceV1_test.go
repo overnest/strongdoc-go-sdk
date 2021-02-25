@@ -13,7 +13,11 @@ func TestDocTermSourceTextFileV1(t *testing.T) {
 	sourceFilePath, err := utils.FetchFileLoc(sourceFileName)
 	assert.NilError(t, err)
 
-	dts, err := OpenDocTermSourceTextFileV1(sourceFilePath)
+	sourceFile, err := utils.OpenLocalFile(sourceFilePath)
+	assert.NilError(t, err)
+	defer sourceFile.Close()
+
+	dts, err := OpenDocTermSourceTextFileV1(sourceFile)
 	assert.NilError(t, err)
 
 	terms := make([]string, 0, 1000000)

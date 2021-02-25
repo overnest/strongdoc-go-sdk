@@ -13,24 +13,23 @@ type DocTermSourceV1 interface {
 	// Returns io.EOF error if there are no more terms
 	GetNextTerm() (string, uint64, error)
 	Reset() error
-	Close() error
 }
 
 //
 // Text File Source
 //
 type docTermSourceTextFileV1 struct {
-	filename  string
 	tokenizer utils.FileTokenizer
 }
 
 // OpenDocTermSourceTextFileV1 opens the text file Document Term Source V1
-func OpenDocTermSourceTextFileV1(filename string) (DocTermSourceV1, error) {
-	tokenizer, err := utils.OpenFileTokenizer(filename)
+
+func OpenDocTermSourceTextFileV1(storeage interface{}) (DocTermSourceV1, error) {
+	tokenizer, err := utils.OpenFileTokenizer(storeage)
 	if err != nil {
 		return nil, errors.New(err)
 	}
-	return &docTermSourceTextFileV1{filename, tokenizer}, nil
+	return &docTermSourceTextFileV1{tokenizer}, nil
 
 }
 
@@ -50,10 +49,6 @@ func (dts *docTermSourceTextFileV1) GetNextTerm() (string, uint64, error) {
 
 func (dts *docTermSourceTextFileV1) Reset() error {
 	return dts.tokenizer.Reset()
-}
-
-func (dts *docTermSourceTextFileV1) Close() error {
-	return dts.tokenizer.Close()
 }
 
 //

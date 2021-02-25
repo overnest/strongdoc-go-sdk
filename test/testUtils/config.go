@@ -2,8 +2,13 @@ package testUtils
 
 import (
 	"encoding/json"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 	"io/ioutil"
 	"os"
+)
+
+const (
+	DefaultConfig = "/test/testUtils/dev.json"
 )
 
 type configData struct {
@@ -22,7 +27,11 @@ func setEnv(key string, value string) error {
 
 // load config file
 func LoadConfig(configFileName string) error {
-	jsonFile, err := os.Open(configFileName + ".json")
+	filePath, err := utils.FetchFileLoc(configFileName)
+	if err != nil {
+		return err
+	}
+	jsonFile, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}

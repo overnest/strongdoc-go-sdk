@@ -5,6 +5,7 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/api"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"gotest.tools/assert"
+	"math/rand"
 	"testing"
 )
 
@@ -141,4 +142,11 @@ func hardRemoveOrgs(t *testing.T, orgs []*TestOrg) {
 	}
 	err = superUserLogout()
 	assert.NilError(t, err)
+}
+
+// generate n bytes data
+func GenerateRandomData(n int) []byte {
+	data := make([]byte, n)
+	rand.Read(data)
+	return data
 }

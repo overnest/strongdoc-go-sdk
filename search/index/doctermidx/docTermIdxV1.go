@@ -193,7 +193,7 @@ func openDocTermIdxV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdrBody
 	}
 
 	// Initialize the streaming crypto to decrypt ciphertext header and the blocks after that
-	streamCrypto, err := crypto.CreateStreamCrypto(key, plainHdrBody.Nonce, store, int64(plainHdrOffset))
+	streamCrypto, err := crypto.OpenStreamCrypto(key, plainHdrBody.Nonce, store, int64(plainHdrOffset))
 	if err != nil {
 		return nil, errors.New(err)
 	}

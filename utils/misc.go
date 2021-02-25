@@ -1,5 +1,17 @@
 package utils
 
+import (
+	"os"
+)
+
+func OpenLocalFile(filepath string) (*os.File, error) {
+	return os.OpenFile(filepath, os.O_RDWR, 0755)
+}
+
+func CreateLocalFile(filepath string) (*os.File, error) {
+	return os.Create(filepath)
+}
+
 // BinarySearchU64 finds a number in a sorted list.
 // Returns the index where the value is found.
 // Returns -1 if value is not found
