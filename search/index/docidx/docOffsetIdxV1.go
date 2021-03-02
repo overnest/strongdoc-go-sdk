@@ -1,4 +1,4 @@
-package docoffsetidx
+package docidx
 
 import (
 	"io"
@@ -238,7 +238,7 @@ func (idx *DocOffsetIdxV1) AddTermOffset(term string, offset uint64) error {
 	if idx.Block == nil {
 		idx.Block = &DocOffsetIdxBlkV1{
 			TermLoc:           make(map[string][]uint64),
-			predictedJSONSize: baseBlockJSONSize,
+			predictedJSONSize: baseDoiBlockJSONSize,
 		}
 	}
 

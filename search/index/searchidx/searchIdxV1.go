@@ -32,6 +32,21 @@ func GetUpdateIdsV1(owner SearchIdxOwner, term string, termKey *sscrypto.StrongS
 	return GetUpdateIdsHmacV1(owner, termHmac)
 }
 
+// GetLatestUpdateIdV1 returns the latest update IDs for a specific owner + term
+func GetLatestUpdateIdV1(owner SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) (string, error) {
+
+	ids, err := GetUpdateIdsV1(owner, term, termKey)
+	if err != nil {
+		return "", err
+	}
+
+	if ids == nil || len(ids) == 0 {
+		return "", nil
+	}
+
+	return ids[0], nil
+}
+
 // GetUpdateIdsHmacV1 returns the list of available update IDs for a specific owner + term in
 // reverse chronological order. The most recent update ID will come first
 func GetUpdateIdsHmacV1(owner SearchIdxOwner, termHmac string) ([]string, error) {
@@ -65,6 +80,20 @@ func GetUpdateIdsHmacV1(owner SearchIdxOwner, termHmac string) ([]string, error)
 	return updateIDs, nil
 }
 
+// GetLatestUpdateIdsHmacV1 returns the latest update IDs for a specific owner + term
+func GetLatestUpdateIdsHmacV1(owner SearchIdxOwner, termHmac string) (string, error) {
+	ids, err := GetUpdateIdsHmacV1(owner, termHmac)
+	if err != nil {
+		return "", err
+	}
+
+	if ids == nil || len(ids) == 0 {
+		return "", nil
+	}
+
+	return ids[0], nil
+}
+
 //////////////////////////////////////////////////////////////////
 //
 //                          Search Index
@@ -96,7 +125,7 @@ func GetSearchIdxPathV1(prefix string, owner SearchIdxOwner, term, updateID stri
 
 // CreateSearchIdxV1 creates a search index writer V1
 func CreateSearchIdxV1(termKey, indexKey *sscrypto.StrongSaltKey,
-	sources []SearchIdxSourceV1) (*SearchIdxV1, error) {
+	sources []SearchTermIdxSourceV1) (*SearchIdxV1, error) {
 
 	var err error
 
@@ -116,28 +145,11 @@ func CreateSearchIdxV1(termKey, indexKey *sscrypto.StrongSaltKey,
 		delDocs:        &DeletedDocsV1{make([]string, 0), make(map[string]bool)},
 	}
 
-	searchIdx.batchMgr, err = CreateSearchTermBatchMgrV1(sources, termKey, indexKey)
+	searchIdx.batchMgr, err = CreateSearchTermBatchMgrV1(nil, sources, termKey, indexKey,
+		searchIdx.delDocs)
 	if err != nil {
 		return nil, err
 	}
-
-	//
-	// Figure out all document IDs that need to be deleted from the old search index
-	//
-	// if delDocs != nil {
-	// 	for _, docID := range delDocs {
-	// 		searchIdx.delDocs.delDocMap[docID] = true
-	// 	}
-	// }
-
-	// If any of the document versions are newer than the one in the old search index,
-	// they need to be deleted
-	// if oldSortedDocIdx != nil {
-	// 	// Comparison is much easier if there is sorted doc index
-
-	// } else if oldSearchIdx != nil {
-	// 	// If there isn't sorted doc index, then it can also be done with old search index
-	// }
 
 	return searchIdx, nil
 }
@@ -151,67 +163,3 @@ func (idx *SearchIdxV1) DoBatch() error {
 	termBatch.ProcessBatch()
 	return nil
 }
-
-// // ReadNextBlock returns the next document term index block
-// func (idx *SearchIdxV1) ReadNextBlock() (*SearchIdxBlkV1, error) {
-// 	if idx.Reader == nil {
-// 		return nil, errors.Errorf("The document term index is not open for reading")
-// 	}
-
-// 	b, err := idx.Reader.ReadNextBlock()
-// 	if err != nil && err != io.EOF {
-// 		return nil, errors.New(err)
-// 	}
-
-// 	if b != nil && len(b.GetData()) > 0 {
-// 		block := CreateDockTermIdxBlkV1("", 0)
-// 		blk, derr := block.Deserialize(b.GetData())
-// 		if derr != nil {
-// 			return nil, errors.New(derr)
-// 		}
-
-// 		return blk, err
-// 	}
-
-// 	return nil, err
-// }
-
-// // FindTerm attempts to find the specified term in the term index
-// func (idx *SearchIdxV1) FindTerm(term string) (bool, error) {
-// 	if idx.Reader == nil {
-// 		return false, errors.Errorf("The document term index is not open for reading")
-// 	}
-
-// 	blk, err := idx.Reader.SearchBinary(term, SearchComparatorV1)
-// 	if err != nil {
-// 		return false, errors.New(err)
-// 	}
-
-// 	return (blk != nil), nil
-// }
-
-// // Close writes any residual block data to output stream
-// func (idx *SearchIdxV1) Close() error {
-// 	if idx.Block != nil && idx.Block.totalTerms > 0 {
-// 		serial, err := idx.Block.Serialize()
-// 		if err != nil {
-// 			return errors.New(err)
-// 		}
-// 		return idx.flush(serial)
-// 	}
-// 	return nil
-// }
-
-// func (idx *SearchIdxV1) flush(data []byte) error {
-// 	if idx.Writer == nil {
-// 		return errors.Errorf("The document term index is not open for writing")
-// 	}
-
-// 	_, err := idx.Writer.WriteBlockData(data)
-// 	if err != nil {
-// 		return errors.New(err)
-// 	}
-
-// 	idx.Block = CreateDocTermIdxBlkV1(idx.Block.highTerm, uint64(idx.Writer.GetMaxDataSize()))
-// 	return nil
-// }

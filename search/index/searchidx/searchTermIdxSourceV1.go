@@ -6,67 +6,66 @@ import (
 	"sort"
 
 	"github.com/go-errors/errors"
-	"github.com/overnest/strongdoc-go-sdk/search/index/docoffsetidx"
-	"github.com/overnest/strongdoc-go-sdk/search/index/doctermidx"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 )
 
-type SearchIdxSourceBlockV1 struct {
+type SearchTermIdxSourceBlockV1 struct {
 	DocID       string
 	DocVer      uint64
 	FilterTerms []string
 	TermOffset  map[string][]uint64
 }
 
-// SearchIdxSourceV1 is the Search Index Source V1
-type SearchIdxSourceV1 interface {
+// SearchTermIdxSourceV1 is the Search Term Index Source V1
+type SearchTermIdxSourceV1 interface {
 	GetDocID() string
 	GetDocVer() uint64
 	GetAddTerms() []string
 	GetDelTerms() []string
 	// Returns io.EOF error if there are no more blocks
-	GetNextSourceBlock(filterTerms []string) (*SearchIdxSourceBlockV1, error)
+	GetNextSourceBlock(filterTerms []string) (*SearchTermIdxSourceBlockV1, error)
 	Reset() error
 	Close() error
 	fmt.Stringer
 }
 
-type searchIdxSourceV1 struct {
-	doi      docoffsetidx.DocOffsetIdx
-	dtiOld   doctermidx.DocTermIdx
-	dtiNew   doctermidx.DocTermIdx
+type searchTermIdxSourceV1 struct {
+	doi      docidx.DocOffsetIdx
+	dtiOld   docidx.DocTermIdx
+	dtiNew   docidx.DocTermIdx
 	addTerms []string
 	delTerms []string
 }
 
-// SearchSourceCreateDoc opens a search source when a new document is created
-func SearchSourceCreateDoc(doi docoffsetidx.DocOffsetIdx, dti doctermidx.DocTermIdx) (SearchIdxSourceV1, error) {
-	return createSearchSourceV1(doi, nil, dti)
+// SearchTermIdxSourceCreateDoc opens a search source when a new document is created
+func SearchTermIdxSourceCreateDoc(doi docidx.DocOffsetIdx, dti docidx.DocTermIdx) (SearchTermIdxSourceV1, error) {
+	return createSearchTermIdxSourceV1(doi, nil, dti)
 }
 
-// SearchSourceUpdateDoc opens a search source when an existing document is updated
-func SearchSourceUpdateDoc(doi docoffsetidx.DocOffsetIdx, dtiOld, dtiNew doctermidx.DocTermIdx) (SearchIdxSourceV1, error) {
-	return createSearchSourceV1(doi, dtiOld, dtiNew)
+// SearchTermIdxSourceUpdateDoc opens a search source when an existing document is updated
+func SearchTermIdxSourceUpdateDoc(doi docidx.DocOffsetIdx, dtiOld, dtiNew docidx.DocTermIdx) (SearchTermIdxSourceV1, error) {
+	return createSearchTermIdxSourceV1(doi, dtiOld, dtiNew)
 }
 
-// SearchSourceDeleteDoc opens a search source when an existing document is deleted
-func SearchSourceDeleteDoc(doi docoffsetidx.DocOffsetIdx, dti doctermidx.DocTermIdx) (SearchIdxSourceV1, error) {
-	return createSearchSourceV1(doi, dti, nil)
+// SearchTermIdxSourceDeleteDoc opens a search source when an existing document is deleted
+func SearchTermIdxSourceDeleteDoc(doi docidx.DocOffsetIdx, dti docidx.DocTermIdx) (SearchTermIdxSourceV1, error) {
+	return createSearchTermIdxSourceV1(doi, dti, nil)
 }
 
-func createSearchSourceV1(doi docoffsetidx.DocOffsetIdx, dtiOld, dtiNew doctermidx.DocTermIdx) (SearchIdxSourceV1, error) {
-	source := &searchIdxSourceV1{doi, dtiOld, dtiNew, make([]string, 0), make([]string, 0)}
+func createSearchTermIdxSourceV1(doi docidx.DocOffsetIdx, dtiOld, dtiNew docidx.DocTermIdx) (SearchTermIdxSourceV1, error) {
+	source := &searchTermIdxSourceV1{doi, dtiOld, dtiNew, make([]string, 0), make([]string, 0)}
 
 	// If there is not DTI given, then we'll figure out all the terms to be added from the DOI
 	if dtiOld == nil && dtiNew == nil {
 		terms := make(map[string]bool)
 
 		switch doi.GetDoiVersion() {
-		case docoffsetidx.DOI_V1:
-			doiv1 := doi.(*docoffsetidx.DocOffsetIdxV1)
+		case docidx.DOI_V1:
+			doiv1 := doi.(*docidx.DocOffsetIdxV1)
 
 			var err error = nil
 			for err == nil {
-				var blk *docoffsetidx.DocOffsetIdxBlkV1
+				var blk *docidx.DocOffsetIdxBlkV1
 				blk, err = doiv1.ReadNextBlock()
 				if err != nil && err != io.EOF {
 					return nil, err
@@ -93,7 +92,7 @@ func createSearchSourceV1(doi docoffsetidx.DocOffsetIdx, dtiOld, dtiNew doctermi
 				doi.GetDoiVersion())
 		}
 	} else {
-		addTerms, delTerms, err := doctermidx.DiffDocTermIdx(dtiOld, dtiNew)
+		addTerms, delTerms, err := docidx.DiffDocTermIdx(dtiOld, dtiNew)
 		if err != nil {
 			return nil, err
 		}
@@ -105,12 +104,12 @@ func createSearchSourceV1(doi docoffsetidx.DocOffsetIdx, dtiOld, dtiNew doctermi
 }
 
 // GetNextSourceBlock gets the next source block from DOI
-func (sis *searchIdxSourceV1) GetNextSourceBlock(filterTerms []string) (*SearchIdxSourceBlockV1, error) {
-	sisBlock := &SearchIdxSourceBlockV1{sis.GetDocID(), sis.GetDocVer(), filterTerms, make(map[string][]uint64)}
+func (sis *searchTermIdxSourceV1) GetNextSourceBlock(filterTerms []string) (*SearchTermIdxSourceBlockV1, error) {
+	sisBlock := &SearchTermIdxSourceBlockV1{sis.GetDocID(), sis.GetDocVer(), filterTerms, make(map[string][]uint64)}
 
 	switch sis.doi.GetDoiVersion() {
-	case docoffsetidx.DOI_V1:
-		doiv1, ok := sis.doi.(*docoffsetidx.DocOffsetIdxV1)
+	case docidx.DOI_V1:
+		doiv1, ok := sis.doi.(*docidx.DocOffsetIdxV1)
 		if !ok {
 			return nil, errors.Errorf("Document offset index is not version %v",
 				sis.doi.GetDoiVersion())
@@ -144,26 +143,26 @@ func (sis *searchIdxSourceV1) GetNextSourceBlock(filterTerms []string) (*SearchI
 	}
 }
 
-func (sis *searchIdxSourceV1) GetDocID() string {
+func (sis *searchTermIdxSourceV1) GetDocID() string {
 	return sis.doi.GetDocID()
 }
 
-func (sis *searchIdxSourceV1) GetDocVer() uint64 {
+func (sis *searchTermIdxSourceV1) GetDocVer() uint64 {
 	return sis.doi.GetDocVersion()
 }
 
-func (sis *searchIdxSourceV1) GetAddTerms() []string {
+func (sis *searchTermIdxSourceV1) GetAddTerms() []string {
 	return sis.addTerms
 }
 
-func (sis *searchIdxSourceV1) GetDelTerms() []string {
+func (sis *searchTermIdxSourceV1) GetDelTerms() []string {
 	return sis.delTerms
 }
 
-func (sis *searchIdxSourceV1) Reset() error {
+func (sis *searchTermIdxSourceV1) Reset() error {
 	switch sis.doi.GetDoiVersion() {
-	case docoffsetidx.DOI_V1:
-		doiv1, ok := sis.doi.(*docoffsetidx.DocOffsetIdxV1)
+	case docidx.DOI_V1:
+		doiv1, ok := sis.doi.(*docidx.DocOffsetIdxV1)
 		if !ok {
 			return errors.Errorf("Document offset index is not version %v",
 				sis.doi.GetDoiVersion())
@@ -175,7 +174,7 @@ func (sis *searchIdxSourceV1) Reset() error {
 	}
 }
 
-func (sis *searchIdxSourceV1) Close() (err error) {
+func (sis *searchTermIdxSourceV1) Close() (err error) {
 	var err1, err2, err3 error
 	err = nil
 
@@ -209,10 +208,10 @@ func (sis *searchIdxSourceV1) Close() (err error) {
 	return
 }
 
-func (sis *searchIdxSourceV1) String() string {
+func (sis *searchTermIdxSourceV1) String() string {
 	return fmt.Sprintf("%v_%v", sis.GetDocID(), sis.GetDocVer())
 }
 
-func (sisb *SearchIdxSourceBlockV1) String() string {
+func (sisb *SearchTermIdxSourceBlockV1) String() string {
 	return fmt.Sprintf("%v_%v", sisb.DocID, sisb.DocVer)
 }

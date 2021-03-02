@@ -8,20 +8,20 @@ import (
 
 //////////////////////////////////////////////////////////////////
 //
-//                Search Term Index Headers V1
+//           Search Sorted Document Index Headers V1
 //
 //////////////////////////////////////////////////////////////////
 
-// StiPlainHdrBodyV1 is the plaintext header for search term index.
-type StiPlainHdrBodyV1 struct {
-	StiVersionS
+// SsdiPlainHdrBodyV1 is the plaintext header for search sorted document index.
+type SsdiPlainHdrBodyV1 struct {
+	SsdiVersionS
 	KeyType  string
 	Nonce    []byte
 	TermHmac string
 	UpdateID string
 }
 
-func (hdr *StiPlainHdrBodyV1) serialize() ([]byte, error) {
+func (hdr *SsdiPlainHdrBodyV1) serialize() ([]byte, error) {
 	b, err := json.Marshal(hdr)
 	if err != nil {
 		return nil, errors.New(err)
@@ -29,7 +29,7 @@ func (hdr *StiPlainHdrBodyV1) serialize() ([]byte, error) {
 	return b, nil
 }
 
-func (hdr *StiPlainHdrBodyV1) deserialize(data []byte) (*StiPlainHdrBodyV1, error) {
+func (hdr *SsdiPlainHdrBodyV1) deserialize(data []byte) (*SsdiPlainHdrBodyV1, error) {
 	err := json.Unmarshal(data, hdr)
 	if err != nil {
 		return nil, errors.New(err)
@@ -37,12 +37,12 @@ func (hdr *StiPlainHdrBodyV1) deserialize(data []byte) (*StiPlainHdrBodyV1, erro
 	return hdr, nil
 }
 
-// StiCipherHdrBodyV1 is the ciphertext header for search term index.
-type StiCipherHdrBodyV1 struct {
+// SsdiCipherHdrBodyV1 is the ciphertext header for search sorted document index.
+type SsdiCipherHdrBodyV1 struct {
 	BlockVersion
 }
 
-func (hdr *StiCipherHdrBodyV1) serialize() ([]byte, error) {
+func (hdr *SsdiCipherHdrBodyV1) serialize() ([]byte, error) {
 	b, err := json.Marshal(hdr)
 	if err != nil {
 		return nil, errors.New(err)
@@ -50,7 +50,7 @@ func (hdr *StiCipherHdrBodyV1) serialize() ([]byte, error) {
 	return b, nil
 }
 
-func (hdr *StiCipherHdrBodyV1) deserialize(data []byte) (*StiCipherHdrBodyV1, error) {
+func (hdr *SsdiCipherHdrBodyV1) deserialize(data []byte) (*SsdiCipherHdrBodyV1, error) {
 	err := json.Unmarshal(data, hdr)
 	if err != nil {
 		return nil, errors.New(err)

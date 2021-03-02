@@ -1,4 +1,4 @@
-package doctermidx
+package docidx
 
 import (
 	"encoding/json"
@@ -8,17 +8,6 @@ import (
 	"github.com/go-errors/errors"
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
-)
-
-const (
-	DTI_V1  = uint32(1)
-	DTI_VER = DTI_V1
-
-	DTI_BLOCK_V1  = uint32(1)
-	DTI_BLOCK_VER = DTI_BLOCK_V1
-
-	DTI_BLOCK_SIZE_MAX       = uint64(1024 * 1024) // 1MB
-	DTI_BLOCK_MARGIN_PERCENT = uint64(10)          // 10% margin
 )
 
 //////////////////////////////////////////////////////////////////
@@ -57,37 +46,6 @@ func (h *DtiVersionS) Deserialize(data []byte) (*DtiVersionS, error) {
 // DeserializeDtiVersion deserializes the data into version number object
 func DeserializeDtiVersion(data []byte) (*DtiVersionS, error) {
 	h := &DtiVersionS{}
-	return h.Deserialize(data)
-}
-
-//////////////////////////////////////////////////////////////////
-//
-//              Document Term Index Block Version
-//
-//////////////////////////////////////////////////////////////////
-
-// BlockVersion is structure used to store document term index block version
-type BlockVersion struct {
-	BlockVer uint32
-}
-
-// GetBlockVersion retrieves the document term index version block number
-func (h *BlockVersion) GetBlockVersion() uint32 {
-	return h.BlockVer
-}
-
-// Deserialize deserializes the data into version number object
-func (h *BlockVersion) Deserialize(data []byte) (*BlockVersion, error) {
-	err := json.Unmarshal(data, h)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	return h, nil
-}
-
-// DeserializeBlockVersion deserializes the data into version number object
-func DeserializeBlockVersion(data []byte) (*BlockVersion, error) {
-	h := &BlockVersion{}
 	return h.Deserialize(data)
 }
 

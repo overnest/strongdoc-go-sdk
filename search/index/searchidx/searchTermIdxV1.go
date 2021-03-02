@@ -32,6 +32,7 @@ type SearchTermIdxV1 struct {
 	reader     io.ReadCloser
 	bwriter    ssblocks.BlockListWriterV1
 	breader    ssblocks.BlockListReaderV1
+	storeSize  uint64
 }
 
 func getSearchTermIdxPathV1(prefix string, owner SearchIdxOwner, term, updateID string) string {
@@ -39,7 +40,8 @@ func getSearchTermIdxPathV1(prefix string, owner SearchIdxOwner, term, updateID 
 }
 
 // CreateSearchTermIdxV1 creates a search term index writer V1
-func CreateSearchTermIdxV1(owner SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey,
+func CreateSearchTermIdxV1(owner SearchIdxOwner, term string,
+	termKey, indexKey *sscrypto.StrongSaltKey,
 	oldSti SearchTermIdx, delDocs *DeletedDocsV1) (*SearchTermIdxV1, error) {
 
 	var err error
@@ -55,9 +57,11 @@ func CreateSearchTermIdxV1(owner SearchIdxOwner, term string, termKey, indexKey 
 		InitOffset:  0,
 		termHmac:    "",
 		updateID:    newUpdateIDV1(),
+		writer:      nil,
 		reader:      nil,
 		bwriter:     nil,
 		breader:     nil,
+		storeSize:   0,
 	}
 
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
@@ -157,48 +161,26 @@ func CreateSearchTermIdxV1(owner SearchIdxOwner, term string, termKey, indexKey 
 
 // OpenSearchTermIdxV1 opens a search term index reader V1
 func OpenSearchTermIdxV1(owner SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV1, error) {
-	var err error
-	sti := &SearchTermIdxV1{
-		StiVersionS: StiVersionS{StiVer: STI_V1},
-		Term:        term,
-		Owner:       owner,
-		OldSti:      nil,
-		DelDocs:     nil,
-		TermKey:     termKey,
-		IndexKey:    indexKey,
-		IndexNonce:  nil,
-		InitOffset:  0,
-		termHmac:    "",
-		updateID:    updateID,
-		reader:      nil,
-		bwriter:     nil,
-		breader:     nil,
-	}
-
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
-		return nil, errors.Errorf("The key type %v is not a MAC key", termKey.Type.Name)
+		return nil, errors.Errorf("The term key type %v is not a MAC key", termKey.Type.Name)
 	}
 
-	if midStreamKey, ok := indexKey.Key.(sscryptointf.KeyMidstream); ok {
-		sti.IndexNonce, err = midStreamKey.GenerateNonce()
-		if err != nil {
-			return nil, errors.New(err)
-		}
-	} else {
-		return nil, errors.Errorf("The key type %v is not a midstream key", indexKey.Type.Name)
+	if indexKey.Type != sscrypto.Type_XChaCha20 {
+		return nil, errors.Errorf("Index key type %v is not supported. The only supported key type is %v",
+			indexKey.Type.Name, sscrypto.Type_XChaCha20.Name)
 	}
 
-	sti.termHmac, err = sti.createTermHmac()
+	termHmac, err := createTermHmac(term, termKey)
 	if err != nil {
 		return nil, err
 	}
 
-	reader, err := sti.createReader()
+	reader, size, err := createStiReader(owner, termHmac, updateID)
 	if err != nil {
 		return nil, err
 	}
 
-	plainHdr, _, err := ssheaders.DeserializePlainHdrStream(reader)
+	plainHdr, parsed, err := ssheaders.DeserializePlainHdrStream(reader)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +196,8 @@ func OpenSearchTermIdxV1(owner SearchIdxOwner, term string, termKey, indexKey *s
 	}
 
 	if version.GetStiVersion() != STI_V1 {
-		return nil, errors.Errorf("Search term index version %v is not %v", version.GetStiVersion(), STI_V1)
+		return nil, errors.Errorf("Search term index version %v is not %v",
+			version.GetStiVersion(), STI_V1)
 	}
 
 	// Parse plaintext header body
@@ -224,7 +207,64 @@ func OpenSearchTermIdxV1(owner SearchIdxOwner, term string, termKey, indexKey *s
 		return nil, errors.New(err)
 	}
 
-	return nil, nil
+	sti := &SearchTermIdxV1{
+		StiVersionS: StiVersionS{StiVer: plainHdrBody.GetStiVersion()},
+		Term:        term,
+		Owner:       owner,
+		OldSti:      nil,
+		DelDocs:     nil,
+		TermKey:     termKey,
+		IndexKey:    indexKey,
+		IndexNonce:  plainHdrBody.Nonce,
+		InitOffset:  0,
+		termHmac:    termHmac,
+		updateID:    updateID,
+		writer:      nil,
+		reader:      reader,
+		bwriter:     nil,
+		breader:     nil,
+		storeSize:   size,
+	}
+
+	return openSearchTermIdxV1(sti, plainHdrBody, sti.InitOffset+uint64(parsed), size)
+}
+
+func openSearchTermIdxV1(sti *SearchTermIdxV1, plainHdrBody *StiPlainHdrBodyV1, plainHdrOffset, endOffset uint64) (*SearchTermIdxV1, error) {
+	// Initialize the streaming crypto to decrypt ciphertext header and the blocks after that
+	streamCrypto, err := crypto.CreateStreamCrypto(sti.IndexKey, sti.IndexNonce, sti.reader, int64(plainHdrOffset))
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	// Read the ciphertext header from storage
+	cipherHdr, parsed, err := ssheaders.DeserializeCipherHdrStream(streamCrypto)
+	if err != nil {
+		return nil, err
+	}
+
+	cipherHdrBodyData, err := cipherHdr.GetBody()
+	if err != nil {
+		return nil, err
+	}
+
+	cipherHdrBody := &StiCipherHdrBodyV1{}
+	cipherHdrBody, err = cipherHdrBody.deserialize(cipherHdrBodyData)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a block list reader using the streaming crypto so the blocks will be
+	// decrypted.
+	reader, err := ssblocks.NewBlockListReader(streamCrypto, plainHdrOffset+uint64(parsed), endOffset)
+	if err != nil {
+		return nil, err
+	}
+	blockReader, ok := reader.(ssblocks.BlockListReaderV1)
+	if !ok {
+		return nil, errors.Errorf("Block list reader is not BlockListReaderV1")
+	}
+	sti.breader = blockReader
+	return sti, nil
 }
 
 func createTermHmac(term string, termKey *sscrypto.StrongSaltKey) (string, error) {
@@ -270,20 +310,27 @@ func (sti *SearchTermIdxV1) createWriter() (io.WriteCloser, error) {
 	return sti.writer, nil
 }
 
-func (sti *SearchTermIdxV1) createReader() (io.ReadCloser, error) {
+func (sti *SearchTermIdxV1) createReader() (io.ReadCloser, uint64, error) {
 	if sti.reader != nil {
-		return sti.reader, nil
+		return sti.reader, sti.storeSize, nil
 	}
 
-	var err error
-	path := getSearchTermIdxPathV1(GetSearchIdxPathPrefix(), sti.Owner, sti.termHmac, sti.updateID)
+	return createStiReader(sti.Owner, sti.termHmac, sti.updateID)
+}
 
-	sti.reader, err = os.Open(path)
+func createStiReader(owner SearchIdxOwner, termHmac, updateID string) (io.ReadCloser, uint64, error) {
+	path := getSearchTermIdxPathV1(GetSearchIdxPathPrefix(), owner, termHmac, updateID)
+	reader, err := os.Open(path)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, 0, errors.New(err)
 	}
 
-	return sti.reader, nil
+	stat, err := reader.Stat()
+	if err != nil {
+		return nil, 0, errors.New(err)
+	}
+
+	return reader, uint64(stat.Size()), nil
 }
 
 func (sti *SearchTermIdxV1) GetMaxBlockDataSize() uint64 {
@@ -294,7 +341,7 @@ func (sti *SearchTermIdxV1) GetMaxBlockDataSize() uint64 {
 	return STI_BLOCK_SIZE_MAX
 }
 
-func (sti *SearchTermIdxV1) WriteBlock(block *SearchTermIdxBlkV1) error {
+func (sti *SearchTermIdxV1) WriteNextBlock(block *SearchTermIdxBlkV1) error {
 	if sti.writer == nil || sti.bwriter == nil {
 		return errors.Errorf("No writer available")
 	}
@@ -311,6 +358,32 @@ func (sti *SearchTermIdxV1) WriteBlock(block *SearchTermIdxBlkV1) error {
 	}
 
 	return nil
+}
+
+func (sti *SearchTermIdxV1) ReadNextBlock() (*SearchTermIdxBlkV1, error) {
+	if sti.reader == nil || sti.breader == nil {
+		return nil, errors.Errorf("No reader available")
+	}
+
+	b, err := sti.breader.ReadNextBlock()
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+
+	if b != nil && len(b.GetData()) > 0 {
+		stib := CreateSearchTermIdxBlkV1(0)
+		return stib.Deserialize(b.GetData())
+	}
+
+	return nil, err
+}
+
+func (sti *SearchTermIdxV1) Reset() error {
+	if sti.breader == nil {
+		return errors.Errorf("The search term index is not open for reading. Can not reset")
+	}
+
+	return sti.breader.Reset()
 }
 
 func (sti *SearchTermIdxV1) Close() error {

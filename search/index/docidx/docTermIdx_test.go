@@ -1,4 +1,4 @@
-package doctermidx
+package docidx
 
 import (
 	"io"
@@ -6,7 +6,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/overnest/strongdoc-go-sdk/search/index/docoffsetidx"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 
@@ -73,7 +72,7 @@ func TestTermIdxSourcesV1(t *testing.T) {
 	// Open Document Offset Index
 	doiFile, err := os.Open(doiFileName)
 	assert.NilError(t, err)
-	doiv, err := docoffsetidx.OpenDocOffsetIdx(key, doiFile, 0)
+	doiv, err := OpenDocOffsetIdx(key, doiFile, 0)
 	assert.NilError(t, err)
 
 	// Create DOI source
@@ -101,29 +100,6 @@ func TestTermIdxSourcesV1(t *testing.T) {
 	assert.NilError(t, err)
 	doiTermsNew := gatherTermsFromSource(t, sourceDoi)
 	assert.DeepEqual(t, doiTerms, doiTermsNew)
-}
-
-func createTestDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string, docVer uint64,
-	sourceFile, outputFile string) {
-
-	idxFile, err := os.Create(outputFile)
-	assert.NilError(t, err)
-	defer idxFile.Close()
-
-	doi, err := docoffsetidx.CreateDocOffsetIdx(docID, docVer, key, idxFile, 0)
-	assert.NilError(t, err)
-
-	tokenizer, err := utils.OpenFileTokenizer(sourceFile)
-	assert.NilError(t, err)
-
-	for token, pos, err := tokenizer.NextToken(); err != io.EOF; token, pos, err = tokenizer.NextToken() {
-		adderr := doi.AddTermOffset(token, uint64(pos.Offset))
-		assert.NilError(t, adderr)
-	}
-
-	tokenizer.Close()
-	doi.Close()
-	idxFile.Close()
 }
 
 func gatherTermsFromSource(t *testing.T, source DocTermSourceV1) []string {

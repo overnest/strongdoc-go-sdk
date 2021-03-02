@@ -1,4 +1,4 @@
-package doctermidx
+package docidx
 
 import (
 	"encoding/json"
@@ -29,11 +29,11 @@ type DocTermIdxBlkV1 struct {
 	maxDataSize       uint64          `json:"-"`
 }
 
-var baseBlockJSONSize uint64
+var baseDtiBlockJSONSize uint64
 
 func init() {
 	base, _ := CreateDocTermIdxBlkV1("", 0).Serialize()
-	baseBlockJSONSize = uint64(len(base))
+	baseDtiBlockJSONSize = uint64(len(base))
 }
 
 // DocTermComparatorV1 is a comparator function definition.
@@ -75,7 +75,7 @@ func CreateDocTermIdxBlkV1(prevHighTerm string, maxDataSize uint64) *DocTermIdxB
 		lowTerm:           "",
 		highTerm:          "",
 		prevHighTerm:      prevHighTerm,
-		predictedJSONSize: baseBlockJSONSize,
+		predictedJSONSize: baseDtiBlockJSONSize,
 		isFull:            false,
 		maxDataSize:       maxDataSize,
 	}
@@ -89,7 +89,10 @@ func (blk *DocTermIdxBlkV1) AddTerm(term string) {
 	}
 
 	newSize := blk.newSize(term)
-	if newSize > uint64(blk.maxDataSize+(blk.maxDataSize/uint64(100)*uint64(DTI_BLOCK_MARGIN_PERCENT))) {
+	// Yes we are storing more than the max data size. We'll remove the
+	// extra data during serialization time
+	if newSize > uint64(blk.maxDataSize+
+		(blk.maxDataSize/uint64(100)*uint64(DTI_BLOCK_MARGIN_PERCENT))) {
 		blk.isFull = true
 	}
 

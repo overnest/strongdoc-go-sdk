@@ -1,4 +1,4 @@
-package docoffsetidx
+package docidx
 
 import (
 	"encoding/json"
@@ -19,11 +19,11 @@ type DocOffsetIdxBlkV1 struct {
 	predictedJSONSize uint64 `json:"-"`
 }
 
-var baseBlockJSONSize uint64
+var baseDoiBlockJSONSize uint64
 
 func init() {
 	base, _ := (&DocOffsetIdxBlkV1{TermLoc: make(map[string][]uint64)}).Serialize()
-	baseBlockJSONSize = uint64(len(base))
+	baseDoiBlockJSONSize = uint64(len(base))
 }
 
 // AddTermOffset adds a term + offset pair to the block

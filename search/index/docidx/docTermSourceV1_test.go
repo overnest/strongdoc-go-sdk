@@ -1,4 +1,4 @@
-package doctermidx
+package docidx
 
 import (
 	"io"

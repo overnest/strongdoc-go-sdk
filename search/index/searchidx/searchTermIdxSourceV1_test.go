@@ -6,14 +6,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/overnest/strongdoc-go-sdk/search/index/docoffsetidx"
-	"github.com/overnest/strongdoc-go-sdk/search/index/doctermidx"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"gotest.tools/assert"
 )
 
-func TestSearchSourceTextFileV1(t *testing.T) {
+func TestSearchTermIdxSourceTextFileV1(t *testing.T) {
 	docID1 := "DOC1"
 	docVer1 := uint64(1)
 	docID2 := "DOC2"
@@ -31,7 +30,7 @@ func TestSearchSourceTextFileV1(t *testing.T) {
 	// Create new doc
 	doiFileOld1, doiOld1 := openDocOffsetIndex(t, key, doiFileNameOld1)
 	dtiFileOld1, dtiOld1 := openDocTermIndex(t, key, dtiFileNameOld1)
-	source1, err := SearchSourceCreateDoc(doiOld1, dtiOld1)
+	source1, err := SearchTermIdxSourceCreateDoc(doiOld1, dtiOld1)
 	assert.NilError(t, err)
 	assert.Assert(t, len(source1.GetAddTerms()) > 0)
 	assert.Assert(t, len(source1.GetDelTerms()) == 0)
@@ -43,7 +42,7 @@ func TestSearchSourceTextFileV1(t *testing.T) {
 	doiFileNew1, doiNew1 := openDocOffsetIndex(t, key, doiFileNameNew1)
 	dtiFileNew1, dtiNew1 := openDocTermIndex(t, key, dtiFileNameNew1)
 	dtiFileOld1, dtiOld1 = openDocTermIndex(t, key, dtiFileNameOld1)
-	source2, err := SearchSourceUpdateDoc(doiNew1, dtiOld1, dtiNew1)
+	source2, err := SearchTermIdxSourceUpdateDoc(doiNew1, dtiOld1, dtiNew1)
 	assert.NilError(t, err)
 	assert.Assert(t, len(source2.GetAddTerms()) > 0)
 	assert.Assert(t, len(source2.GetDelTerms()) > 0)
@@ -54,7 +53,7 @@ func TestSearchSourceTextFileV1(t *testing.T) {
 	// Delete existing doc
 	doiFileNew1, doiNew1 = openDocOffsetIndex(t, key, doiFileNameNew1)
 	dtiFileNew1, dtiNew1 = openDocTermIndex(t, key, dtiFileNameNew1)
-	source3, err := SearchSourceDeleteDoc(doiNew1, dtiNew1)
+	source3, err := SearchTermIdxSourceDeleteDoc(doiNew1, dtiNew1)
 	assert.NilError(t, err)
 	assert.Assert(t, len(source3.GetAddTerms()) == 0)
 	assert.Assert(t, len(source3.GetDelTerms()) > 0)
@@ -102,7 +101,7 @@ func createDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID strin
 	assert.NilError(t, err)
 	defer idxFile.Close()
 
-	doi, err := docoffsetidx.CreateDocOffsetIdx(docID, docVer, key, idxFile, 0)
+	doi, err := docidx.CreateDocOffsetIdx(docID, docVer, key, idxFile, 0)
 	assert.NilError(t, err)
 	defer doi.Close()
 
@@ -116,32 +115,32 @@ func createDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID strin
 	}
 }
 
-func openDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, fileName string) (doiFile *os.File, doi *docoffsetidx.DocOffsetIdxV1) {
+func openDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, fileName string) (doiFile *os.File, doi *docidx.DocOffsetIdxV1) {
 	var err error
 
 	doiFile, err = os.Open(fileName)
 	assert.NilError(t, err)
 
-	doi, err = docoffsetidx.OpenDocOffsetIdxV1(key, doiFile, 0)
+	doi, err = docidx.OpenDocOffsetIdxV1(key, doiFile, 0)
 	assert.NilError(t, err)
 
 	return
 }
 
 func createDocTermIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string, docVer uint64,
-	doi docoffsetidx.DocOffsetIdx, outputFile string) {
+	doi docidx.DocOffsetIdx, outputFile string) {
 
 	outfile, err := os.Create(outputFile)
 	assert.NilError(t, err)
 
-	source, err := doctermidx.OpenDocTermSourceDocOffsetV1(doi)
+	source, err := docidx.OpenDocTermSourceDocOffsetV1(doi)
 	assert.NilError(t, err)
 	defer source.Close()
 
 	//
 	// Create a document term index
 	//
-	dti, err := doctermidx.CreateDocTermIdxV1(docID, docVer, key, source, outfile, 0)
+	dti, err := docidx.CreateDocTermIdxV1(docID, docVer, key, source, outfile, 0)
 	assert.NilError(t, err)
 
 	err = nil
@@ -160,7 +159,7 @@ func createDocTermIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string,
 	return
 }
 
-func openDocTermIndex(t *testing.T, key *sscrypto.StrongSaltKey, fileName string) (dtiFile *os.File, dti *doctermidx.DocTermIdxV1) {
+func openDocTermIndex(t *testing.T, key *sscrypto.StrongSaltKey, fileName string) (dtiFile *os.File, dti *docidx.DocTermIdxV1) {
 	var err error
 
 	dtiFile, err = os.Open(fileName)
@@ -168,7 +167,7 @@ func openDocTermIndex(t *testing.T, key *sscrypto.StrongSaltKey, fileName string
 	info, err := os.Stat(fileName)
 	assert.NilError(t, err)
 
-	dti, err = doctermidx.OpenDocTermIdxV1(key, dtiFile, 0, uint64(info.Size()))
+	dti, err = docidx.OpenDocTermIdxV1(key, dtiFile, 0, uint64(info.Size()))
 	assert.NilError(t, err)
 
 	return

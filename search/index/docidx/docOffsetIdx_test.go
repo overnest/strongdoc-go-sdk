@@ -1,4 +1,4 @@
-package docoffsetidx
+package docidx
 
 import (
 	"io"

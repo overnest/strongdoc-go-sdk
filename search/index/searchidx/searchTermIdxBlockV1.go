@@ -26,16 +26,16 @@ type VersionOffsetV1 struct {
 	Offsets []uint64
 }
 
-var baseBlockJSONSize uint64
-var baseVersionOffsetJSONSize uint64
+var baseStiBlockJSONSize uint64
+var baseStiVersionOffsetJSONSize uint64
 
 func init() {
 	base, _ := CreateSearchTermIdxBlkV1(0).Serialize()
-	baseBlockJSONSize = uint64(len(base))
+	baseStiBlockJSONSize = uint64(len(base))
 
 	verOffset := &VersionOffsetV1{0, []uint64{}}
 	if b, err := json.Marshal(verOffset); err == nil {
-		baseVersionOffsetJSONSize = uint64(len(b)) - 1 // Remove the 0 version
+		baseStiVersionOffsetJSONSize = uint64(len(b)) - 1 // Remove the 0 version
 	}
 }
 
@@ -43,7 +43,7 @@ func init() {
 func CreateSearchTermIdxBlkV1(maxDataSize uint64) *SearchTermIdxBlkV1 {
 	return &SearchTermIdxBlkV1{
 		DocVerOffset:      make(map[string]*VersionOffsetV1),
-		predictedJSONSize: baseBlockJSONSize,
+		predictedJSONSize: baseStiBlockJSONSize,
 		maxDataSize:       maxDataSize,
 	}
 }
@@ -70,7 +70,7 @@ func (blk *SearchTermIdxBlkV1) AddDocOffsets(docID string, docVer uint64, offset
 		//    "<docID>":{"Version":<docVer>,"Offsets":[<o1>,<o2>,...]},
 		// }}
 		newSize += (uint64(len(docID)+3) +
-			uint64(baseVersionOffsetJSONSize) +
+			uint64(baseStiVersionOffsetJSONSize) +
 			uint64(len(fmt.Sprintf("%v", docVer))))
 		if mapSize > 0 {
 			newSize++ // Need to add a comma at the end if there are already keys in the map

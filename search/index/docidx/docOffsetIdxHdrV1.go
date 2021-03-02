@@ -1,4 +1,4 @@
-package doctermidx
+package docidx
 
 import (
 	"encoding/json"
@@ -8,20 +8,20 @@ import (
 
 //////////////////////////////////////////////////////////////////
 //
-//               Document Term Index Headers V1
+//               Document Offset Index Headers V1
 //
 //////////////////////////////////////////////////////////////////
 
-// DtiPlainHdrBodyV1 is the plaintext header for document term index.
-type DtiPlainHdrBodyV1 struct {
-	DtiVersionS
+// DoiPlainHdrBodyV1 is the plaintext header for document offset index.
+type DoiPlainHdrBodyV1 struct {
+	DoiVersionS
 	KeyType string
 	Nonce   []byte
 	DocID   string
 	DocVer  uint64
 }
 
-func (hdr *DtiPlainHdrBodyV1) serialize() ([]byte, error) {
+func (hdr *DoiPlainHdrBodyV1) serialize() ([]byte, error) {
 	b, err := json.Marshal(hdr)
 	if err != nil {
 		return nil, errors.New(err)
@@ -29,7 +29,7 @@ func (hdr *DtiPlainHdrBodyV1) serialize() ([]byte, error) {
 	return b, nil
 }
 
-func (hdr *DtiPlainHdrBodyV1) deserialize(data []byte) (*DtiPlainHdrBodyV1, error) {
+func (hdr *DoiPlainHdrBodyV1) deserialize(data []byte) (*DoiPlainHdrBodyV1, error) {
 	err := json.Unmarshal(data, hdr)
 	if err != nil {
 		return nil, errors.New(err)
@@ -37,12 +37,12 @@ func (hdr *DtiPlainHdrBodyV1) deserialize(data []byte) (*DtiPlainHdrBodyV1, erro
 	return hdr, nil
 }
 
-// DtiCipherHdrBodyV1 is the ciphertext header for document term index.
-type DtiCipherHdrBodyV1 struct {
+// DoiCipherHdrBodyV1 is the ciphertext header for document offset index.
+type DoiCipherHdrBodyV1 struct {
 	BlockVersion
 }
 
-func (hdr *DtiCipherHdrBodyV1) serialize() ([]byte, error) {
+func (hdr *DoiCipherHdrBodyV1) serialize() ([]byte, error) {
 	b, err := json.Marshal(hdr)
 	if err != nil {
 		return nil, errors.New(err)
@@ -50,7 +50,7 @@ func (hdr *DtiCipherHdrBodyV1) serialize() ([]byte, error) {
 	return b, nil
 }
 
-func (hdr *DtiCipherHdrBodyV1) deserialize(data []byte) (*DtiCipherHdrBodyV1, error) {
+func (hdr *DoiCipherHdrBodyV1) deserialize(data []byte) (*DoiCipherHdrBodyV1, error) {
 	err := json.Unmarshal(data, hdr)
 	if err != nil {
 		return nil, errors.New(err)
