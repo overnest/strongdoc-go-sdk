@@ -8,9 +8,10 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	"google.golang.org/grpc"
 	"io"
+	"os"
 )
 
-// ===================================== FileReader =====================================
+// ============================================== File ==============================================
 type FileReader interface {
 	Read(buf []byte) (bytesRead int, err error)
 	ReadAt(buf []byte, offset int64) (bytesRead int, err error)
@@ -40,43 +41,6 @@ func NewFileReader(sdc client.StrongDocClient, filename string) (reader FileRead
 			FileMeta: &proto.FileMeta{
 				FileType: proto.FileType_FILE,
 				Filename: filename,
-			},
-		},
-	}
-
-	err = stream.Send(preReq)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = stream.Recv()
-	if err != nil {
-		return nil, err
-	}
-	return &fileReader{
-		stream: stream,
-	}, nil
-}
-
-func NewDocIndexReader(sdc client.StrongDocClient, docID string, ver uint64, indexType utils.DocIndexType) (reader FileReader, err error) {
-	stream, err := initFileReadStream(sdc)
-	if err != nil {
-		return nil, err
-	}
-	docIndexType, err := utils.TranslateDocIndexType(indexType)
-	if err != nil {
-		return nil, err
-	}
-	preReq := &proto.ReadFileReq{
-		ReadType: proto.ReadType_READ_PREMETA,
-		MetaData: &proto.ReadFileReq_FileMeta{
-			FileMeta: &proto.FileMeta{
-				FileType: proto.FileType_DOC_INDEX,
-				DocIndexMeta: &proto.DocIndexMeta{
-					DocID:     docID,
-					Version:   ver,
-					IndexType: docIndexType,
-				},
 			},
 		},
 	}
@@ -277,7 +241,6 @@ func (reader *fileReader) GetFileSize() (uint64, error) {
 	return resp.GetSize(), nil
 }
 
-// ===================================== FileWriter =====================================
 type FileWriter interface {
 	Write(data []byte) (bytesWrite int, err error)
 	WriteFile(data []byte, bufferSize int) error
@@ -299,43 +262,6 @@ func NewFileWriter(sdc client.StrongDocClient, filename string) (writer FileWrit
 			FileMeta: &proto.FileMeta{
 				FileType: proto.FileType_FILE,
 				Filename: filename,
-			},
-		},
-	}
-
-	err = stream.Send(preReq)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = stream.Recv()
-	if err != nil {
-		return nil, err
-	}
-	return &fileWriter{
-		stream: stream,
-	}, nil
-}
-
-func NewDocIndexWriter(sdc client.StrongDocClient, docID string, ver uint64, indexType utils.DocIndexType) (writer FileWriter, err error) {
-	stream, err := sdc.GetGrpcClient().FileWrite(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	docIndexType, err := utils.TranslateDocIndexType(indexType)
-	if err != nil {
-		return nil, err
-	}
-	preReq := &proto.WriteFileReq{
-		WriteType: proto.WriteType_WRITE_PREMETA,
-		MetaData: &proto.WriteFileReq_FileMeta{
-			FileMeta: &proto.FileMeta{
-				FileType: proto.FileType_DOC_INDEX,
-				DocIndexMeta: &proto.DocIndexMeta{
-					DocID:     docID,
-					Version:   ver,
-					IndexType: docIndexType,
-				},
 			},
 		},
 	}
@@ -412,4 +338,176 @@ func (writer *fileWriter) Close() (err error) {
 	}
 	writer.stream = nil
 	return nil
+}
+
+func DeleteFile(sdc client.StrongDocClient, filename string) error {
+	req := &proto.DeleteFileReq{
+		FileMeta: &proto.FileMeta{
+			FileType: proto.FileType_FILE,
+			Filename: filename,
+		},
+	}
+	res, err := sdc.GetGrpcClient().DeleteFile(context.Background(), req)
+	if err != nil {
+		return err
+	}
+	if res.GetNotExistErr() {
+		return os.ErrNotExist
+	}
+	return nil
+}
+
+// ============================================== DocIndex ==============================================
+func NewDocIndexReader(sdc client.StrongDocClient, docID string, ver uint64, indexType utils.DocIndexType) (reader FileReader, err error) {
+	stream, err := initFileReadStream(sdc)
+	if err != nil {
+		return nil, err
+	}
+	docIndexType, err := utils.TranslateDocIndexType(indexType)
+	if err != nil {
+		return nil, err
+	}
+	preReq := &proto.ReadFileReq{
+		ReadType: proto.ReadType_READ_PREMETA,
+		MetaData: &proto.ReadFileReq_FileMeta{
+			FileMeta: &proto.FileMeta{
+				FileType: proto.FileType_DOC_INDEX,
+				DocIndexMeta: &proto.DocIndexMeta{
+					DocID:     docID,
+					Version:   ver,
+					IndexType: docIndexType,
+				},
+			},
+		},
+	}
+
+	err = stream.Send(preReq)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = stream.Recv()
+	if err != nil {
+		return nil, err
+	}
+	return &fileReader{
+		stream: stream,
+	}, nil
+}
+
+func NewDocIndexWriter(sdc client.StrongDocClient, docID string, ver uint64, indexType utils.DocIndexType) (writer FileWriter, err error) {
+	stream, err := sdc.GetGrpcClient().FileWrite(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	docIndexType, err := utils.TranslateDocIndexType(indexType)
+	if err != nil {
+		return nil, err
+	}
+	preReq := &proto.WriteFileReq{
+		WriteType: proto.WriteType_WRITE_PREMETA,
+		MetaData: &proto.WriteFileReq_FileMeta{
+			FileMeta: &proto.FileMeta{
+				FileType: proto.FileType_DOC_INDEX,
+				DocIndexMeta: &proto.DocIndexMeta{
+					DocID:     docID,
+					Version:   ver,
+					IndexType: docIndexType,
+				},
+			},
+		},
+	}
+
+	err = stream.Send(preReq)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = stream.Recv()
+	if err != nil {
+		return nil, err
+	}
+	return &fileWriter{
+		stream: stream,
+	}, nil
+}
+
+func DeleteDocIndex(sdc client.StrongDocClient, docID string, docVer uint64, indexType utils.DocIndexType) error {
+	protoIndexType, err := utils.TranslateDocIndexType(indexType)
+	req := &proto.DeleteFileReq{
+		FileMeta: &proto.FileMeta{
+			FileType: proto.FileType_DOC_INDEX,
+			DocIndexMeta: &proto.DocIndexMeta{
+				DocID:     docID,
+				Version:   docVer,
+				IndexType: protoIndexType,
+			},
+		},
+	}
+	res, err := sdc.GetGrpcClient().DeleteFile(context.Background(), req)
+	if err != nil {
+		return err
+	}
+	if res.GetNotExistErr() {
+		return os.ErrNotExist
+	}
+	return nil
+}
+
+// ============================================== SearchIndex  ==============================================
+func newSearchIndexWriter(sdc client.StrongDocClient, term string, ownerType proto.AccessType, indexType proto.SearchIndexType) (writer FileWriter, err error) {
+	stream, err := sdc.GetGrpcClient().FileWrite(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	preReq := &proto.WriteFileReq{
+		WriteType: proto.WriteType_WRITE_PREMETA,
+		MetaData: &proto.WriteFileReq_FileMeta{
+			FileMeta: &proto.FileMeta{
+				FileType: proto.FileType_SEARCH_INDEX,
+				SearchIndexMeta: &proto.SearchIndexMeta{
+					Term:       term,
+					AccessType: ownerType,
+					IndexType:  indexType,
+				},
+			},
+		},
+	}
+
+	err = stream.Send(preReq)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = stream.Recv()
+	if err != nil {
+		return nil, err
+	}
+	return &fileWriter{
+		stream: stream,
+	}, nil
+}
+
+func NewSearchIdxOffsetWriter(sdc client.StrongDocClient, ownerType utils.OwnerType, term string) (writer FileWriter, err error) {
+	protoOwnerType, err := utils.TranslateOwnerType(ownerType)
+	return newSearchIndexWriter(sdc, term, protoOwnerType, proto.SearchIndexType_SEARCH_DOC_OFFSET)
+}
+
+func NewOrgSearchIdxOffsetWriter(sdc client.StrongDocClient, term string) (writer FileWriter, err error) {
+	return newSearchIndexWriter(sdc, term, proto.AccessType_ORG, proto.SearchIndexType_SEARCH_DOC_OFFSET)
+}
+
+func NewOrgSearchIdxSortedDocWriter(sdc client.StrongDocClient, term string) (writer FileWriter, err error) {
+	return newSearchIndexWriter(sdc, term, proto.AccessType_ORG, proto.SearchIndexType_SEARCH_SORTED_DOC)
+}
+
+func NewUserSearchIdxOffsetWriter(sdc client.StrongDocClient, term string) (writer FileWriter, err error) {
+	return newSearchIndexWriter(sdc, term, proto.AccessType_USER, proto.SearchIndexType_SEARCH_DOC_OFFSET)
+}
+
+func NewUserSearchIdxSortedDocWriter(sdc client.StrongDocClient, term string) (writer FileWriter, err error) {
+	return newSearchIndexWriter(sdc, term, proto.AccessType_USER, proto.SearchIndexType_SEARCH_SORTED_DOC)
 }

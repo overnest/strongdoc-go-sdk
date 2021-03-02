@@ -2,6 +2,7 @@ package searchidx
 
 import (
 	"fmt"
+	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
 	"math/rand"
 	"os"
 	"testing"
@@ -12,22 +13,30 @@ import (
 )
 
 func TestSearchTermIdxV1(t *testing.T) {
-	var owners = []SearchIdxOwner{
-		CreateSearchIdxOwner(SI_OWNER_USR, "owner1"),
-		CreateSearchIdxOwner(SI_OWNER_USR, "owner2"),
-		CreateSearchIdxOwner(SI_OWNER_USR, "owner3")}
+	// ================================ Prev Test ================================
+	testClient := prevTest(t)
 
-	var terms = []string{"term1", "term2", "term3"}
+	//var owners = []SearchIdxOwner{
+	//	CreateSearchIdxOwner(SI_OWNER_USR, "owner1"),
+	//	CreateSearchIdxOwner(SI_OWNER_USR, "owner2"),
+	//	CreateSearchIdxOwner(SI_OWNER_USR, "owner3")}
+
+	owner1 := CreateSearchIdxOwner(SI_OWNER_USR, "owner1")
+	//var terms = []string{"term1", "term2", "term3"}
+
+	term1 := "term1"
 
 	docIDs := 20
 	maxOffsets := 30
 
+	// ================================ Generate search term index ================================
 	termKey, err := sscrypto.GenerateKey(sscrypto.Type_HMACSha512)
 	assert.NilError(t, err)
 	indexKey, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	sti, err := CreateSearchTermIdxV1(owners[0], terms[0], termKey, indexKey, nil, nil)
+	writer, err := testUtils.OpenSearchIdxOffsetWriter(testLocal, testClient, owner1.GetOwnerType2(), owner1.GetOwnerID(), term1)
+	sti, err := CreateSearchTermIdxV1_2(owner1, term1, termKey, indexKey, nil, nil, writer)
 	assert.NilError(t, err)
 	defer os.RemoveAll(GetSearchIdxPathPrefix())
 

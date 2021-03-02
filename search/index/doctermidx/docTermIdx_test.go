@@ -23,15 +23,18 @@ import (
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-//															==doi Generator==> offset index
-//														/ 									\
-//		data source	==FileTokenizer==> tokenized data == 											==> search index
-//														\									/
-//															==dti Generator==> term index
+//
+//	data source	==FileTokenizer==> tokenized data ==doi Generator==> offset index ==dti Generator==> term index ==> search index
+//
+//  step1: tokenize data using FileTokenizer
+//	step2: generate Document Offset Index(doi) from tokenized data
+//	step3: generate Document Term Index(dti) from tokenized data or doi
+//  step4: generate Org/User Search Index(si) from  doi and dti(optional)
+//
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-var testLocal = true
+var testLocal = false
 
 // test create term index block
 func TestTermIdxBlockV1(t *testing.T) {
@@ -86,7 +89,7 @@ func TestTermIdxBlockV1(t *testing.T) {
 // test create term source
 func TestTermIdxSourcesV1(t *testing.T) {
 	// ================================ Prev Test ================================
-	sdc := prevTest(t, testLocal)
+	testClient := prevTest(t)
 
 	docID := "docID100"
 	docVer := uint64(100)
@@ -104,7 +107,7 @@ func TestTermIdxSourcesV1(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Open output writer
-	outputWriter, err := openIdxWriter(testLocal, sdc, docID, docVer, utils.OffsetIndex)
+	outputWriter, err := testUtils.OpenOffsetIdxWriter(testLocal, testClient, docID, docVer)
 	assert.NilError(t, err)
 
 	CreateTestDocOffsetIndex(t, key, docID, docVer, sourceFile, outputWriter)
@@ -119,7 +122,7 @@ func TestTermIdxSourcesV1(t *testing.T) {
 	time.Sleep(100 * time.Second)
 
 	// ================================ Open doc offset index ================================
-	doiReader, err := openIdxReader(testLocal, sdc, docID, docVer, utils.OffsetIndex)
+	doiReader, err := testUtils.OpenOffsetIdxReader(testLocal, testClient, docID, docVer)
 	assert.NilError(t, err)
 	defer doiReader.Close()
 
@@ -151,12 +154,15 @@ func TestTermIdxSourcesV1(t *testing.T) {
 	assert.NilError(t, err)
 	doiTermsNew := gatherTermsFromSource(t, sourceDoi)
 	assert.DeepEqual(t, doiTerms, doiTermsNew)
+
+	// ================================ Delete doc offset index ================================
+	testUtils.RemoveOffsetIndexFile(testLocal, testClient, docID, docVer)
 }
 
 // test create term index
 func TestTermIdxV1(t *testing.T) {
 	// ================================ Prev Test ================================
-	sdc := prevTest(t, testLocal)
+	testClient := prevTest(t)
 
 	docID := "DocID1"
 	docVer := uint64(1)
@@ -173,7 +179,7 @@ func TestTermIdxV1(t *testing.T) {
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	dtiWriter, err := openIdxWriter(testLocal, sdc, docID, docVer, utils.TermIndex)
+	dtiWriter, err := testUtils.OpenTermIdxWriter(testLocal, testClient, docID, docVer)
 	assert.NilError(t, err)
 
 	terms := testCreateTermIndexV1(t, key, sourceFile, dtiWriter, docID, docVer)
@@ -188,10 +194,10 @@ func TestTermIdxV1(t *testing.T) {
 
 	// ================================ Open doc term index ================================
 	// Open the previously written document term index
-	dtiReader, err := openIdxReader(testLocal, sdc, docID, docVer, utils.TermIndex)
+	dtiReader, err := testUtils.OpenTermIdxReader(testLocal, testClient, docID, docVer)
 	assert.NilError(t, err)
 
-	size, err := getFileSize(testLocal, dtiReader)
+	size, err := testUtils.GetFileSize(testLocal, dtiReader)
 	assert.NilError(t, err)
 
 	dtiv, err := OpenDocTermIdx(key, dtiReader, 0, size)
@@ -243,6 +249,9 @@ func TestTermIdxV1(t *testing.T) {
 	assert.NilError(t, err)
 	err = dtiReader.Close()
 	assert.NilError(t, err)
+
+	// ================================ Delete doc offset, term index ================================
+	testUtils.RemoveTermIndexFile(testLocal, testClient, docID, docVer)
 }
 
 func testCreateTermIndexV1(t *testing.T, key *sscrypto.StrongSaltKey,
@@ -279,7 +288,7 @@ func testCreateTermIndexV1(t *testing.T, key *sscrypto.StrongSaltKey,
 // test term index diff
 func TestTermIdxDiffV1(t *testing.T) {
 	// ================================ Prev Test ================================
-	sdc := prevTest(t, testLocal)
+	testClient := prevTest(t)
 
 	docID := "DocID1"
 	docVer1 := uint64(1)
@@ -302,10 +311,10 @@ func TestTermIdxDiffV1(t *testing.T) {
 
 	assert.NilError(t, err)
 
-	output1, err := openIdxWriter(testLocal, sdc, docID, docVer1, utils.TermIndex)
+	output1, err := testUtils.OpenTermIdxWriter(testLocal, testClient, docID, docVer1)
 	assert.NilError(t, err)
 
-	output2, err := openIdxWriter(testLocal, sdc, docID, docVer2, utils.TermIndex)
+	output2, err := testUtils.OpenTermIdxWriter(testLocal, testClient, docID, docVer2)
 	assert.NilError(t, err)
 
 	terms1 := testCreateTermIndexV1(t, key, source1, output1, docID, docVer1)
@@ -353,20 +362,20 @@ func TestTermIdxDiffV1(t *testing.T) {
 	time.Sleep(20 * time.Second)
 
 	// Open the previously written document term index
-	outfile1, err := openIdxReader(testLocal, sdc, docID, docVer1, utils.TermIndex)
+	outfile1, err := testUtils.OpenTermIdxReader(testLocal, testClient, docID, docVer1)
 	assert.NilError(t, err)
 	defer outfile1.Close()
-	size1, err := getFileSize(testLocal, outfile1)
+	size1, err := testUtils.GetFileSize(testLocal, outfile1)
 	assert.NilError(t, err)
 
 	dtiv1, err := OpenDocTermIdx(key, outfile1, 0, size1)
 	assert.NilError(t, err)
 	assert.Equal(t, dtiv1.GetDtiVersion(), uint32(1))
 
-	outfile2, err := openIdxReader(testLocal, sdc, docID, docVer2, utils.TermIndex)
+	outfile2, err := testUtils.OpenTermIdxReader(testLocal, testClient, docID, docVer2)
 	assert.NilError(t, err)
 	defer outfile2.Close()
-	size2, err := getFileSize(testLocal, outfile2)
+	size2, err := testUtils.GetFileSize(testLocal, outfile2)
 	assert.NilError(t, err)
 
 	dtiv2, err := OpenDocTermIdx(key, outfile2, 0, size2)
@@ -378,6 +387,10 @@ func TestTermIdxDiffV1(t *testing.T) {
 
 	assert.DeepEqual(t, addedList, added)
 	assert.DeepEqual(t, deletedList, deleted)
+
+	// ================================ Delete doc offset, term index ================================
+	testUtils.RemoveTermIndexFile(testLocal, testClient, docID, docVer1)
+	testUtils.RemoveTermIndexFile(testLocal, testClient, docID, docVer2)
 }
 
 func CreateTestDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string, docVer uint64,
@@ -412,7 +425,7 @@ func gatherTermsFromSource(t *testing.T, source DocTermSourceV1) []string {
 	return terms
 }
 
-func prevTest(t *testing.T, testLocal bool) *client.StrongDocClient {
+func prevTest(t *testing.T) client.StrongDocClient {
 	if testLocal {
 		return nil
 	}
@@ -423,48 +436,5 @@ func prevTest(t *testing.T, testLocal bool) *client.StrongDocClient {
 	user := users[0][0]
 	err := api.Login(sdc, user.UserID, user.Password, user.OrgID)
 	assert.NilError(t, err)
-	return &sdc
-}
-
-func openIdxWriter(testLocal bool, sdc *client.StrongDocClient, docID string, docVer uint64, indexType utils.DocIndexType) (outputWriter io.WriteCloser, err error) {
-	if testLocal {
-		outputWriter, err = utils.CreateLocalFile(fmt.Sprintf("/tmp/%v_%v_%v", docID, docVer, indexType))
-	} else {
-		outputWriter, err = api.NewDocIndexWriter(*sdc, docID, docVer, indexType)
-	}
-	return
-}
-
-func openIdxReader(testLocal bool, sdc *client.StrongDocClient,
-	docID string, docVer uint64, indexType utils.DocIndexType) (reader io.ReadCloser, err error) {
-	if testLocal {
-		reader, err = utils.OpenLocalFile(fmt.Sprintf("/tmp/%v_%v_%v", docID, docVer, indexType))
-	} else {
-		reader, err = api.NewDocIndexReader(*sdc, docID, docVer, indexType)
-	}
-	return
-}
-
-func getFileSize(testLocal bool, reader io.ReadCloser) (filesize uint64, err error) {
-	if testLocal {
-		file, ok := reader.(*os.File)
-		if !ok {
-			err = fmt.Errorf("cannot convert reader to file")
-			return
-		}
-		var fileInfo os.FileInfo
-		fileInfo, err = file.Stat()
-		if err != nil {
-			return
-		}
-		filesize = uint64(fileInfo.Size())
-	} else {
-		file, ok := reader.(api.FileReader)
-		if !ok {
-			err = fmt.Errorf("cannot convert reader to fileReader")
-			return
-		}
-		filesize, err = file.GetFileSize()
-	}
-	return
+	return sdc
 }

@@ -78,10 +78,129 @@ func CreateSearchTermIdxV1(owner SearchIdxOwner, term string, termKey, indexKey 
 		return nil, err
 	}
 
+	// todo create writer?
 	_, err = sti.createWriter()
 	if err != nil {
 		return nil, err
 	}
+
+	// Create plaintext and ciphertext headers
+	plainHdrBody := &StiPlainHdrBodyV1{
+		StiVersionS: StiVersionS{StiVer: STI_V1},
+		KeyType:     sti.IndexKey.Type.Name,
+		Nonce:       sti.IndexNonce,
+		TermHmac:    sti.termHmac,
+		UpdateID:    sti.updateID,
+	}
+
+	cipherHdrBody := &StiCipherHdrBodyV1{
+		BlockVersion: BlockVersion{BlockVer: STI_BLOCK_V1},
+	}
+
+	plainHdrBodySerial, err := plainHdrBody.serialize()
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	plainHdr := ssheaders.CreatePlainHdr(ssheaders.HeaderTypeJSONGzip, plainHdrBodySerial)
+	plainHdrSerial, err := plainHdr.Serialize()
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	cipherHdrBodySerial, err := cipherHdrBody.serialize()
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	cipherHdr := ssheaders.CreateCipherHdr(ssheaders.HeaderTypeJSONGzip, cipherHdrBodySerial)
+	cipherHdrSerial, err := cipherHdr.Serialize()
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	// Write the plaintext header to storage
+	n, err := sti.writer.Write(plainHdrSerial)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+	if n != len(plainHdrSerial) {
+		return nil, errors.Errorf("Failed to write the entire plaintext header")
+	}
+
+	// Initialize the streaming crypto to encrypt ciphertext header and the
+	// blocks after that
+	streamCrypto, err := crypto.CreateStreamCrypto(sti.IndexKey, plainHdrBody.Nonce,
+		sti.writer, int64(sti.InitOffset)+int64(n))
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	// Write the ciphertext header to storage
+	n, err = streamCrypto.Write(cipherHdrSerial)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+	if n != len(cipherHdrSerial) {
+		return nil, errors.Errorf("Failed to write the entire ciphertext header")
+	}
+
+	// Create a block list writer using the streaming crypto so the blocks will be
+	// encrypted.
+	sti.bwriter, err = ssblocks.NewBlockListWriterV1(streamCrypto, uint32(STI_BLOCK_SIZE_MAX),
+		sti.InitOffset+uint64(len(plainHdrSerial)+len(cipherHdrSerial)))
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return sti, nil
+}
+
+func CreateSearchTermIdxV1_2(owner SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey,
+	oldSti SearchTermIdx, delDocs *DeletedDocsV1, writer io.WriteCloser) (*SearchTermIdxV1, error) {
+
+	var err error
+	sti := &SearchTermIdxV1{
+		StiVersionS: StiVersionS{StiVer: STI_V1},
+		Term:        term,
+		Owner:       owner,
+		OldSti:      oldSti,
+		DelDocs:     delDocs,
+		TermKey:     termKey,
+		IndexKey:    indexKey,
+		IndexNonce:  nil,
+		InitOffset:  0,
+		termHmac:    "",
+		updateID:    newUpdateIDV1(),
+		reader:      nil,
+		bwriter:     nil,
+		breader:     nil,
+		writer:      writer,
+	}
+
+	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
+		return nil, errors.Errorf("The key type %v is not a MAC key", termKey.Type.Name)
+	}
+
+	if midStreamKey, ok := indexKey.Key.(sscryptointf.KeyMidstream); ok {
+		sti.IndexNonce, err = midStreamKey.GenerateNonce()
+		if err != nil {
+			return nil, errors.New(err)
+		}
+	} else {
+		return nil, errors.Errorf("The key type %v is not a midstream key", indexKey.Type.Name)
+	}
+
+	sti.termHmac, err = sti.createTermHmac()
+	if err != nil {
+		return nil, err
+	}
+
+	// todo change
+	//_, err = sti.createWriter()
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	// Create plaintext and ciphertext headers
 	plainHdrBody := &StiPlainHdrBodyV1{

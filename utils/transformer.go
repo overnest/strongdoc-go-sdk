@@ -18,3 +18,17 @@ func TranslateDocIndexType(indexType DocIndexType) (docIndexType proto.DocIndexT
 	}
 	return
 }
+
+func TranslateOwnerType(ownerType OwnerType) (accessType proto.AccessType, err error) {
+	switch ownerType {
+	case Owner_User:
+		accessType = proto.AccessType_USER
+		break
+	case Owner_Org:
+		accessType = proto.AccessType_ORG
+		break
+	default:
+		err = fmt.Errorf("unsuppported ownerType")
+	}
+	return
+}

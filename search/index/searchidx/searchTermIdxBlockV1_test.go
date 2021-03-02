@@ -9,16 +9,18 @@ import (
 )
 
 func TestSearchTermIdxBlockV1(t *testing.T) {
-	var err error
+	// ================================ Prev Test ================================
+	prevTest(t)
+
 	docID1, docID2, docID3 := "DOCID1", "DOCID2", "DOCID3"
 	docIDs := []string{docID1, docID2, docID3}
 
+	// ================================ Create Search Term Index Block ================================
 	stib := CreateSearchTermIdxBlkV1(1000)
-
 	//
 	// Test predicted size
 	//
-	err = stib.AddDocOffset(docID1, 1, 1)
+	err := stib.AddDocOffset(docID1, 1, 1)
 	validateSibSize(t, stib, err)
 	err = stib.AddDocOffset(docID1, 1, 2)
 	validateSibSize(t, stib, err)

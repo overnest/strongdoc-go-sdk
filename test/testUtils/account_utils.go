@@ -6,6 +6,7 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"gotest.tools/assert"
 	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -128,20 +129,27 @@ func PrevTest(t *testing.T, numOfOrgs int, numOfUsersPerOrg int) (sdc client.Str
 	sdc, err := client.InitStrongDocClient(client.LOCAL, false)
 	assert.NilError(t, err)
 	orgs, orgUsers = initData(numOfOrgs, numOfUsersPerOrg)
-	hardRemoveOrgs(t, orgs)
+	hardRemoveOrgs(orgs)
 	return
 }
 
 // call superuser API, hard remove registered orgs
-func hardRemoveOrgs(t *testing.T, orgs []*TestOrg) {
+func hardRemoveOrgs(orgs []*TestOrg) error {
 	err := superUserLogin()
-	assert.NilError(t, err)
+	if err != nil {
+		return err
+	}
 	for _, org := range orgs {
 		err = hardRemoveOrg(org.Name)
-		assert.NilError(t, err)
+		if err != nil {
+			if !strings.Contains(err.Error(), "Can not find") {
+				return err
+
+			}
+		}
 	}
 	err = superUserLogout()
-	assert.NilError(t, err)
+	return err
 }
 
 // generate n bytes data

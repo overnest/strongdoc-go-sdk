@@ -12,6 +12,10 @@ func CreateLocalFile(filepath string) (*os.File, error) {
 	return os.Create(filepath)
 }
 
+func CreateLocalDir(dir string) error {
+	return os.MkdirAll(dir, 0770)
+}
+
 // BinarySearchU64 finds a number in a sorted list.
 // Returns the index where the value is found.
 // Returns -1 if value is not found

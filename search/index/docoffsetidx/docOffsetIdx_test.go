@@ -1,7 +1,6 @@
 package docoffsetidx
 
 import (
-	"fmt"
 	"github.com/overnest/strongdoc-go-sdk/api"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
@@ -16,18 +15,21 @@ import (
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-//														==doi Generator==> offset index
-//													/ 									\
-//		data source	==FileTokenizer==> tokenized data == 										==> search index
-//													\									/
-//														==dti Generator==> term index
+//
+//	data source	==FileTokenizer==> tokenized data ==doi Generator==> offset index ==dti Generator==> term index ==> search index
+//
+//  step1: tokenize data using FileTokenizer
+//	step2: generate Document Offset Index(doi) from tokenized data
+//	step3: generate Document Term Index(dti) from tokenized data or doi
+//  step4: generate Org/User Search Index(si) from  doi and dti(optional)
+//
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 var testLocal = true
 
 func TestDocOffsetIdx(t *testing.T) {
 	// ================================ Prev Test ================================
-	sdc := prevTest(t, testLocal)
+	testClient := prevTest(t)
 
 	docID := "docID100"
 	docVer := uint64(100)
@@ -45,7 +47,7 @@ func TestDocOffsetIdx(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Open output writer
-	outputWriter, err := openOffsetIdxWriter(testLocal, sdc, docID, docVer)
+	outputWriter, err := testUtils.OpenOffsetIdxWriter(testLocal, testClient, docID, docVer)
 	assert.NilError(t, err)
 
 	CreateTestDocOffsetIndex(t, key, docID, docVer, sourceFile, outputWriter)
@@ -60,7 +62,7 @@ func TestDocOffsetIdx(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// ================================ Open doc offset index ================================
-	doiReader, err := openOffsetIdxReader(testLocal, sdc, docID, docVer)
+	doiReader, err := testUtils.OpenOffsetIdxReader(testLocal, testClient, docID, docVer)
 	assert.NilError(t, err)
 	defer doiReader.Close()
 
@@ -76,6 +78,9 @@ func TestDocOffsetIdx(t *testing.T) {
 	default:
 		assert.Assert(t, false, "Unsupported DOI version %v", doiVersion.GetDoiVersion())
 	}
+
+	// ================================ Delete doc offset index ================================
+	testUtils.RemoveOffsetIndexFile(testLocal, testClient, docID, docVer)
 }
 
 func CreateTestDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string, docVer uint64,
@@ -129,7 +134,7 @@ func findTermLocationV1(block *DocOffsetIdxBlkV1, term string, loc uint64) bool 
 	return true
 }
 
-func prevTest(t *testing.T, testLocal bool) *client.StrongDocClient {
+func prevTest(t *testing.T) client.StrongDocClient {
 	if testLocal {
 		return nil
 	}
@@ -140,23 +145,5 @@ func prevTest(t *testing.T, testLocal bool) *client.StrongDocClient {
 	user := users[0][0]
 	err := api.Login(sdc, user.UserID, user.Password, user.OrgID)
 	assert.NilError(t, err)
-	return &sdc
-}
-
-func openOffsetIdxWriter(testLocal bool, sdc *client.StrongDocClient, docID string, docVer uint64) (outputWriter io.WriteCloser, err error) {
-	if testLocal {
-		outputWriter, err = utils.CreateLocalFile(fmt.Sprintf("/tmp/%v_%v", docID, docVer))
-	} else {
-		outputWriter, err = api.NewDocIndexWriter(*sdc, docID, docVer, utils.OffsetIndex)
-	}
-	return
-}
-
-func openOffsetIdxReader(testLocal bool, sdc *client.StrongDocClient, docID string, docVer uint64) (reader io.ReadCloser, err error) {
-	if testLocal {
-		reader, err = utils.OpenLocalFile(fmt.Sprintf("/tmp/%v_%v", docID, docVer))
-	} else {
-		reader, err = api.NewDocIndexReader(*sdc, docID, docVer, utils.OffsetIndex)
-	}
-	return
+	return sdc
 }

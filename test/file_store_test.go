@@ -110,6 +110,10 @@ func TestFileReader(t *testing.T) {
 		// close
 		err = reader.Close()
 		assert.NilError(t, err)
+
+		// Delete file
+		err = api.DeleteFile(sdc, filename)
+		assert.NilError(t, err)
 	})
 }
 
@@ -148,6 +152,10 @@ func TestFileWriter(t *testing.T) {
 		assert.Check(t, bytes.Equal(res, data))
 		err = reader.Close()
 		assert.NilError(t, err)
+
+		// Delete file
+		err = api.DeleteFile(sdc, filename)
+		assert.NilError(t, err)
 	})
 }
 
@@ -171,6 +179,11 @@ func TestDocIndexWriter(t *testing.T) {
 		assert.NilError(t, err, "write doc index file")
 
 		err = writer.Close()
+		assert.NilError(t, err)
+
+		time.Sleep(5 * time.Second)
+
+		err = api.DeleteDocIndex(sdc, docID, docVer, indexType)
 		assert.NilError(t, err)
 	})
 }
@@ -206,6 +219,9 @@ func TestDocIndexReader(t *testing.T) {
 		assert.Check(t, bytes.Equal(res, data))
 
 		err = reader.Close()
+		assert.NilError(t, err)
+
+		err = api.DeleteDocIndex(sdc, docID, docVer, indexType)
 		assert.NilError(t, err)
 	})
 }

@@ -3,6 +3,7 @@ package searchidx
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 	"io"
 
 	"github.com/go-errors/errors"
@@ -45,15 +46,21 @@ type SearchIdxOwner interface {
 	GetOwnerType() SearchIdxOwnerType
 	GetOwnerID() string
 	fmt.Stringer
+	GetOwnerType2() utils.OwnerType
 }
 
 type searchIdxOwner struct {
-	ownerType SearchIdxOwnerType
-	ownerID   string
+	ownerType  SearchIdxOwnerType
+	ownerID    string
+	ownerType2 utils.OwnerType
 }
 
 func (sio *searchIdxOwner) GetOwnerType() SearchIdxOwnerType {
 	return sio.ownerType
+}
+
+func (sio *searchIdxOwner) GetOwnerType2() utils.OwnerType {
+	return sio.ownerType2
 }
 
 func (sio *searchIdxOwner) GetOwnerID() string {
@@ -66,7 +73,7 @@ func (sio *searchIdxOwner) String() string {
 
 // CreateSearchIdxOwner creates a new searchh index owner
 func CreateSearchIdxOwner(ownerType SearchIdxOwnerType, ownerID string) SearchIdxOwner {
-	return &searchIdxOwner{ownerType, ownerID}
+	return &searchIdxOwner{ownerType, ownerID, nil} //todo
 }
 
 // //////////////////////////////////////////////////////////////////
