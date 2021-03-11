@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"fmt"
 	"path"
 	"runtime"
+
+	"github.com/go-errors/errors"
 )
 
 // FetchFileLoc fetches the file location relative to the
@@ -11,7 +12,7 @@ import (
 func FetchFileLoc(relativeFilePath string) (string, error) {
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
-		return "", fmt.Errorf("cannot get runtime caller")
+		return "", errors.Errorf("cannot get runtime caller")
 	}
 	absFilepath := path.Join(path.Dir(filename), "..", relativeFilePath)
 	return absFilepath, nil

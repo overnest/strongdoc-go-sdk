@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"text/scanner"
 
 	"github.com/go-errors/errors"
@@ -14,6 +15,7 @@ import (
 
 var mimeGzip = regexp.MustCompilePOSIX(`^application\/.*gzip$`)
 var mimeText = regexp.MustCompilePOSIX(`^text\/plain$`)
+var alphaNumeric = regexp.MustCompilePOSIX(`^[a-zA-Z0-9]+$`)
 
 // FileTokenizer tokenizes a file
 type FileTokenizer interface {
@@ -100,11 +102,16 @@ func (token *fileTokenizer) Reset() error {
 }
 
 func (token *fileTokenizer) NextToken() (string, *scanner.Position, error) {
-	pos := token.scanner.Pos()
-	rune := token.scanner.Scan()
-	if rune == scanner.EOF {
-		return "", nil, io.EOF
-	}
+	for {
+		pos := token.scanner.Pos()
+		rune := token.scanner.Scan()
+		if rune == scanner.EOF {
+			return "", nil, io.EOF
+		}
 
-	return token.scanner.TokenText(), &pos, nil
+		t := token.scanner.TokenText()
+		if alphaNumeric.MatchString(t) {
+			return strings.ToLower(token.scanner.TokenText()), &pos, nil
+		}
+	}
 }

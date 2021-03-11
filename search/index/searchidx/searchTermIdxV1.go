@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
+	"sync"
 
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/crypto"
@@ -36,7 +38,7 @@ type SearchTermIdxV1 struct {
 }
 
 func getSearchTermIdxPathV1(prefix string, owner SearchIdxOwner, term, updateID string) string {
-	return fmt.Sprintf("%v/searchterm", GetSearchIdxPathV1(prefix, owner, term, updateID))
+	return path.Clean(fmt.Sprintf("%v/searchterm", GetSearchIdxPathV1(prefix, owner, term, updateID)))
 }
 
 // CreateSearchTermIdxV1 creates a search term index writer V1
@@ -150,7 +152,7 @@ func CreateSearchTermIdxV1(owner SearchIdxOwner, term string,
 
 	// Create a block list writer using the streaming crypto so the blocks will be
 	// encrypted.
-	sti.bwriter, err = ssblocks.NewBlockListWriterV1(streamCrypto, uint32(STI_BLOCK_SIZE_MAX),
+	sti.bwriter, err = ssblocks.NewBlockListWriterV1(streamCrypto, 0,
 		sti.InitOffset+uint64(len(plainHdrSerial)+len(cipherHdrSerial)))
 	if err != nil {
 		return nil, errors.New(err)
@@ -267,7 +269,12 @@ func openSearchTermIdxV1(sti *SearchTermIdxV1, plainHdrBody *StiPlainHdrBodyV1, 
 	return sti, nil
 }
 
+var termHmacMutex sync.Mutex
+
 func createTermHmac(term string, termKey *sscrypto.StrongSaltKey) (string, error) {
+	termHmacMutex.Lock()
+	defer termHmacMutex.Unlock()
+
 	err := termKey.MACReset()
 	if err != nil {
 		return "", errors.New(err)

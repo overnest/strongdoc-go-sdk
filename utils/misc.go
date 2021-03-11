@@ -1,5 +1,12 @@
 package utils
 
+import (
+	"fmt"
+	"runtime"
+
+	"github.com/go-errors/errors"
+)
+
 // BinarySearchU64 finds a number in a sorted list.
 // Returns the index where the value is found.
 // Returns -1 if value is not found
@@ -39,9 +46,32 @@ func BinarySearchU64(list []uint64, val uint64) int {
 	return -1
 }
 
+// Min returns the minimum value
 func Min(x, y int) int {
 	if x < y {
 		return x
 	}
 	return y
+}
+
+// PrintStackTrace prints stack trace: https://pkg.go.dev/github.com/go-errors/errors
+func PrintStackTrace(err error) {
+	if eerr, ok := err.(*errors.Error); ok {
+		fmt.Println(eerr.ErrorStack())
+	}
+
+}
+
+func PrintMemUsage() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	// For info on each, see: https://golang.org/pkg/runtime/#MemStats
+	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
+	fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
+	fmt.Printf("\tNumGC = %v\n", m.NumGC)
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
 }

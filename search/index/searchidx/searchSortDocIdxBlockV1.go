@@ -36,6 +36,10 @@ type DocIDVer struct {
 	DocVer uint64
 }
 
+func (idver *DocIDVer) String() string {
+	return fmt.Sprintf("%v:%v", idver.DocID, idver.DocVer)
+}
+
 var baseSsdiBlockJSONSize uint64
 var baseSsdiDocIDVerJSONSize uint64
 

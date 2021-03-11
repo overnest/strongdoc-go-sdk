@@ -53,9 +53,11 @@ func SearchTermIdxSourceDeleteDoc(doi docidx.DocOffsetIdx, dti docidx.DocTermIdx
 }
 
 func createSearchTermIdxSourceV1(doi docidx.DocOffsetIdx, dtiOld, dtiNew docidx.DocTermIdx) (SearchTermIdxSourceV1, error) {
-	source := &searchTermIdxSourceV1{doi, dtiOld, dtiNew, make([]string, 0), make([]string, 0)}
+	source := &searchTermIdxSourceV1{
+		doi, dtiOld, dtiNew,
+		make([]string, 0), make([]string, 0)}
 
-	// If there is not DTI given, then we'll figure out all the terms to be added from the DOI
+	// If there is no DTI given, then we'll figure out all the terms to be added from the DOI
 	if dtiOld == nil && dtiNew == nil {
 		terms := make(map[string]bool)
 
@@ -92,11 +94,14 @@ func createSearchTermIdxSourceV1(doi docidx.DocOffsetIdx, dtiOld, dtiNew docidx.
 				doi.GetDoiVersion())
 		}
 	} else {
-		addTerms, delTerms, err := docidx.DiffDocTermIdx(dtiOld, dtiNew)
+		_, delTerms, err := docidx.DiffDocTermIdx(dtiOld, dtiNew)
 		if err != nil {
 			return nil, err
 		}
-		source.addTerms = addTerms
+		source.addTerms, err = docidx.GetAllTermList(dtiNew)
+		if err != nil {
+			return nil, err
+		}
 		source.delTerms = delTerms
 	}
 
@@ -105,7 +110,8 @@ func createSearchTermIdxSourceV1(doi docidx.DocOffsetIdx, dtiOld, dtiNew docidx.
 
 // GetNextSourceBlock gets the next source block from DOI
 func (sis *searchTermIdxSourceV1) GetNextSourceBlock(filterTerms []string) (*SearchTermIdxSourceBlockV1, error) {
-	sisBlock := &SearchTermIdxSourceBlockV1{sis.GetDocID(), sis.GetDocVer(), filterTerms, make(map[string][]uint64)}
+	sisBlock := &SearchTermIdxSourceBlockV1{sis.GetDocID(), sis.GetDocVer(),
+		filterTerms, make(map[string][]uint64)}
 
 	switch sis.doi.GetDoiVersion() {
 	case docidx.DOI_V1:
@@ -120,19 +126,21 @@ func (sis *searchTermIdxSourceV1) GetNextSourceBlock(filterTerms []string) (*Sea
 			return nil, err
 		}
 
-		if filterTerms == nil || len(filterTerms) == 0 {
-			sisBlock.TermOffset = blk.TermLoc
-			return sisBlock, nil
-		}
+		if blk != nil {
+			if filterTerms == nil || len(filterTerms) == 0 {
+				sisBlock.TermOffset = blk.TermLoc
+				return sisBlock, nil
+			}
 
-		filterTermMap := make(map[string]bool)
-		for _, term := range filterTerms {
-			filterTermMap[term] = true
-		}
+			filterTermMap := make(map[string]bool)
+			for _, term := range filterTerms {
+				filterTermMap[term] = true
+			}
 
-		for term, locs := range blk.TermLoc {
-			if filterTermMap[term] {
-				sisBlock.TermOffset[term] = locs
+			for term, locs := range blk.TermLoc {
+				if filterTermMap[term] && locs != nil && len(locs) > 0 {
+					sisBlock.TermOffset[term] = locs
+				}
 			}
 		}
 

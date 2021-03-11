@@ -329,6 +329,7 @@ func (ssdi *SearchSortDocIdxV1) WriteNextBlock() (*SearchSortDocIdxBlkV1, error)
 		return nil, errors.New(err)
 	}
 
+	// Read all blocks from STI
 	for err == nil {
 		var stib *SearchTermIdxBlkV1 = nil
 		stib, err = ssdi.sti.ReadNextBlock()
@@ -339,6 +340,7 @@ func (ssdi *SearchSortDocIdxV1) WriteNextBlock() (*SearchSortDocIdxBlkV1, error)
 		}
 	}
 
+	// Finished reading all STI
 	if err == io.EOF {
 		block := ssdi.block
 
@@ -355,7 +357,6 @@ func (ssdi *SearchSortDocIdxV1) WriteNextBlock() (*SearchSortDocIdxBlkV1, error)
 		if block.IsFull() {
 			return block, nil
 		}
-
 		return block, io.EOF
 	}
 

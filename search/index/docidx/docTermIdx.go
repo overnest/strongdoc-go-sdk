@@ -219,3 +219,47 @@ func getNextTermList(dti DocTermIdx) (terms []string, err error) {
 
 	return
 }
+
+// GetAllTermList gets all the terms in the DTI
+func GetAllTermList(dti DocTermIdx) (terms []string, err error) {
+	terms = make([]string, 0)
+	if dti == nil {
+		return terms, nil
+	}
+
+	switch dti.GetDtiVersion() {
+	case DTI_V1:
+		dtiv1, ok := dti.(*DocTermIdxV1)
+		if !ok {
+			return nil, errors.Errorf("Document term index version is not %v",
+				dti.GetDtiVersion())
+		}
+
+		err = dtiv1.Reset()
+		if err != nil {
+			return
+		}
+
+		for err == nil {
+			var blk *DocTermIdxBlkV1
+			blk, err = dtiv1.ReadNextBlock()
+			if err != nil && err != io.EOF {
+				return nil, err
+			}
+			if blk != nil && blk.totalTerms > 0 {
+				if len(terms) == 0 {
+					terms = blk.Terms
+				} else {
+					terms = append(terms, blk.Terms...)
+				}
+			}
+		}
+
+		return terms, nil
+	default:
+		return nil, errors.Errorf("Document term index version %v is not supported",
+			dti.GetDtiVersion())
+	}
+
+	return
+}

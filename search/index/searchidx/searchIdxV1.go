@@ -2,7 +2,9 @@ package searchidx
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
+	"path"
 	"sort"
 	"strconv"
 	"time"
@@ -32,8 +34,8 @@ func GetUpdateIdsV1(owner SearchIdxOwner, term string, termKey *sscrypto.StrongS
 	return GetUpdateIdsHmacV1(owner, termHmac)
 }
 
-// GetLatestUpdateIdV1 returns the latest update IDs for a specific owner + term
-func GetLatestUpdateIdV1(owner SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) (string, error) {
+// GetLatestUpdateIDV1 returns the latest update IDs for a specific owner + term
+func GetLatestUpdateIDV1(owner SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) (string, error) {
 
 	ids, err := GetUpdateIdsV1(owner, term, termKey)
 	if err != nil {
@@ -105,6 +107,7 @@ type SearchIdxV1 struct {
 	SearchSourcess map[string]*SearchTermIdxV1
 	TermKey        *sscrypto.StrongSaltKey
 	IndexKey       *sscrypto.StrongSaltKey
+	owner          SearchIdxOwner
 	batchMgr       *SearchTermBatchMgrV1
 	delDocs        *DeletedDocsV1
 }
@@ -117,14 +120,14 @@ type DeletedDocsV1 struct {
 // GetSearchIdxPathV1 gets the base path of the search index
 func GetSearchIdxPathV1(prefix string, owner SearchIdxOwner, term, updateID string) string {
 	if len(prefix) > 0 {
-		return fmt.Sprintf("%v/%v/sidx/%v/%v", prefix, owner, term, updateID)
+		return path.Clean(fmt.Sprintf("%v/%v/sidx/%v/%v", prefix, owner, term, updateID))
 	}
 
-	return fmt.Sprintf("%v/sidx/%v/%v", owner, term, updateID)
+	return path.Clean(fmt.Sprintf("%v/sidx/%v/%v", owner, term, updateID))
 }
 
-// CreateSearchIdxV1 creates a search index writer V1
-func CreateSearchIdxV1(termKey, indexKey *sscrypto.StrongSaltKey,
+// CreateSearchIdxWriterV1 creates a search index writer V1
+func CreateSearchIdxWriterV1(owner SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
 	sources []SearchTermIdxSourceV1) (*SearchIdxV1, error) {
 
 	var err error
@@ -141,11 +144,12 @@ func CreateSearchIdxV1(termKey, indexKey *sscrypto.StrongSaltKey,
 		SearchSourcess: make(map[string]*SearchTermIdxV1),
 		TermKey:        termKey,
 		IndexKey:       indexKey,
+		owner:          owner,
 		batchMgr:       nil,
 		delDocs:        &DeletedDocsV1{make([]string, 0), make(map[string]bool)},
 	}
 
-	searchIdx.batchMgr, err = CreateSearchTermBatchMgrV1(nil, sources, termKey, indexKey,
+	searchIdx.batchMgr, err = CreateSearchTermBatchMgrV1(owner, sources, termKey, indexKey,
 		searchIdx.delDocs)
 	if err != nil {
 		return nil, err
@@ -154,12 +158,40 @@ func CreateSearchIdxV1(termKey, indexKey *sscrypto.StrongSaltKey,
 	return searchIdx, nil
 }
 
-func (idx *SearchIdxV1) DoBatch() error {
+func (idx *SearchIdxV1) ProcessBatchTerms() (map[string]error, error) {
+	emptyResult := make(map[string]error)
+
 	termBatch, err := idx.batchMgr.GetNextTermBatch(STI_TERM_BATCH_SIZE)
 	if err != nil {
-		return err
+		return emptyResult, err
 	}
 
-	termBatch.ProcessBatch()
-	return nil
+	if termBatch.IsEmpty() {
+		return emptyResult, io.EOF
+	}
+
+	// PSL DEBUG
+	fmt.Println("batch", termBatch.termList)
+
+	return termBatch.ProcessTermBatch()
+}
+
+func (idx *SearchIdxV1) ProcessAllTerms() (map[string]error, error) {
+	finalResult := make(map[string]error)
+
+	var err error = nil
+	for err == nil {
+		var batchResult map[string]error
+
+		batchResult, err = idx.ProcessBatchTerms()
+		if err != nil && err != io.EOF {
+			return finalResult, err
+		}
+
+		for term, err := range batchResult {
+			finalResult[term] = err
+		}
+	}
+
+	return finalResult, nil
 }

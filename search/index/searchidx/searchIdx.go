@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path"
 
 	"github.com/go-errors/errors"
 )
@@ -23,10 +24,10 @@ const (
 
 	STI_V1              = uint32(1)
 	STI_VER             = STI_V1
-	STI_TERM_BATCH_SIZE = 100 // Process terms in batches of 100
+	STI_TERM_BATCH_SIZE = 1000 // Process terms in batches of 1000
 
-	SSDI_BLOCK_SIZE_MAX       = uint64(1024 * 1024 * 5) // 5MB
-	SSDI_BLOCK_MARGIN_PERCENT = uint64(10)              // 10% margin
+	SSDI_BLOCK_SIZE_MAX       = uint64(1024 * 1) //1024 * 5) // 5MB
+	SSDI_BLOCK_MARGIN_PERCENT = uint64(10)       // 10% margin
 
 	SSDI_V1  = uint32(1)
 	SSDI_VER = SSDI_V1
@@ -34,7 +35,7 @@ const (
 
 // GetSearchIdxPathPrefix gets the search index path prefix
 func GetSearchIdxPathPrefix() string {
-	return "/tmp/search"
+	return path.Clean("/tmp/search")
 }
 
 //////////////////////////////////////////////////////////////////

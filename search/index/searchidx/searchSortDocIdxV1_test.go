@@ -117,6 +117,9 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 			assert.Equal(t, err, io.EOF)
 		}
 		if blk != nil {
+
+			fmt.Println(blk.DocIDVers)
+
 			ssdiBlocks = append(ssdiBlocks, blk)
 		}
 	}
