@@ -1,4 +1,4 @@
-package searchidx
+package searchidxv1
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 
 	"gotest.tools/assert"
@@ -117,7 +118,7 @@ func TestSearchTermIdxBatchRemoveString(t *testing.T) {
 }
 
 func TestSearchTermIdxSimpleV1(t *testing.T) {
-	owner := CreateSearchIdxOwner(SI_OWNER_USR, "owner1")
+	owner := common.CreateSearchIdxOwner(common.SI_OWNER_USR, "owner1")
 	term := "term1"
 	maxDocID := 20
 	maxOffsetCount := 30
@@ -132,7 +133,7 @@ func TestSearchTermIdxSimpleV1(t *testing.T) {
 	//
 	sti, writtenBlocks := createSearchTermIdxSimpleV1(t, owner, term,
 		termKey, indexKey, maxDocID, maxOffsetCount)
-	defer os.RemoveAll(GetSearchIdxPathPrefix())
+	defer os.RemoveAll(common.GetSearchIdxPathPrefix())
 
 	//
 	// Open STI and make sure the blocks match
@@ -168,7 +169,7 @@ func TestSearchTermIdxSimpleV1(t *testing.T) {
 }
 
 func createSearchTermIdxSimpleV1(t *testing.T,
-	owner SearchIdxOwner, term string,
+	owner common.SearchIdxOwner, term string,
 	termKey, indexKey *sscrypto.StrongSaltKey,
 	maxDocID, maxOffsetCount int) (*SearchTermIdxV1, []*SearchTermIdxBlkV1) {
 

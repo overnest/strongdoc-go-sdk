@@ -1,10 +1,12 @@
-package docidx
+package docidxv1
 
 import (
 	"io"
 	"os"
 	"testing"
 
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 
@@ -29,7 +31,7 @@ func TestDocOffsetIdx(t *testing.T) {
 	assert.NilError(t, err)
 
 	switch doiVersion.GetDoiVersion() {
-	case DOI_V1:
+	case common.DOI_V1:
 		testDocOffsetIdxV1(t, doiVersion, sourceFilePath)
 	default:
 		assert.Assert(t, false, "Unsupported DOI version %v", doiVersion.GetDoiVersion())
@@ -59,12 +61,12 @@ func createTestDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID s
 	idxFile.Close()
 }
 
-func testDocOffsetIdxV1(t *testing.T, doiVersion DocOffsetIdx, sourceFilePath string) {
+func testDocOffsetIdxV1(t *testing.T, doiVersion common.DocOffsetIdx, sourceFilePath string) {
 	tokenizer, err := utils.OpenFileTokenizer(sourceFilePath)
 	assert.NilError(t, err)
 	defer tokenizer.Close()
 
-	doi, ok := doiVersion.(*DocOffsetIdxV1)
+	doi, ok := doiVersion.(*docidxv1.DocOffsetIdxV1)
 	assert.Assert(t, ok)
 	defer doi.Close()
 
@@ -82,7 +84,7 @@ func testDocOffsetIdxV1(t *testing.T, doiVersion DocOffsetIdx, sourceFilePath st
 	}
 }
 
-func findTermLocationV1(block *DocOffsetIdxBlkV1, term string, loc uint64) bool {
+func findTermLocationV1(block *docidxv1.DocOffsetIdxBlkV1, term string, loc uint64) bool {
 	offsetList := block.TermLoc[term]
 	if len(offsetList) == 0 {
 		return false

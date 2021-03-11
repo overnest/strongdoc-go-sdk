@@ -1,4 +1,4 @@
-package docidx
+package docidxv1
 
 import (
 	"io"
@@ -6,6 +6,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 
@@ -25,7 +27,7 @@ func TestTermIdxBlockV1(t *testing.T) {
 	var prevHighTerm string = ""
 
 	for true {
-		dtib := CreateDocTermIdxBlkV1(prevHighTerm, DTI_BLOCK_SIZE_MAX)
+		dtib := docidxv1.CreateDocTermIdxBlkV1(prevHighTerm, common.DTI_BLOCK_SIZE_MAX)
 
 		tokenizer, err := utils.OpenFileTokenizer(sourceFilePath)
 		assert.NilError(t, err)
@@ -51,7 +53,7 @@ func TestTermIdxBlockV1(t *testing.T) {
 			break
 		}
 
-		prevHighTerm = dtib.highTerm
+		prevHighTerm = dtib.GetHighTerm()
 		assert.NilError(t, err)
 	}
 }
@@ -76,13 +78,13 @@ func TestTermIdxSourcesV1(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Create DOI source
-	sourceDoi, err := OpenDocTermSourceDocOffsetV1(doiv)
+	sourceDoi, err := docidxv1.OpenDocTermSourceDocOffsetV1(doiv)
 	assert.NilError(t, err)
 	defer sourceDoi.Close()
 	doiTerms := gatherTermsFromSource(t, sourceDoi)
 
 	// Create Text File source
-	sourceTxt, err := OpenDocTermSourceTextFileV1(sourceFile)
+	sourceTxt, err := docidxv1.OpenDocTermSourceTextFileV1(sourceFile)
 	assert.NilError(t, err)
 	defer sourceTxt.Close()
 	txtTerms := gatherTermsFromSource(t, sourceTxt)
@@ -102,7 +104,7 @@ func TestTermIdxSourcesV1(t *testing.T) {
 	assert.DeepEqual(t, doiTerms, doiTermsNew)
 }
 
-func gatherTermsFromSource(t *testing.T, source DocTermSourceV1) []string {
+func gatherTermsFromSource(t *testing.T, source docidxv1.DocTermSourceV1) []string {
 	terms := make([]string, 0, 10000000)
 	for true {
 		term, _, err := source.GetNextTerm()
@@ -148,12 +150,12 @@ func TestTermIdxV1(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, dtiv.GetDtiVersion(), uint32(1))
 
-	dti, ok := dtiv.(*DocTermIdxV1)
+	dti, ok := dtiv.(*docidxv1.DocTermIdxV1)
 	assert.Assert(t, ok)
 
 	err = nil
 	for err == nil {
-		var blk *DocTermIdxBlkV1 = nil
+		var blk *docidxv1.DocTermIdxBlkV1 = nil
 		blk, err = dti.ReadNextBlock()
 		if err != nil {
 			assert.Equal(t, err, io.EOF)
@@ -203,21 +205,21 @@ func createTermIndexV1(t *testing.T, key *sscrypto.StrongSaltKey,
 	outfile, err := os.Create(outputFile)
 	assert.NilError(t, err)
 
-	source, err := OpenDocTermSourceTextFileV1(sourcefile)
+	source, err := docidxv1.OpenDocTermSourceTextFileV1(sourcefile)
 	assert.NilError(t, err)
 	defer source.Close()
 
 	//
 	// Create a document term index
 	//
-	dti, err := CreateDocTermIdxV1(docID, docVer, key, source, outfile, 0)
+	dti, err := docidxv1.CreateDocTermIdxV1(docID, docVer, key, source, outfile, 0)
 	assert.NilError(t, err)
 
 	terms = make([]string, 0, 1000)
 
 	err = nil
 	for err == nil {
-		var blk *DocTermIdxBlkV1 = nil
+		var blk *docidxv1.DocTermIdxBlkV1 = nil
 		blk, err = dti.WriteNextBlock()
 		if err != nil {
 			assert.Equal(t, err, io.EOF)
@@ -259,13 +261,13 @@ func TestTermIdxDiffV1(t *testing.T) {
 	//
 	// Open the previously written document term index
 	//
-	dtiFile1, dtiVer1 := openDocumentTermIndex(t, key, dtiFileName1, DTI_V1)
+	dtiFile1, dtiVer1 := openDocumentTermIndex(t, key, dtiFileName1, common.DTI_V1)
 	defer dtiFile1.Close()
-	dti1 := dtiVer1.(*DocTermIdxV1)
+	dti1 := dtiVer1.(*docidxv1.DocTermIdxV1)
 
-	dtiFile2, dtiVer2 := openDocumentTermIndex(t, key, dtiFileName2, DTI_V1)
+	dtiFile2, dtiVer2 := openDocumentTermIndex(t, key, dtiFileName2, common.DTI_V1)
 	defer dtiFile2.Close()
-	dti2 := dtiVer2.(*DocTermIdxV1)
+	dti2 := dtiVer2.(*docidxv1.DocTermIdxV1)
 
 	//
 	// Diff nil, dti1

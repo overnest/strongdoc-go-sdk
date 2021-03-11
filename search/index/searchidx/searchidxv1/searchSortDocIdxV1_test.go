@@ -1,4 +1,4 @@
-package searchidx
+package searchidxv1
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"gotest.tools/assert"
 )
@@ -66,7 +67,7 @@ func validateSsdibSize(t *testing.T, stib *SearchSortDocIdxBlkV1) {
 }
 
 func TestSearchSortDocIdxSimpleV1(t *testing.T) {
-	owner := CreateSearchIdxOwner(SI_OWNER_USR, "owner1")
+	owner := common.CreateSearchIdxOwner(common.SI_OWNER_USR, "owner1")
 	term := "term1"
 	maxDocID := 100000
 	maxOffsetCount := 30
@@ -76,7 +77,7 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	indexKey, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	defer os.RemoveAll(GetSearchIdxPathPrefix())
+	defer os.RemoveAll(common.GetSearchIdxPathPrefix())
 
 	//
 	// Create STI

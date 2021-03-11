@@ -1,4 +1,4 @@
-package docidx
+package docidxv1
 
 import (
 	"io"
@@ -6,13 +6,14 @@ import (
 	"github.com/go-errors/errors"
 
 	"github.com/overnest/strongdoc-go-sdk/search/index/crypto"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 	ssblocks "github.com/overnest/strongsalt-common-go/blocks"
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
 )
 
-// The format off Document Term Index
+// The format off Document Offset Index
 //
 // --------------------------------------------------------------------------
 // |   Unencrypted    |                   Encrypted                         |
@@ -22,29 +23,28 @@ import (
 
 //////////////////////////////////////////////////////////////////
 //
-//                   Document Term Index
+//                   Document Offset Index
 //
 //////////////////////////////////////////////////////////////////
 
-// DocTermIdxV1 is the Document Term Index V1
-type DocTermIdxV1 struct {
-	DtiVersionS
+// DocOffsetIdxV1 is the Document Offset Index V1
+type DocOffsetIdxV1 struct {
+	common.DoiVersionS
 	DocID         string
 	DocVer        uint64
 	Key           *sscrypto.StrongSaltKey
 	Nonce         []byte
 	InitOffset    uint64
-	PlainHdrBody  *DtiPlainHdrBodyV1
-	CipherHdrBody *DtiCipherHdrBodyV1
+	PlainHdrBody  *DoiPlainHdrBodyV1
+	CipherHdrBody *DoiCipherHdrBodyV1
 	Writer        ssblocks.BlockListWriterV1
 	Reader        ssblocks.BlockListReaderV1
-	Block         *DocTermIdxBlkV1
-	Source        DocTermSourceV1
+	Block         *DocOffsetIdxBlkV1
 }
 
-// CreateDocTermIdxV1 creates a document term index writer V1
-func CreateDocTermIdxV1(docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	source DocTermSourceV1, store interface{}, initOffset int64) (*DocTermIdxV1, error) {
+// CreateDocOffsetIdxV1 creates a document offset index writer V1
+func CreateDocOffsetIdxV1(docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+	store interface{}, initOffset int64) (*DocOffsetIdxV1, error) {
 
 	var err error
 	writer, ok := store.(io.Writer)
@@ -57,20 +57,16 @@ func CreateDocTermIdxV1(docID string, docVer uint64, key *sscrypto.StrongSaltKey
 			key.Type.Name, sscrypto.Type_XChaCha20.Name)
 	}
 
-	if source == nil {
-		return nil, errors.Errorf("A source is required")
-	}
-
 	// Create plaintext and ciphertext headers
-	plainHdrBody := &DtiPlainHdrBodyV1{
-		DtiVersionS: DtiVersionS{DtiVer: DTI_V1},
+	plainHdrBody := &DoiPlainHdrBodyV1{
+		DoiVersionS: common.DoiVersionS{DoiVer: common.DOI_V1},
 		KeyType:     key.Type.Name,
 		DocID:       docID,
 		DocVer:      docVer,
 	}
 
-	cipherHdrBody := &DtiCipherHdrBodyV1{
-		BlockVersion: BlockVersion{BlockVer: DTI_BLOCK_V1},
+	cipherHdrBody := &DoiCipherHdrBodyV1{
+		BlockVersionS: common.BlockVersionS{BlockVer: common.DOI_BLOCK_V1},
 	}
 
 	if midStreamKey, ok := key.Key.(sscryptointf.KeyMidstream); ok {
@@ -132,20 +128,20 @@ func CreateDocTermIdxV1(docID string, docVer uint64, key *sscrypto.StrongSaltKey
 
 	// Create a block list writer using the streaming crypto so the blocks will be
 	// encrypted.
-	blockWriter, err := ssblocks.NewBlockListWriterV1(streamCrypto, uint32(DTI_BLOCK_SIZE_MAX),
+	blockWriter, err := ssblocks.NewBlockListWriterV1(streamCrypto, 0,
 		uint64(initOffset+int64(len(plainHdrSerial)+len(cipherHdrSerial))))
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
-	index := &DocTermIdxV1{DtiVersionS{DtiVer: DTI_V1},
+	index := &DocOffsetIdxV1{common.DoiVersionS{DoiVer: common.DOI_V1},
 		docID, docVer, key, plainHdrBody.Nonce, uint64(initOffset),
-		plainHdrBody, cipherHdrBody, blockWriter, nil, nil, source}
+		plainHdrBody, cipherHdrBody, blockWriter, nil, nil}
 	return index, nil
 }
 
-// OpenDocTermIdxV1 opens a document offset index reader V1
-func OpenDocTermIdxV1(key *sscrypto.StrongSaltKey, store interface{}, initOffset uint64, endOffset uint64) (*DocTermIdxV1, error) {
+// OpenDocOffsetIdxV1 opens a document offset index reader V1
+func OpenDocOffsetIdxV1(key *sscrypto.StrongSaltKey, store interface{}, initOffset int64) (*DocOffsetIdxV1, error) {
 	reader, ok := store.(io.Reader)
 	if !ok {
 		return nil, errors.Errorf("The passed in storage does not implement io.Reader")
@@ -153,34 +149,35 @@ func OpenDocTermIdxV1(key *sscrypto.StrongSaltKey, store interface{}, initOffset
 
 	plainHdr, parsed, err := ssheaders.DeserializePlainHdrStream(reader)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err)
 	}
 
 	plainHdrBodyData, err := plainHdr.GetBody()
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err)
 	}
 
-	version, err := DeserializeDtiVersion(plainHdrBodyData)
+	version, err := common.DeserializeDoiVersion(plainHdrBodyData)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err)
 	}
 
-	if version.GetDtiVersion() != DTI_V1 {
-		return nil, errors.Errorf("Document term index version is not %v", DTI_V1)
+	if version.GetDoiVersion() != common.DOI_V1 {
+		return nil, errors.Errorf("Document offset index is not version %v", common.DOI_V1)
 	}
 
 	// Parse plaintext header body
-	plainHdrBody := &DtiPlainHdrBodyV1{}
+	plainHdrBody := &DoiPlainHdrBodyV1{}
 	plainHdrBody, err = plainHdrBody.deserialize(plainHdrBodyData)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err)
 	}
-	return openDocTermIdxV1(key, plainHdrBody, reader, initOffset, endOffset, initOffset+uint64(parsed))
+	return OpenDocOffsetIdxPrivV1(key, plainHdrBody, reader, initOffset+int64(parsed))
 }
 
-func openDocTermIdxV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdrBodyV1,
-	store interface{}, initOffset uint64, endOffset uint64, plainHdrOffset uint64) (*DocTermIdxV1, error) {
+// OpenDocOffsetIdxPrivV1 opens a document offset index reader V1
+func OpenDocOffsetIdxPrivV1(key *sscrypto.StrongSaltKey, plainHdrBody *DoiPlainHdrBodyV1,
+	store interface{}, initOffset int64) (*DocOffsetIdxV1, error) {
 
 	if key.Type != sscrypto.Type_XChaCha20 {
 		return nil, errors.Errorf("Key type %v is not supported. The only supported key type is %v",
@@ -193,7 +190,7 @@ func openDocTermIdxV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdrBody
 	}
 
 	// Initialize the streaming crypto to decrypt ciphertext header and the blocks after that
-	streamCrypto, err := crypto.CreateStreamCrypto(key, plainHdrBody.Nonce, store, int64(plainHdrOffset))
+	streamCrypto, err := crypto.CreateStreamCrypto(key, plainHdrBody.Nonce, store, initOffset)
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -201,90 +198,67 @@ func openDocTermIdxV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdrBody
 	// Read the ciphertext header from storage
 	cipherHdr, parsed, err := ssheaders.DeserializeCipherHdrStream(streamCrypto)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err)
 	}
 
 	cipherHdrBodyData, err := cipherHdr.GetBody()
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err)
 	}
 
-	cipherHdrBody := &DtiCipherHdrBodyV1{}
+	cipherHdrBody := &DoiCipherHdrBodyV1{}
 	cipherHdrBody, err = cipherHdrBody.deserialize(cipherHdrBodyData)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err)
 	}
 
 	// Create a block list reader using the streaming crypto so the blocks will be
 	// decrypted.
 	reader, err := ssblocks.NewBlockListReader(streamCrypto,
-		plainHdrOffset+uint64(parsed), endOffset)
+		uint64(initOffset+int64(parsed)), 0)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err)
 	}
 	blockReader, ok := reader.(ssblocks.BlockListReaderV1)
 	if !ok {
 		return nil, errors.Errorf("Block list reader is not BlockListReaderV1")
 	}
 
-	index := &DocTermIdxV1{DtiVersionS{DtiVer: plainHdrBody.GetDtiVersion()},
+	index := &DocOffsetIdxV1{common.DoiVersionS{DoiVer: plainHdrBody.GetDoiVersion()},
 		plainHdrBody.DocID, plainHdrBody.DocVer, key, plainHdrBody.Nonce,
-		uint64(initOffset), plainHdrBody, cipherHdrBody, nil, blockReader, nil,
-		nil}
+		uint64(initOffset), plainHdrBody, cipherHdrBody, nil, blockReader, nil}
 	return index, nil
 }
 
-// WriteNextBlock writes the next document term index block, and returns the written block.
-// Returns io.EOF when last block is written.
-func (idx *DocTermIdxV1) WriteNextBlock() (*DocTermIdxBlkV1, error) {
+// AddTermOffset adds search term and offset to a document offset index block
+func (idx *DocOffsetIdxV1) AddTermOffset(term string, offset uint64) error {
 	if idx.Writer == nil {
-		return nil, errors.Errorf("The document term index is not open for writing")
+		return errors.Errorf("The document offset index is not open for writing")
 	}
 
 	if idx.Block == nil {
-		idx.Block = CreateDocTermIdxBlkV1("", uint64(idx.Writer.GetMaxDataSize()))
-	}
-
-	err := idx.Source.Reset()
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
-	for err == nil {
-		var term string
-		term, _, err = idx.Source.GetNextTerm()
-		if len(term) > 0 {
-			idx.Block.AddTerm(term)
+		idx.Block = &DocOffsetIdxBlkV1{
+			TermLoc:           make(map[string][]uint64),
+			predictedJSONSize: baseDoiBlockJSONSize,
 		}
 	}
 
-	if err == io.EOF {
-		block := idx.Block
-
+	idx.Block.AddTermOffset(term, offset)
+	if idx.Block.predictedJSONSize > uint64(common.DOI_BLOCK_SIZE_MAX) {
 		serial, err := idx.Block.Serialize()
 		if err != nil {
-			return nil, errors.New(err)
+			return errors.New(err)
 		}
-
-		err = idx.flush(serial)
-		if err != nil {
-			return nil, errors.New(err)
-		}
-
-		if block.IsFull() {
-			return block, nil
-		}
-
-		return block, io.EOF
+		return idx.flush(serial)
 	}
 
-	return nil, errors.New(err)
+	return nil
 }
 
-// ReadNextBlock returns the next document term index block
-func (idx *DocTermIdxV1) ReadNextBlock() (*DocTermIdxBlkV1, error) {
+// ReadNextBlock returns the next document offset index block
+func (idx *DocOffsetIdxV1) ReadNextBlock() (*DocOffsetIdxBlkV1, error) {
 	if idx.Reader == nil {
-		return nil, errors.Errorf("The document term index is not open for reading")
+		return nil, errors.Errorf("The document offset index is not open for reading")
 	}
 
 	b, err := idx.Reader.ReadNextBlock()
@@ -293,44 +267,25 @@ func (idx *DocTermIdxV1) ReadNextBlock() (*DocTermIdxBlkV1, error) {
 	}
 
 	if b != nil && len(b.GetData()) > 0 {
-		block := CreateDocTermIdxBlkV1("", 0)
-		blk, derr := block.Deserialize(b.GetData())
-		if derr != nil {
-			return nil, errors.New(derr)
-		}
-
-		return blk, err
+		block := &DocOffsetIdxBlkV1{}
+		return block.Deserialize(b.GetData())
 	}
 
-	return nil, err
+	return nil, io.EOF
 }
 
-// FindTerm attempts to find the specified term in the term index
-func (idx *DocTermIdxV1) FindTerm(term string) (bool, error) {
+// Reset resets the offset index for reading. Can not be done for writing
+func (idx *DocOffsetIdxV1) Reset() error {
 	if idx.Reader == nil {
-		return false, errors.Errorf("The document term index is not open for reading")
-	}
-
-	blk, err := idx.Reader.SearchBinary(term, DocTermComparatorV1)
-	if err != nil {
-		return false, errors.New(err)
-	}
-
-	return (blk != nil), nil
-}
-
-// Reset resets the term index for reading. Can not be done for writing
-func (idx *DocTermIdxV1) Reset() error {
-	if idx.Reader == nil {
-		return errors.Errorf("The document term index is not open for reading. Can not reset")
+		return errors.Errorf("The document offset index is not open for reading. Can not reset")
 	}
 
 	return idx.Reader.Reset()
 }
 
 // Close writes any residual block data to output stream
-func (idx *DocTermIdxV1) Close() error {
-	if idx.Block != nil && idx.Block.totalTerms > 0 {
+func (idx *DocOffsetIdxV1) Close() error {
+	if idx.Block != nil {
 		serial, err := idx.Block.Serialize()
 		if err != nil {
 			return errors.New(err)
@@ -340,26 +295,21 @@ func (idx *DocTermIdxV1) Close() error {
 	return nil
 }
 
-func (idx *DocTermIdxV1) flush(data []byte) error {
-	if idx.Writer == nil {
-		return errors.Errorf("The document term index is not open for writing")
-	}
-
+func (idx *DocOffsetIdxV1) flush(data []byte) error {
 	_, err := idx.Writer.WriteBlockData(data)
 	if err != nil {
 		return errors.New(err)
 	}
-
-	idx.Block = CreateDocTermIdxBlkV1(idx.Block.highTerm, uint64(idx.Writer.GetMaxDataSize()))
+	idx.Block = nil
 	return nil
 }
 
 // GetDocID gets the document ID
-func (idx *DocTermIdxV1) GetDocID() string {
+func (idx *DocOffsetIdxV1) GetDocID() string {
 	return idx.DocID
 }
 
 // GetDocVersion gets the document version
-func (idx *DocTermIdxV1) GetDocVersion() uint64 {
+func (idx *DocOffsetIdxV1) GetDocVersion() uint64 {
 	return idx.DocVer
 }

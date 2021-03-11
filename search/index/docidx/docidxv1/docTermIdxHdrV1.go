@@ -1,9 +1,10 @@
-package docidx
+package docidxv1
 
 import (
 	"encoding/json"
 
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -14,7 +15,7 @@ import (
 
 // DtiPlainHdrBodyV1 is the plaintext header for document term index.
 type DtiPlainHdrBodyV1 struct {
-	DtiVersionS
+	common.DtiVersionS
 	KeyType string
 	Nonce   []byte
 	DocID   string
@@ -37,9 +38,14 @@ func (hdr *DtiPlainHdrBodyV1) deserialize(data []byte) (*DtiPlainHdrBodyV1, erro
 	return hdr, nil
 }
 
+func DtiPlainHdrBodyV1Deserialize(data []byte) (*DtiPlainHdrBodyV1, error) {
+	plainHdrBody := &DtiPlainHdrBodyV1{}
+	return plainHdrBody.deserialize(data)
+}
+
 // DtiCipherHdrBodyV1 is the ciphertext header for document term index.
 type DtiCipherHdrBodyV1 struct {
-	BlockVersion
+	common.BlockVersionS
 }
 
 func (hdr *DtiCipherHdrBodyV1) serialize() ([]byte, error) {

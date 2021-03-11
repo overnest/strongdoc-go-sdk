@@ -1,4 +1,4 @@
-package searchidx
+package docidxv1
 
 import (
 	"fmt"
@@ -8,14 +8,10 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
-	"testing"
 
 	"github.com/go-errors/errors"
-	"github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
-	"gotest.tools/assert"
 )
 
 const (
@@ -34,7 +30,7 @@ func init() {
 	}
 }
 
-type DocumentIdx struct {
+type TestDocumentIdxV1 struct {
 	// Original Document
 	docFileName string
 	docFilePath string
@@ -47,104 +43,16 @@ type DocumentIdx struct {
 	doiFilePath string
 	doiFileSize int64
 	doiFile     *os.File
-	doi         *docidx.DocOffsetIdxV1
+	doi         *DocOffsetIdxV1
 
 	// DTI
 	dtiFilePath string
 	dtiFileSize int64
 	dtiFile     *os.File
-	dti         *docidx.DocTermIdxV1
+	dti         *DocTermIdxV1
 }
 
-func TestTools(t *testing.T) {
-	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
-	assert.NilError(t, err)
-
-	indexes, err := InitDocuments(10, false)
-	assert.NilError(t, err)
-
-	// Create the indexes
-	for _, idx := range indexes {
-		assert.NilError(t, idx.CreateDoi(key))
-		assert.NilError(t, idx.CreateDti(key))
-	}
-	defer CleanDocumentIndexes()
-
-	// Validate the indexes
-	for _, idx := range indexes {
-		// Open the DOI
-		doi, err := idx.OpenDoi(key)
-		assert.NilError(t, err)
-		defer idx.CloseDoi()
-
-		termloc := make(map[string][]uint64)
-		for err == nil {
-			var blk *docidx.DocOffsetIdxBlkV1
-			blk, err = doi.ReadNextBlock()
-			if err != nil {
-				assert.Equal(t, err, io.EOF)
-			}
-			if blk != nil {
-				for term, locs := range blk.TermLoc {
-					termloc[term] = append(termloc[term], locs...)
-				}
-			}
-		}
-
-		i := uint64(0)
-		tokenizer, err := utils.OpenFileTokenizer(idx.docFilePath)
-		assert.NilError(t, err)
-		defer tokenizer.Close()
-
-		// Validate the DOI
-		for token, _, err := tokenizer.NextToken(); err != io.EOF; token, _, err = tokenizer.NextToken() {
-			if err != nil {
-				assert.Equal(t, err, io.EOF)
-			}
-
-			if token != "" {
-				locs, exist := termloc[token]
-				assert.Assert(t, exist)
-				assert.Assert(t, len(locs) > 0)
-				assert.Equal(t, i, locs[0])
-				termloc[token] = locs[1:]
-				i++
-			}
-		}
-
-		// Open the DTI
-		dti, err := idx.OpenDti(key)
-		assert.NilError(t, err)
-		defer idx.CloseDti()
-
-		terms := make([]string, 0, len(termloc))
-		for term := range termloc {
-			terms = append(terms, term)
-			delete(termloc, term)
-		}
-		sort.Strings(terms)
-
-		// Validate the DTI
-		for err == nil {
-			var blk *docidx.DocTermIdxBlkV1
-			blk, err = dti.ReadNextBlock()
-			if err != nil {
-				assert.Equal(t, err, io.EOF)
-			}
-			if blk != nil {
-				for _, term := range blk.Terms {
-					assert.Assert(t, len(terms) > 0)
-					assert.Equal(t, term, terms[0])
-					terms = terms[1:]
-				}
-			}
-		}
-
-		assert.Equal(t, len(terms), 0)
-	} // for _, idx := range indexes
-}
-
-func InitDocuments(numDocs int, random bool) ([]*DocumentIdx, error) {
+func InitTestDocuments(numDocs int, random bool) ([]*TestDocumentIdxV1, error) {
 	files, err := ioutil.ReadDir(booksDir)
 	if err != nil {
 		return nil, errors.New(err)
@@ -155,7 +63,7 @@ func InitDocuments(numDocs int, random bool) ([]*DocumentIdx, error) {
 		docCount = len(files)
 	}
 
-	documents := make([]*DocumentIdx, 0, docCount)
+	documents := make([]*TestDocumentIdxV1, 0, docCount)
 	for len(files) > 0 {
 		var file os.FileInfo
 		if random {
@@ -186,9 +94,9 @@ func InitDocuments(numDocs int, random bool) ([]*DocumentIdx, error) {
 	return documents, nil
 }
 
-func createDocumentIdx(name string, size int64, id string, ver uint64) (*DocumentIdx, error) {
+func createDocumentIdx(name string, size int64, id string, ver uint64) (*TestDocumentIdxV1, error) {
 	filePath := path.Join(booksDir, name)
-	doc := &DocumentIdx{
+	doc := &TestDocumentIdxV1{
 		docFileName: name,
 		docFilePath: filePath,
 		docFileSize: size,
@@ -200,7 +108,7 @@ func createDocumentIdx(name string, size int64, id string, ver uint64) (*Documen
 	return doc, nil
 }
 
-func (doc *DocumentIdx) CreateDoi(key *sscrypto.StrongSaltKey) error {
+func (doc *TestDocumentIdxV1) CreateDoi(key *sscrypto.StrongSaltKey) error {
 	doc.doiFilePath = fmt.Sprintf(doiPathFmt, doc.docID, doc.docVer)
 	if err := os.MkdirAll(filepath.Dir(doc.doiFilePath), 0770); err != nil {
 		return err
@@ -213,7 +121,7 @@ func (doc *DocumentIdx) CreateDoi(key *sscrypto.StrongSaltKey) error {
 	}
 	defer doc.CloseDoi()
 
-	doc.doi, err = docidx.CreateDocOffsetIdx(doc.docID, doc.docVer, key, doc.doiFile, 0)
+	doc.doi, err = CreateDocOffsetIdxV1(doc.docID, doc.docVer, key, doc.doiFile, 0)
 	if err != nil {
 		return err
 	}
@@ -236,7 +144,7 @@ func (doc *DocumentIdx) CreateDoi(key *sscrypto.StrongSaltKey) error {
 	return nil
 }
 
-func (doc *DocumentIdx) OpenDoi(key *sscrypto.StrongSaltKey) (*docidx.DocOffsetIdxV1, error) {
+func (doc *TestDocumentIdxV1) OpenDoi(key *sscrypto.StrongSaltKey) (*DocOffsetIdxV1, error) {
 	var err error
 
 	err = doc.CloseDoi()
@@ -255,7 +163,7 @@ func (doc *DocumentIdx) OpenDoi(key *sscrypto.StrongSaltKey) (*docidx.DocOffsetI
 	}
 
 	doc.doiFileSize = stat.Size()
-	doc.doi, err = docidx.OpenDocOffsetIdxV1(key, doc.doiFile, 0)
+	doc.doi, err = OpenDocOffsetIdxV1(key, doc.doiFile, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +171,7 @@ func (doc *DocumentIdx) OpenDoi(key *sscrypto.StrongSaltKey) (*docidx.DocOffsetI
 	return doc.doi, nil
 }
 
-func (doc *DocumentIdx) CloseDoi() error {
+func (doc *TestDocumentIdxV1) CloseDoi() error {
 	var err error = nil
 	if doc.doi != nil {
 		err = firstError(err, doc.doi.Close())
@@ -277,7 +185,7 @@ func (doc *DocumentIdx) CloseDoi() error {
 	return err
 }
 
-func (doc *DocumentIdx) CreateDti(key *sscrypto.StrongSaltKey) error {
+func (doc *TestDocumentIdxV1) CreateDti(key *sscrypto.StrongSaltKey) error {
 	doc.dtiFilePath = fmt.Sprintf(dtiPathFmt, doc.docID, doc.docVer)
 	if err := os.MkdirAll(filepath.Dir(doc.dtiFilePath), 0770); err != nil {
 		return errors.New(err)
@@ -296,13 +204,13 @@ func (doc *DocumentIdx) CreateDti(key *sscrypto.StrongSaltKey) error {
 	}
 	defer doc.CloseDoi()
 
-	src, err := docidx.OpenDocTermSourceDocOffsetV1(doi)
+	src, err := OpenDocTermSourceDocOffsetV1(doi)
 	if err != nil {
 		return err
 	}
 	defer src.Close()
 
-	doc.dti, err = docidx.CreateDocTermIdxV1(doc.docID, doc.docVer, key, src, doc.dtiFile, 0)
+	doc.dti, err = CreateDocTermIdxV1(doc.docID, doc.docVer, key, src, doc.dtiFile, 0)
 	if err != nil {
 		return err
 	}
@@ -318,7 +226,7 @@ func (doc *DocumentIdx) CreateDti(key *sscrypto.StrongSaltKey) error {
 	return nil
 }
 
-func (doc *DocumentIdx) OpenDti(key *sscrypto.StrongSaltKey) (*docidx.DocTermIdxV1, error) {
+func (doc *TestDocumentIdxV1) OpenDti(key *sscrypto.StrongSaltKey) (*DocTermIdxV1, error) {
 	var err error
 
 	err = doc.CloseDti()
@@ -337,7 +245,7 @@ func (doc *DocumentIdx) OpenDti(key *sscrypto.StrongSaltKey) (*docidx.DocTermIdx
 	}
 
 	doc.dtiFileSize = stat.Size()
-	doc.dti, err = docidx.OpenDocTermIdxV1(key, doc.dtiFile, 0, uint64(doc.dtiFileSize))
+	doc.dti, err = OpenDocTermIdxV1(key, doc.dtiFile, 0, uint64(doc.dtiFileSize))
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +253,7 @@ func (doc *DocumentIdx) OpenDti(key *sscrypto.StrongSaltKey) (*docidx.DocTermIdx
 	return doc.dti, nil
 }
 
-func (doc *DocumentIdx) CloseDti() error {
+func (doc *TestDocumentIdxV1) CloseDti() error {
 	var err error = nil
 	if doc.dti != nil {
 		err = firstError(err, doc.dti.Close())
@@ -359,7 +267,7 @@ func (doc *DocumentIdx) CloseDti() error {
 	return err
 }
 
-func (doc *DocumentIdx) Close() error {
+func (doc *TestDocumentIdxV1) Close() error {
 	var err error = nil
 
 	err = firstError(err, doc.CloseDti())
@@ -372,7 +280,7 @@ func (doc *DocumentIdx) Close() error {
 	return err
 }
 
-func (doc *DocumentIdx) Clean() error {
+func (doc *TestDocumentIdxV1) Clean() error {
 	var err error = nil
 
 	err = firstError(err, doc.Close())
@@ -381,7 +289,7 @@ func (doc *DocumentIdx) Clean() error {
 	return err
 }
 
-func CleanDocumentIndexes() error {
+func CleanTestDocumentIndexes() error {
 	return os.RemoveAll(docIdxBaseDir)
 }
 

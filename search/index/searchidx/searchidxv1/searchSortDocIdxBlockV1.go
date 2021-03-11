@@ -1,4 +1,4 @@
-package searchidx
+package searchidxv1
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 
 	rbt "github.com/emirpasic/gods/trees/redblacktree"
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"github.com/overnest/strongsalt-common-go/blocks"
 )
 
@@ -110,7 +111,7 @@ func (blk *SearchSortDocIdxBlkV1) AddDocVer(docID string, docVer uint64) {
 	// Yes we are storing more than the max data size. We'll remove the
 	// extra data during serialization time
 	if newSize > uint64(blk.maxDataSize+
-		(blk.maxDataSize/uint64(100)*uint64(SSDI_BLOCK_MARGIN_PERCENT))) {
+		(blk.maxDataSize/uint64(100)*uint64(common.SSDI_BLOCK_MARGIN_PERCENT))) {
 		blk.isFull = true
 	}
 

@@ -1,4 +1,4 @@
-package searchidx
+package searchidxv1
 
 import (
 	"fmt"
@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 
 	"gotest.tools/assert"
@@ -16,7 +18,7 @@ func TestSearchTermUpdateIDsV1(t *testing.T) {
 	idCount := 10
 	updateIDs := make([]string, idCount)
 	term := "myTerm"
-	owner := CreateSearchIdxOwner(SI_OWNER_USR, "owner1")
+	owner := common.CreateSearchIdxOwner(common.SI_OWNER_USR, "owner1")
 
 	termKey, err := sscrypto.GenerateKey(sscrypto.Type_HMACSha512)
 	assert.NilError(t, err)
@@ -25,13 +27,13 @@ func TestSearchTermUpdateIDsV1(t *testing.T) {
 
 	for i := 0; i < idCount; i++ {
 		updateIDs[i] = newUpdateIDV1()
-		path := GetSearchIdxPathV1(GetSearchIdxPathPrefix(), owner, termHmac, updateIDs[i])
+		path := GetSearchIdxPathV1(common.GetSearchIdxPathPrefix(), owner, termHmac, updateIDs[i])
 		err = os.MkdirAll(path, 0770)
 		assert.NilError(t, err)
 		time.Sleep(time.Millisecond * 100)
 	}
 
-	defer os.RemoveAll(GetSearchIdxPathPrefix())
+	defer os.RemoveAll(common.GetSearchIdxPathPrefix())
 
 	resultIDs, err := GetUpdateIdsHmacV1(owner, termHmac)
 	assert.NilError(t, err)
@@ -41,7 +43,7 @@ func TestSearchTermUpdateIDsV1(t *testing.T) {
 
 func TestSearchIdxWriterV1(t *testing.T) {
 	numSources := 10
-	owner := CreateSearchIdxOwner(SI_OWNER_USR, "owner1")
+	owner := common.CreateSearchIdxOwner(common.SI_OWNER_USR, "owner1")
 
 	docKey, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
@@ -51,9 +53,9 @@ func TestSearchIdxWriterV1(t *testing.T) {
 	assert.NilError(t, err)
 
 	sources := make([]SearchTermIdxSourceV1, 0, numSources)
-	docs, err := InitDocuments(numSources, false)
+	docs, err := docidxv1.InitTestDocuments(numSources, false)
 	assert.NilError(t, err)
-	defer CleanDocumentIndexes()
+	defer docidxv1.CleanTestDocumentIndexes()
 
 	for _, doc := range docs {
 		assert.NilError(t, doc.CreateDoi(docKey))
@@ -72,6 +74,7 @@ func TestSearchIdxWriterV1(t *testing.T) {
 
 	siw, err := CreateSearchIdxWriterV1(owner, termKey, indexKey, sources)
 	assert.NilError(t, err)
+	defer os.RemoveAll(common.GetSearchIdxPathPrefix())
 
 	_, err = siw.ProcessAllTerms()
 	if err != nil {

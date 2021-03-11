@@ -1,4 +1,4 @@
-package docidx
+package docidxv1
 
 import (
 	"encoding/json"
@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 )
@@ -57,9 +59,9 @@ func DeserializeDtiVersion(data []byte) (*DtiVersionS, error) {
 
 // CreateDocTermIdx creates a new document term index for writing
 func CreateDocTermIdx(docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	source DocTermSourceV1, store interface{}, initOffset int64) (DocTermIdx, error) {
+	source docidxv1.DocTermSourceV1, store interface{}, initOffset int64) (DocTermIdx, error) {
 
-	return CreateDocTermIdxV1(docID, docVer, key, source, store, initOffset)
+	return docidxv1.CreateDocTermIdxV1(docID, docVer, key, source, store, initOffset)
 }
 
 // OpenDocTermIdx opens a document term index for reading
@@ -85,14 +87,13 @@ func OpenDocTermIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset u
 	}
 
 	switch version.GetDtiVersion() {
-	case DTI_V1:
+	case common.DTI_V1:
 		// Parse plaintext header body
-		plainHdrBody := &DtiPlainHdrBodyV1{}
-		plainHdrBody, err = plainHdrBody.deserialize(plainHdrBodyData)
+		plainHdrBody, err := docidxv1.DtiPlainHdrBodyV1Deserialize(plainHdrBodyData)
 		if err != nil {
 			return nil, errors.New(err)
 		}
-		return openDocTermIdxV1(key, plainHdrBody, reader, initOffset, endOffset, initOffset+uint64(parsed))
+		return docidxv1.OpenDocTermIdxPrivV1(key, plainHdrBody, reader, initOffset, endOffset, initOffset+uint64(parsed))
 	default:
 		return nil, errors.Errorf("Document term index version %v is not supported",
 			version.GetDtiVersion())
@@ -198,8 +199,8 @@ func getNextTermList(dti DocTermIdx) (terms []string, err error) {
 	}
 
 	switch dti.GetDtiVersion() {
-	case DTI_V1:
-		dtiv1, ok := dti.(*DocTermIdxV1)
+	case common.DTI_V1:
+		dtiv1, ok := dti.(*docidxv1.DocTermIdxV1)
 		if !ok {
 			return nil, errors.Errorf("Document term index version is not %v",
 				dti.GetDtiVersion())
@@ -209,7 +210,7 @@ func getNextTermList(dti DocTermIdx) (terms []string, err error) {
 			return nil, berr
 		}
 		err = berr
-		if blk != nil && blk.totalTerms > 0 {
+		if blk != nil && blk.GetTotalTerms() > 0 {
 			terms = blk.Terms
 		}
 	default:
@@ -228,8 +229,8 @@ func GetAllTermList(dti DocTermIdx) (terms []string, err error) {
 	}
 
 	switch dti.GetDtiVersion() {
-	case DTI_V1:
-		dtiv1, ok := dti.(*DocTermIdxV1)
+	case common.DTI_V1:
+		dtiv1, ok := dti.(*docidxv1.DocTermIdxV1)
 		if !ok {
 			return nil, errors.Errorf("Document term index version is not %v",
 				dti.GetDtiVersion())
@@ -241,12 +242,12 @@ func GetAllTermList(dti DocTermIdx) (terms []string, err error) {
 		}
 
 		for err == nil {
-			var blk *DocTermIdxBlkV1
+			var blk *docidxv1.DocTermIdxBlkV1
 			blk, err = dtiv1.ReadNextBlock()
 			if err != nil && err != io.EOF {
 				return nil, err
 			}
-			if blk != nil && blk.totalTerms > 0 {
+			if blk != nil && blk.GetTotalTerms() > 0 {
 				if len(terms) == 0 {
 					terms = blk.Terms
 				} else {

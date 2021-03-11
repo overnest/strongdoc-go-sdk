@@ -1,4 +1,4 @@
-package docidx
+package docidxv1
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 
 	rbt "github.com/emirpasic/gods/trees/redblacktree"
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 	"github.com/overnest/strongsalt-common-go/blocks"
 )
 
@@ -92,7 +93,7 @@ func (blk *DocTermIdxBlkV1) AddTerm(term string) {
 	// Yes we are storing more than the max data size. We'll remove the
 	// extra data during serialization time
 	if newSize > uint64(blk.maxDataSize+
-		(blk.maxDataSize/uint64(100)*uint64(DTI_BLOCK_MARGIN_PERCENT))) {
+		(blk.maxDataSize/uint64(100)*uint64(common.DTI_BLOCK_MARGIN_PERCENT))) {
 		blk.isFull = true
 	}
 
@@ -233,4 +234,9 @@ func (blk *DocTermIdxBlkV1) GetLowTerm() string {
 // GetHighTerm returns the highest term in the sorted term list
 func (blk *DocTermIdxBlkV1) GetHighTerm() string {
 	return blk.highTerm
+}
+
+// GetTotalTerms returns the total terms in the sorted term list
+func (blk *DocTermIdxBlkV1) GetTotalTerms() uint64 {
+	return blk.totalTerms
 }

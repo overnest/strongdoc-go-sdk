@@ -1,4 +1,4 @@
-package searchidx
+package searchidxv1
 
 import (
 	"encoding/json"

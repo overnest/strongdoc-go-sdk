@@ -1,4 +1,4 @@
-package docidx
+package docidxv1
 
 import (
 	"encoding/json"

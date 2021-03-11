@@ -1,4 +1,4 @@
-package searchidx
+package searchidxv1
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
 )
@@ -26,7 +27,7 @@ func newUpdateIDV1() string {
 
 // GetUpdateIdsV1 returns the list of available update IDs for a specific owner + term in
 // reverse chronological order. The most recent update ID will come first
-func GetUpdateIdsV1(owner SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) ([]string, error) {
+func GetUpdateIdsV1(owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) ([]string, error) {
 	termHmac, err := createTermHmac(term, termKey)
 	if err != nil {
 		return nil, err
@@ -35,7 +36,7 @@ func GetUpdateIdsV1(owner SearchIdxOwner, term string, termKey *sscrypto.StrongS
 }
 
 // GetLatestUpdateIDV1 returns the latest update IDs for a specific owner + term
-func GetLatestUpdateIDV1(owner SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) (string, error) {
+func GetLatestUpdateIDV1(owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) (string, error) {
 
 	ids, err := GetUpdateIdsV1(owner, term, termKey)
 	if err != nil {
@@ -51,8 +52,8 @@ func GetLatestUpdateIDV1(owner SearchIdxOwner, term string, termKey *sscrypto.St
 
 // GetUpdateIdsHmacV1 returns the list of available update IDs for a specific owner + term in
 // reverse chronological order. The most recent update ID will come first
-func GetUpdateIdsHmacV1(owner SearchIdxOwner, termHmac string) ([]string, error) {
-	path := GetSearchIdxPathV1(GetSearchIdxPathPrefix(), owner, termHmac, "")
+func GetUpdateIdsHmacV1(owner common.SearchIdxOwner, termHmac string) ([]string, error) {
+	path := GetSearchIdxPathV1(common.GetSearchIdxPathPrefix(), owner, termHmac, "")
 
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
@@ -83,7 +84,7 @@ func GetUpdateIdsHmacV1(owner SearchIdxOwner, termHmac string) ([]string, error)
 }
 
 // GetLatestUpdateIdsHmacV1 returns the latest update IDs for a specific owner + term
-func GetLatestUpdateIdsHmacV1(owner SearchIdxOwner, termHmac string) (string, error) {
+func GetLatestUpdateIdsHmacV1(owner common.SearchIdxOwner, termHmac string) (string, error) {
 	ids, err := GetUpdateIdsHmacV1(owner, termHmac)
 	if err != nil {
 		return "", err
@@ -107,7 +108,7 @@ type SearchIdxV1 struct {
 	SearchSourcess map[string]*SearchTermIdxV1
 	TermKey        *sscrypto.StrongSaltKey
 	IndexKey       *sscrypto.StrongSaltKey
-	owner          SearchIdxOwner
+	owner          common.SearchIdxOwner
 	batchMgr       *SearchTermBatchMgrV1
 	delDocs        *DeletedDocsV1
 }
@@ -118,7 +119,7 @@ type DeletedDocsV1 struct {
 }
 
 // GetSearchIdxPathV1 gets the base path of the search index
-func GetSearchIdxPathV1(prefix string, owner SearchIdxOwner, term, updateID string) string {
+func GetSearchIdxPathV1(prefix string, owner common.SearchIdxOwner, term, updateID string) string {
 	if len(prefix) > 0 {
 		return path.Clean(fmt.Sprintf("%v/%v/sidx/%v/%v", prefix, owner, term, updateID))
 	}
@@ -127,7 +128,7 @@ func GetSearchIdxPathV1(prefix string, owner SearchIdxOwner, term, updateID stri
 }
 
 // CreateSearchIdxWriterV1 creates a search index writer V1
-func CreateSearchIdxWriterV1(owner SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
+func CreateSearchIdxWriterV1(owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
 	sources []SearchTermIdxSourceV1) (*SearchIdxV1, error) {
 
 	var err error
@@ -161,7 +162,7 @@ func CreateSearchIdxWriterV1(owner SearchIdxOwner, termKey, indexKey *sscrypto.S
 func (idx *SearchIdxV1) ProcessBatchTerms() (map[string]error, error) {
 	emptyResult := make(map[string]error)
 
-	termBatch, err := idx.batchMgr.GetNextTermBatch(STI_TERM_BATCH_SIZE)
+	termBatch, err := idx.batchMgr.GetNextTermBatch(common.STI_TERM_BATCH_SIZE)
 	if err != nil {
 		return emptyResult, err
 	}

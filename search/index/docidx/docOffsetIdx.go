@@ -1,52 +1,14 @@
-package docidx
+package docidxv1
 
 import (
-	"encoding/json"
 	"io"
 
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 )
-
-//////////////////////////////////////////////////////////////////
-//
-//                Document Offset Index Version
-//
-//////////////////////////////////////////////////////////////////
-
-// DocOffsetIdx store document offset index version
-type DocOffsetIdx interface {
-	GetDoiVersion() uint32
-	GetDocID() string
-	GetDocVersion() uint64
-	Close() error
-}
-
-// DoiVersionS is structure used to store document offset index version
-type DoiVersionS struct {
-	DoiVer uint32
-}
-
-// GetDoiVersion retrieves the document offset index version number
-func (h *DoiVersionS) GetDoiVersion() uint32 {
-	return h.DoiVer
-}
-
-// Deserialize deserializes the data into version number object
-func (h *DoiVersionS) Deserialize(data []byte) (*DoiVersionS, error) {
-	err := json.Unmarshal(data, h)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	return h, nil
-}
-
-// DeserializeDoiVersion deserializes the data into version number object
-func DeserializeDoiVersion(data []byte) (*DoiVersionS, error) {
-	h := &DoiVersionS{}
-	return h.Deserialize(data)
-}
 
 //////////////////////////////////////////////////////////////////
 //
@@ -56,13 +18,13 @@ func DeserializeDoiVersion(data []byte) (*DoiVersionS, error) {
 
 // CreateDocOffsetIdx creates a new document offset index for writing
 func CreateDocOffsetIdx(docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	store interface{}, initOffset int64) (*DocOffsetIdxV1, error) {
+	store interface{}, initOffset int64) (*docidxv1.DocOffsetIdxV1, error) {
 
-	return CreateDocOffsetIdxV1(docID, docVer, key, store, initOffset)
+	return docidxv1.CreateDocOffsetIdxV1(docID, docVer, key, store, initOffset)
 }
 
 // OpenDocOffsetIdx opens a document offset index for reading
-func OpenDocOffsetIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset int64) (DocOffsetIdx, error) {
+func OpenDocOffsetIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset int64) (common.DocOffsetIdx, error) {
 	reader, ok := store.(io.Reader)
 	if !ok {
 		return nil, errors.Errorf("The passed in storage does not implement io.Reader")
@@ -78,20 +40,19 @@ func OpenDocOffsetIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset
 		return nil, errors.New(err)
 	}
 
-	version, err := DeserializeDoiVersion(plainHdrBodyData)
+	version, err := common.DeserializeDoiVersion(plainHdrBodyData)
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
 	switch version.GetDoiVersion() {
-	case DOI_V1:
+	case common.DOI_V1:
 		// Parse plaintext header body
-		plainHdrBody := &DoiPlainHdrBodyV1{}
-		plainHdrBody, err = plainHdrBody.deserialize(plainHdrBodyData)
+		plainHdrBody, err := docidxv1.DoiPlainHdrBodyV1Deserialize(plainHdrBodyData)
 		if err != nil {
 			return nil, errors.New(err)
 		}
-		return openDocOffsetIdxV1(key, plainHdrBody, reader, initOffset+int64(parsed))
+		return docidxv1.OpenDocOffsetIdxPrivV1(key, plainHdrBody, reader, initOffset+int64(parsed))
 	default:
 		return nil, errors.Errorf("Document offset index version %v is not supported",
 			version.GetDoiVersion())

@@ -1,4 +1,4 @@
-package searchidx
+package searchidxv1
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/crypto"
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	ssblocks "github.com/overnest/strongsalt-common-go/blocks"
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
@@ -19,10 +20,10 @@ import (
 
 // SearchTermIdxV1 is a structure for search term index V1
 type SearchTermIdxV1 struct {
-	StiVersionS
+	common.StiVersionS
 	Term       string
-	Owner      SearchIdxOwner
-	OldSti     SearchTermIdx
+	Owner      common.SearchIdxOwner
+	OldSti     common.SearchTermIdx
 	DelDocs    *DeletedDocsV1
 	TermKey    *sscrypto.StrongSaltKey
 	IndexKey   *sscrypto.StrongSaltKey
@@ -37,18 +38,18 @@ type SearchTermIdxV1 struct {
 	storeSize  uint64
 }
 
-func getSearchTermIdxPathV1(prefix string, owner SearchIdxOwner, term, updateID string) string {
+func getSearchTermIdxPathV1(prefix string, owner common.SearchIdxOwner, term, updateID string) string {
 	return path.Clean(fmt.Sprintf("%v/searchterm", GetSearchIdxPathV1(prefix, owner, term, updateID)))
 }
 
 // CreateSearchTermIdxV1 creates a search term index writer V1
-func CreateSearchTermIdxV1(owner SearchIdxOwner, term string,
+func CreateSearchTermIdxV1(owner common.SearchIdxOwner, term string,
 	termKey, indexKey *sscrypto.StrongSaltKey,
-	oldSti SearchTermIdx, delDocs *DeletedDocsV1) (*SearchTermIdxV1, error) {
+	oldSti common.SearchTermIdx, delDocs *DeletedDocsV1) (*SearchTermIdxV1, error) {
 
 	var err error
 	sti := &SearchTermIdxV1{
-		StiVersionS: StiVersionS{StiVer: STI_V1},
+		StiVersionS: common.StiVersionS{StiVer: common.STI_V1},
 		Term:        term,
 		Owner:       owner,
 		OldSti:      oldSti,
@@ -91,7 +92,7 @@ func CreateSearchTermIdxV1(owner SearchIdxOwner, term string,
 
 	// Create plaintext and ciphertext headers
 	plainHdrBody := &StiPlainHdrBodyV1{
-		StiVersionS: StiVersionS{StiVer: STI_V1},
+		StiVersionS: common.StiVersionS{StiVer: common.STI_V1},
 		KeyType:     sti.IndexKey.Type.Name,
 		Nonce:       sti.IndexNonce,
 		TermHmac:    sti.termHmac,
@@ -99,7 +100,7 @@ func CreateSearchTermIdxV1(owner SearchIdxOwner, term string,
 	}
 
 	cipherHdrBody := &StiCipherHdrBodyV1{
-		BlockVersion: BlockVersion{BlockVer: STI_BLOCK_V1},
+		BlockVersionS: common.BlockVersionS{BlockVer: common.STI_BLOCK_V1},
 	}
 
 	plainHdrBodySerial, err := plainHdrBody.serialize()
@@ -162,7 +163,7 @@ func CreateSearchTermIdxV1(owner SearchIdxOwner, term string,
 }
 
 // OpenSearchTermIdxV1 opens a search term index reader V1
-func OpenSearchTermIdxV1(owner SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV1, error) {
+func OpenSearchTermIdxV1(owner common.SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV1, error) {
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
 		return nil, errors.Errorf("The term key type %v is not a MAC key", termKey.Type.Name)
 	}
@@ -192,14 +193,14 @@ func OpenSearchTermIdxV1(owner SearchIdxOwner, term string, termKey, indexKey *s
 		return nil, err
 	}
 
-	version, err := DeserializeStiVersion(plainHdrBodyData)
+	version, err := common.DeserializeStiVersion(plainHdrBodyData)
 	if err != nil {
 		return nil, err
 	}
 
-	if version.GetStiVersion() != STI_V1 {
+	if version.GetStiVersion() != common.STI_V1 {
 		return nil, errors.Errorf("Search term index version %v is not %v",
-			version.GetStiVersion(), STI_V1)
+			version.GetStiVersion(), common.STI_V1)
 	}
 
 	// Parse plaintext header body
@@ -210,7 +211,7 @@ func OpenSearchTermIdxV1(owner SearchIdxOwner, term string, termKey, indexKey *s
 	}
 
 	sti := &SearchTermIdxV1{
-		StiVersionS: StiVersionS{StiVer: plainHdrBody.GetStiVersion()},
+		StiVersionS: common.StiVersionS{StiVer: plainHdrBody.GetStiVersion()},
 		Term:        term,
 		Owner:       owner,
 		OldSti:      nil,
@@ -303,7 +304,7 @@ func (sti *SearchTermIdxV1) createWriter() (io.WriteCloser, error) {
 	}
 
 	var err error
-	path := getSearchTermIdxPathV1(GetSearchIdxPathPrefix(), sti.Owner, sti.termHmac, sti.updateID)
+	path := getSearchTermIdxPathV1(common.GetSearchIdxPathPrefix(), sti.Owner, sti.termHmac, sti.updateID)
 
 	if err = os.MkdirAll(filepath.Dir(path), 0770); err != nil {
 		return nil, err
@@ -325,8 +326,8 @@ func (sti *SearchTermIdxV1) createReader() (io.ReadCloser, uint64, error) {
 	return createStiReader(sti.Owner, sti.termHmac, sti.updateID)
 }
 
-func createStiReader(owner SearchIdxOwner, termHmac, updateID string) (io.ReadCloser, uint64, error) {
-	path := getSearchTermIdxPathV1(GetSearchIdxPathPrefix(), owner, termHmac, updateID)
+func createStiReader(owner common.SearchIdxOwner, termHmac, updateID string) (io.ReadCloser, uint64, error) {
+	path := getSearchTermIdxPathV1(common.GetSearchIdxPathPrefix(), owner, termHmac, updateID)
 	reader, err := os.Open(path)
 	if err != nil {
 		return nil, 0, errors.New(err)
@@ -345,7 +346,7 @@ func (sti *SearchTermIdxV1) GetMaxBlockDataSize() uint64 {
 		return uint64(sti.bwriter.GetMaxDataSize())
 	}
 
-	return STI_BLOCK_SIZE_MAX
+	return common.STI_BLOCK_SIZE_MAX
 }
 
 func (sti *SearchTermIdxV1) WriteNextBlock(block *SearchTermIdxBlkV1) error {

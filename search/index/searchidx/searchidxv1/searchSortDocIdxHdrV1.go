@@ -1,9 +1,10 @@
-package searchidx
+package searchidxv1
 
 import (
 	"encoding/json"
 
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -14,7 +15,7 @@ import (
 
 // SsdiPlainHdrBodyV1 is the plaintext header for search sorted document index.
 type SsdiPlainHdrBodyV1 struct {
-	SsdiVersionS
+	common.SsdiVersionS
 	KeyType  string
 	Nonce    []byte
 	TermHmac string
@@ -39,7 +40,7 @@ func (hdr *SsdiPlainHdrBodyV1) deserialize(data []byte) (*SsdiPlainHdrBodyV1, er
 
 // SsdiCipherHdrBodyV1 is the ciphertext header for search sorted document index.
 type SsdiCipherHdrBodyV1 struct {
-	BlockVersion
+	common.BlockVersionS
 }
 
 func (hdr *SsdiCipherHdrBodyV1) serialize() ([]byte, error) {

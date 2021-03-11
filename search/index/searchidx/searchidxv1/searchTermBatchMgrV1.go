@@ -1,4 +1,4 @@
-package searchidx
+package searchidxv1
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/emirpasic/gods/trees/binaryheap"
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
@@ -22,7 +23,7 @@ var copyLen int = 10
 //////////////////////////////////////////////////////////////////
 
 type SearchTermBatchMgrV1 struct {
-	Owner            SearchIdxOwner
+	Owner            common.SearchIdxOwner
 	SearchIdxSources []SearchTermIdxSourceV1
 	TermKey          *sscrypto.StrongSaltKey
 	IndexKey         *sscrypto.StrongSaltKey
@@ -54,7 +55,7 @@ var batchSourceComparator func(a, b interface{}) int = func(a, b interface{}) in
 	return strings.Compare(wa.Term, wb.Term)
 }
 
-func CreateSearchTermBatchMgrV1(owner SearchIdxOwner, sources []SearchTermIdxSourceV1,
+func CreateSearchTermBatchMgrV1(owner common.SearchIdxOwner, sources []SearchTermIdxSourceV1,
 	termKey, indexKey *sscrypto.StrongSaltKey, delDocs *DeletedDocsV1) (*SearchTermBatchMgrV1, error) {
 
 	mgr := &SearchTermBatchMgrV1{
@@ -164,14 +165,14 @@ func (mgr *SearchTermBatchMgrV1) Close() error {
 //////////////////////////////////////////////////////////////////
 
 type SearchTermBatchV1 struct {
-	Owner           SearchIdxOwner
+	Owner           common.SearchIdxOwner
 	SourceList      []SearchTermIdxSourceV1
 	TermToWriter    map[string]*SearchTermIdxWriterV1 // term -> SearchTermIdxWriterV1
 	sourceToWriters map[SearchTermIdxSourceV1][]*SearchTermIdxWriterV1
 	termList        []string
 }
 
-func CreateSearchTermBatchV1(owner SearchIdxOwner, sources []*SearchTermBatchSources) (*SearchTermBatchV1, error) {
+func CreateSearchTermBatchV1(owner common.SearchIdxOwner, sources []*SearchTermBatchSources) (*SearchTermBatchV1, error) {
 	batch := &SearchTermBatchV1{
 		Owner:           owner,
 		SourceList:      nil,
@@ -417,7 +418,7 @@ type SearchTermIdxWriterRespV1 struct {
 
 type SearchTermIdxWriterV1 struct {
 	Term            string
-	Owner           SearchIdxOwner
+	Owner           common.SearchIdxOwner
 	AddSources      []SearchTermIdxSourceV1
 	DelSources      []SearchTermIdxSourceV1
 	TermKey         *sscrypto.StrongSaltKey
@@ -426,13 +427,13 @@ type SearchTermIdxWriterV1 struct {
 	delDocMap       map[string]bool   // DocID -> boolean
 	highDocVerMap   map[string]uint64 // DocID -> DocVer
 	newSti          *SearchTermIdxV1
-	oldSti          SearchTermIdx
+	oldSti          common.SearchTermIdx
 	newStiBlk       *SearchTermIdxBlkV1
 	oldStiBlk       *SearchTermIdxBlkV1
 	oldStiBlkDocIDs []string
 }
 
-func CreateSearchTermIdxWriterV1(owner SearchIdxOwner, term string,
+func CreateSearchTermIdxWriterV1(owner common.SearchIdxOwner, term string,
 	addSource, delSource []SearchTermIdxSourceV1,
 	termKey, indexKey *sscrypto.StrongSaltKey, delDocs *DeletedDocsV1) (*SearchTermIdxWriterV1, error) {
 
@@ -508,7 +509,7 @@ func CreateSearchTermIdxWriterV1(owner SearchIdxOwner, term string,
 	return stiw, nil
 }
 
-func (stiw *SearchTermIdxWriterV1) updateHighDocVersion(owner SearchIdxOwner, term string,
+func (stiw *SearchTermIdxWriterV1) updateHighDocVersion(owner common.SearchIdxOwner, term string,
 	termKey, indexKey *sscrypto.StrongSaltKey, updateID string) error {
 	ssdi, err := OpenSearchSortDocIdxV1(owner, term, termKey, indexKey, updateID)
 	if err == nil {

@@ -1,9 +1,10 @@
-package docidx
+package docidxv1
 
 import (
 	"io"
 
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
@@ -59,15 +60,15 @@ func (dts *docTermSourceTextFileV1) Close() error {
 // Document Offset Index Source
 //
 type docTermSourceDocOffsetV1 struct {
-	doi      DocOffsetIdx
+	doi      common.DocOffsetIdx
 	termsLoc map[string][]uint64
 	terms    []string
 }
 
 // OpenDocTermSourceDocOffsetV1 opens the Document Offset source
-func OpenDocTermSourceDocOffsetV1(doi DocOffsetIdx) (DocTermSourceV1, error) {
+func OpenDocTermSourceDocOffsetV1(doi common.DocOffsetIdx) (DocTermSourceV1, error) {
 	switch doi.GetDoiVersion() {
-	case DOI_V1:
+	case common.DOI_V1:
 		_, ok := doi.(*DocOffsetIdxV1)
 		if !ok {
 			return nil, errors.Errorf("Document offset index is not version %v",
@@ -88,7 +89,7 @@ func (dts *docTermSourceDocOffsetV1) GetNextTerm() (term string, loc uint64, err
 	err = nil
 
 	switch dts.doi.GetDoiVersion() {
-	case DOI_V1:
+	case common.DOI_V1:
 		doiv1, ok := dts.doi.(*DocOffsetIdxV1)
 		if !ok {
 			err = errors.Errorf("Document offset index is not version %v",
@@ -140,7 +141,7 @@ func (dts *docTermSourceDocOffsetV1) GetNextTerm() (term string, loc uint64, err
 
 func (dts *docTermSourceDocOffsetV1) Reset() error {
 	switch dts.doi.GetDoiVersion() {
-	case DOI_V1:
+	case common.DOI_V1:
 		doiv1, ok := dts.doi.(*DocOffsetIdxV1)
 		if !ok {
 			return errors.Errorf("Document offset index is not version %v",
@@ -155,7 +156,7 @@ func (dts *docTermSourceDocOffsetV1) Reset() error {
 
 func (dts *docTermSourceDocOffsetV1) Close() error {
 	switch dts.doi.GetDoiVersion() {
-	case DOI_V1:
+	case common.DOI_V1:
 		doiv1, ok := dts.doi.(*DocOffsetIdxV1)
 		if !ok {
 			return errors.Errorf("Document offset index is not version %v",
