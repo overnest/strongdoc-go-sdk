@@ -1,17 +1,36 @@
 package docidx
 
 import (
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"time"
+
+	"github.com/overnest/strongdoc-go-sdk/utils"
+	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"io"
 	"os"
 	"sort"
 	"testing"
 
-	"github.com/overnest/strongdoc-go-sdk/utils"
-	sscrypto "github.com/overnest/strongsalt-crypto-go"
-
 	"gotest.tools/assert"
 )
 
+// run all tests $go test -run TestTermIdx -timeout=20m
+// run single test $go test -run TestXX -timeout=15m
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//
+//	data source	==FileTokenizer==> tokenized data ==doi Generator==> offset index ==dti Generator==> term index ==> search index
+//
+//  step1: tokenize data using FileTokenizer
+//	step2: generate Document Offset Index(doi) from tokenized data
+//	step3: generate Document Term Index(dti) from tokenized data or doi
+//  step4: generate Org/User Search Index(si) from  doi and dti(optional)
+//
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// test create term index block
 func TestTermIdxBlockV1(t *testing.T) {
 	sourceFilePath, err := utils.FetchFileLoc("./testDocuments/enwik8.txt.gz")
 	assert.NilError(t, err)
@@ -22,14 +41,19 @@ func TestTermIdxBlockV1(t *testing.T) {
 	defer outfile.Close()
 	defer os.Remove(outputFileName)
 
-	var prevHighTerm string = ""
+	var prevHighTerm = ""
+
+	sourceFile, err := os.Open(sourceFilePath)
+	assert.NilError(t, err)
+	defer sourceFile.Close()
 
 	for true {
+		sourceFile.Seek(0, utils.SeekSet)
+
 		dtib := CreateDocTermIdxBlkV1(prevHighTerm, DTI_BLOCK_SIZE_MAX)
 
-		tokenizer, err := utils.OpenFileTokenizer(sourceFilePath)
+		tokenizer, err := utils.OpenFileTokenizer(sourceFile)
 		assert.NilError(t, err)
-		defer tokenizer.Close()
 
 		for token, pos, err := tokenizer.NextToken(); err != io.EOF; token, pos, err = tokenizer.NextToken() {
 			dtib.AddTerm(token)
@@ -39,8 +63,8 @@ func TestTermIdxBlockV1(t *testing.T) {
 		_, err = dtib.Serialize()
 		assert.NilError(t, err)
 
-		// fmt.Println(dtib.lowTerm, dtib.highTerm, len(dtib.Terms), dtib.IsFull())
-		// fmt.Println(len(s), dtib.predictedJSONSize, DTI_BLOCK_SIZE_MAX)
+		//fmt.Println(dtib.lowTerm, dtib.highTerm, len(dtib.Terms), dtib.IsFull())
+		//fmt.Println(len(s), dtib.predictedJSONSize, DTI_BLOCK_SIZE_MAX)
 
 		for _, t := range dtib.Terms {
 			outfile.WriteString(t)
@@ -56,37 +80,57 @@ func TestTermIdxBlockV1(t *testing.T) {
 	}
 }
 
+// test create term source
 func TestTermIdxSourcesV1(t *testing.T) {
-	sourceFile, err := utils.FetchFileLoc("./testDocuments/enwik8.txt.gz")
+	// ================================ Prev Test ================================
+	testClient := prevTest(t)
+
+	docID := "docID100"
+	docVer := uint64(100)
+	sourceFileName := "./testDocuments/enwik8.txt.gz"
+	sourceFilepath, err := utils.FetchFileLoc(sourceFileName)
 	assert.NilError(t, err)
 
-	doiFileName := "/tmp/TestDocOffsetIdx"
+	// ================================ Generate doc term index ================================
+	// Open source file
+	sourceFile, err := utils.OpenLocalFile(sourceFilepath)
+	assert.NilError(t, err)
 
+	// Create encryption key
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	// Create Document Offset Index
-	createTestDocOffsetIndex(t, key, "DocID", 100, sourceFile, doiFileName)
-	defer os.Remove(doiFileName)
+	// Generate doc offset index, writes output
+	err = CreateAndSaveDocOffsetIdx(testClient, docID, docVer, key, sourceFile)
+	assert.NilError(t, err)
 
-	// Open Document Offset Index
-	doiFile, err := os.Open(doiFileName)
+	// Close source file
+	err = sourceFile.Close()
 	assert.NilError(t, err)
-	doiv, err := OpenDocOffsetIdx(key, doiFile, 0)
+
+	time.Sleep(100 * time.Second)
+
+	// ================================ Open doc offset index ================================
+	//doiReader, err := openDocOffsetIdxReader(testClient, docID, docVer)
+	//assert.NilError(t, err)
+	//defer doiReader.Close()
+
+	doiv, err := OpenDocOffsetIdx(testClient, docID, docVer, key)
 	assert.NilError(t, err)
+	defer doiv.Close()
 
 	// Create DOI source
 	sourceDoi, err := OpenDocTermSourceDocOffsetV1(doiv)
 	assert.NilError(t, err)
-	defer sourceDoi.Close()
 	doiTerms := gatherTermsFromSource(t, sourceDoi)
 
 	// Create Text File source
-	sourceTxt, err := OpenDocTermSourceTextFileV1(sourceFile)
+	sourceFile, err = utils.OpenLocalFile(sourceFilepath)
 	assert.NilError(t, err)
-	defer sourceTxt.Close()
+	sourceTxt, err := openDocTermSourceTextFileV1(sourceFile)
+	assert.NilError(t, err)
+	defer sourceFile.Close()
 	txtTerms := gatherTermsFromSource(t, sourceTxt)
-
 	assert.DeepEqual(t, doiTerms, txtTerms)
 
 	// Reset Text File Source
@@ -100,51 +144,42 @@ func TestTermIdxSourcesV1(t *testing.T) {
 	assert.NilError(t, err)
 	doiTermsNew := gatherTermsFromSource(t, sourceDoi)
 	assert.DeepEqual(t, doiTerms, doiTermsNew)
+
+	// ================================ Delete doc offset index ================================
+	removeDocOffsetIndex(testClient, docID, docVer)
 }
 
-func gatherTermsFromSource(t *testing.T, source DocTermSourceV1) []string {
-	terms := make([]string, 0, 10000000)
-	for true {
-		term, _, err := source.GetNextTerm()
-		if term != "" {
-			terms = append(terms, term)
-		}
-		if err != nil {
-			assert.Equal(t, err, io.EOF)
-			break
-		}
-	}
-	sort.Strings(terms)
-	return terms
-}
-
+// test create term index
 func TestTermIdxV1(t *testing.T) {
+	// ================================ Prev Test ================================
+	testClient := prevTest(t)
+
 	docID := "DocID1"
 	docVer := uint64(1)
 	sourceFileName := "./testDocuments/enwik8.txt.gz"
-	sourceFilePath, err := utils.FetchFileLoc(sourceFileName)
+	sourceFilepath, err := utils.FetchFileLoc(sourceFileName)
 	assert.NilError(t, err)
 
-	outputFileName := "/tmp/TestTermIdxV1.txt"
+	// ================================ Generate doc term index ================================
+	// Open source file
+	sourceFile, err := os.Open(sourceFilepath)
+	assert.NilError(t, err)
 
+	// Create encryption key
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	//
-	// Create a document term index
-	//
-	terms := createTermIndexV1(t, key, sourceFilePath, outputFileName, docID, docVer)
-	defer os.Remove(outputFileName)
+	terms, err := createTermIndexAndGetTerms(testClient, docID, docVer, key, sourceFile)
+	assert.NilError(t, err)
 
-	//
+	err = sourceFile.Close()
+	assert.NilError(t, err)
+
+	time.Sleep(30 * time.Second)
+
+	// ================================ Open doc term index ================================
 	// Open the previously written document term index
-	//
-	outfile, err := os.Open(outputFileName)
-	assert.NilError(t, err)
-	stat, err := outfile.Stat()
-	assert.NilError(t, err)
-
-	dtiv, err := OpenDocTermIdx(key, outfile, 0, uint64(stat.Size()))
+	dtiv, err := OpenDocTermIdx(testClient, docID, docVer, key)
 	assert.NilError(t, err)
 	assert.Equal(t, dtiv.GetDtiVersion(), uint32(1))
 
@@ -168,9 +203,7 @@ func TestTermIdxV1(t *testing.T) {
 	}
 	assert.Equal(t, len(terms), 0)
 
-	//
 	// Search for terms in the document term index
-	//
 	positiveMatches := []string{"against", "early", "working", "class", "radicals", "including",
 		"the", "diggers", "of", "english", "revolution", "and", "sans", "culottes", "french",
 		"whilst", "term", "is", "still", "used", "in", "a", "pejorative"}
@@ -193,159 +226,148 @@ func TestTermIdxV1(t *testing.T) {
 
 	err = dti.Close()
 	assert.NilError(t, err)
-	err = outfile.Close()
-	assert.NilError(t, err)
+
+	// ================================ Delete doc offset, term index ================================
+	RemoveDocIndexes(testClient, docID, docVer)
 }
 
-func createTermIndexV1(t *testing.T, key *sscrypto.StrongSaltKey,
-	sourcefile, outputFile string, docID string, docVer uint64) (terms []string) {
-
-	outfile, err := os.Create(outputFile)
-	assert.NilError(t, err)
-
-	source, err := OpenDocTermSourceTextFileV1(sourcefile)
-	assert.NilError(t, err)
-	defer source.Close()
-
-	//
-	// Create a document term index
-	//
-	dti, err := CreateDocTermIdxV1(docID, docVer, key, source, outfile, 0)
-	assert.NilError(t, err)
-
-	terms = make([]string, 0, 1000)
-
-	err = nil
-	for err == nil {
-		var blk *DocTermIdxBlkV1 = nil
-		blk, err = dti.WriteNextBlock()
-		if err != nil {
-			assert.Equal(t, err, io.EOF)
-		}
-
-		terms = append(terms, blk.Terms...)
-	}
-
-	err = dti.Close()
-	assert.NilError(t, err)
-	err = outfile.Close()
-	assert.NilError(t, err)
-
-	return
-}
-
+// test term index diff
 func TestTermIdxDiffV1(t *testing.T) {
-	docID := "DocIDsomething"
-	source1, err := utils.FetchFileLoc("./testDocuments/enwik8.uniq.txt.gz")
+	// ================================ Prev Test ================================
+	testClient := prevTest(t)
+
+	docID := "DocID1"
+	docVer1 := uint64(1)
+	docVer2 := uint64(2)
+
+	sourcefilepath1, err := utils.FetchFileLoc("./testDocuments/enwik8.uniq.txt.gz")
 	assert.NilError(t, err)
-	source2, err := utils.FetchFileLoc("./testDocuments/enwik8.uniq.chg.txt.gz")
+	sourcefilepath2, err := utils.FetchFileLoc("./testDocuments/enwik8.uniq.chg.txt.gz")
 	assert.NilError(t, err)
 
-	dtiFileName1 := "/tmp/TestTermIdxV1_1.txt"
-	defer os.Remove(dtiFileName1)
-	dtiFileName2 := "/tmp/TestTermIdxV1_2.txt"
-	defer os.Remove(dtiFileName2)
-
+	// ================================ Generate doc term index ================================
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	//
 	// Create a document term index
-	//
-	terms1 := createTermIndexV1(t, key, source1, dtiFileName1, docID, 1)
-	terms2 := createTermIndexV1(t, key, source2, dtiFileName2, docID, 2)
-	addTermList, remTermList := diffTermLists(terms1, terms2)
+	source1, err := utils.OpenLocalFile(sourcefilepath1)
+	assert.NilError(t, err)
 
-	//
+	source2, err := utils.OpenLocalFile(sourcefilepath2)
+
+	assert.NilError(t, err)
+
+	terms1, err := createTermIndexAndGetTerms(testClient, docID, docVer1, key, source1)
+	assert.NilError(t, err)
+
+	terms2, err := createTermIndexAndGetTerms(testClient, docID, docVer2, key, source2)
+	assert.NilError(t, err)
+
+	err = source1.Close()
+	assert.NilError(t, err)
+
+	err = source2.Close()
+	assert.NilError(t, err)
+
+	termap1 := make(map[string]bool)
+	termap2 := make(map[string]bool)
+	addedList := make([]string, 0, 1000)
+	deletedList := make([]string, 0, 1000)
+
+	for _, term := range terms1 {
+		termap1[term] = true
+	}
+	for _, term := range terms2 {
+		termap2[term] = true
+	}
+
+	for term := range termap1 {
+		if !termap2[term] {
+			deletedList = append(deletedList, term)
+		}
+	}
+
+	for term := range termap2 {
+		if !termap1[term] {
+			addedList = append(addedList, term)
+		}
+	}
+
+	sort.Strings(addedList)
+	sort.Strings(deletedList)
+
+	time.Sleep(20 * time.Second)
+
 	// Open the previously written document term index
-	//
-	dtiFile1, dtiVer1 := openDocumentTermIndex(t, key, dtiFileName1, DTI_V1)
-	defer dtiFile1.Close()
-	dti1 := dtiVer1.(*DocTermIdxV1)
-
-	dtiFile2, dtiVer2 := openDocumentTermIndex(t, key, dtiFileName2, DTI_V1)
-	defer dtiFile2.Close()
-	dti2 := dtiVer2.(*DocTermIdxV1)
-
-	//
-	// Diff nil, dti1
-	//
-	added, deleted, err := DiffDocTermIdx(nil, dtiVer1)
+	dtiv1, err := OpenDocTermIdx(testClient, docID, docVer1, key)
 	assert.NilError(t, err)
-	assert.DeepEqual(t, added, terms1)
-	assert.DeepEqual(t, deleted, []string{})
+	assert.Equal(t, dtiv1.GetDtiVersion(), uint32(1))
 
-	err = dti1.Reset()
+	dtiv2, err := OpenDocTermIdx(testClient, docID, docVer2, key)
+	assert.NilError(t, err)
+	assert.Equal(t, dtiv2.GetDtiVersion(), uint32(1))
+
+	added, deleted, err := DiffDocTermIdx(dtiv1, dtiv2)
 	assert.NilError(t, err)
 
-	//
-	// Diff dti1, dti2
-	//
-	added, deleted, err = DiffDocTermIdx(dtiVer1, dtiVer2)
-	assert.NilError(t, err)
-	assert.DeepEqual(t, added, addTermList)
-	assert.DeepEqual(t, deleted, remTermList)
+	assert.DeepEqual(t, addedList, added)
+	assert.DeepEqual(t, deletedList, deleted)
 
-	err = dti1.Reset()
-	assert.NilError(t, err)
-	err = dti2.Reset()
-	assert.NilError(t, err)
-
-	//
-	// Diff dti2, nil
-	//
-	added, deleted, err = DiffDocTermIdx(dtiVer2, nil)
-	assert.NilError(t, err)
-	assert.DeepEqual(t, added, []string{})
-	assert.DeepEqual(t, deleted, terms2)
-
-	dti1.Close()
-	dti2.Close()
+	// ================================ Delete doc offset, term index ================================
+	RemoveDocIndexes(testClient, docID, docVer1)
+	RemoveDocIndexes(testClient, docID, docVer2)
 }
 
-func diffTermLists(oldTermList, newTermList []string) (addTermList, delTermList []string) {
-	oldTermMap := make(map[string]bool)
-	newTermMap := make(map[string]bool)
-	addTermList = make([]string, 0, 1000)
-	delTermList = make([]string, 0, 1000)
-
-	for _, term := range oldTermList {
-		oldTermMap[term] = true
-	}
-	for _, term := range newTermList {
-		newTermMap[term] = true
-	}
-
-	for term := range oldTermMap {
-		if !newTermMap[term] {
-			delTermList = append(delTermList, term)
+func gatherTermsFromSource(t *testing.T, source DocTermSourceV1) []string {
+	terms := make([]string, 0, 10000000)
+	for true {
+		term, _, err := source.GetNextTerm()
+		if term != "" {
+			terms = append(terms, term)
+		}
+		if err != nil {
+			assert.Equal(t, err, io.EOF)
+			break
 		}
 	}
-
-	for term := range newTermMap {
-		if !oldTermMap[term] {
-			addTermList = append(addTermList, term)
-		}
-	}
-
-	sort.Strings(addTermList)
-	sort.Strings(delTermList)
-
-	return
+	sort.Strings(terms)
+	return terms
 }
 
-func openDocumentTermIndex(t *testing.T, key *sscrypto.StrongSaltKey, filename string,
-	dtiVersion uint32) (dtiFile *os.File, dtiVer DocTermIdx) {
+func createTermIndexAndGetTerms(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+	sourcefile interface{}) ([]string, error) {
+	// todo ver1, why not have OpenDocTermSourceTextFile
+	source, err := openDocTermSourceTextFileV1(sourcefile)
+	if err != nil {
+		return nil, err
+	}
 
-	var err error
-	dtiFile, err = os.Open(filename)
-	assert.NilError(t, err)
-	stat, err := dtiFile.Stat()
-	assert.NilError(t, err)
+	dtiWriter, err := openDocTermIdxWriter(sdc, docID, docVer)
+	if err != nil {
+		return nil, err
+	}
 
-	dtiVer, err = OpenDocTermIdx(key, dtiFile, 0, uint64(stat.Size()))
-	assert.NilError(t, err)
-	assert.Equal(t, dtiVer.GetDtiVersion(), dtiVersion)
+	// Create a document term index
+	dti, err := createDocTermIdxV1(docID, docVer, key, source, dtiWriter, 0)
+	if err != nil {
+		return nil, err
+	}
 
-	return
+	var terms []string
+
+	for err == nil {
+		var blk *DocTermIdxBlkV1
+		blk, err = dti.WriteNextBlock()
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+		terms = append(terms, blk.Terms...)
+
+	}
+
+	err = dti.Close()
+	if err != nil {
+		return nil, err
+	}
+	return terms, nil
 }
