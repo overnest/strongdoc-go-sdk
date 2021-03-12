@@ -2,6 +2,10 @@ package docidx
 
 import (
 	"encoding/json"
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/utils"
+	sscrypto "github.com/overnest/strongsalt-crypto-go"
+	"io"
 
 	"github.com/go-errors/errors"
 )
@@ -55,4 +59,27 @@ func (h *BlockVersion) Deserialize(data []byte) (*BlockVersion, error) {
 func DeserializeBlockVersion(data []byte) (*BlockVersion, error) {
 	h := &BlockVersion{}
 	return h.Deserialize(data)
+}
+
+// create and save document offset index and term index
+func CreateAndSaveDocIndexes(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey, sourceData interface{}) error {
+	seeker, ok := sourceData.(io.Seeker)
+	if !ok {
+		return errors.Errorf("The passed in sourceData does not implement io.Seeker")
+	}
+	pos, err := seeker.Seek(0, utils.SeekCur)
+	if err != nil {
+		return err
+	}
+	err = CreateAndSaveDocOffsetIdx(sdc, docID, docVer, key, sourceData)
+	if err != nil {
+		return err
+	}
+
+	// todo seek back
+	_, err = seeker.Seek(pos, utils.SeekSet)
+	if err != nil {
+		return err
+	}
+	return CreateAndSaveDocTermIdx(sdc, docID, docVer, key, sourceData)
 }

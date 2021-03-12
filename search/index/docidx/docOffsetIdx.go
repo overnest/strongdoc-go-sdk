@@ -2,11 +2,12 @@ package docidx
 
 import (
 	"encoding/json"
-	"io"
-
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
+	"io"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -54,20 +55,54 @@ func DeserializeDoiVersion(data []byte) (*DoiVersionS, error) {
 //
 //////////////////////////////////////////////////////////////////
 
-// CreateDocOffsetIdx creates a new document offset index for writing
-func CreateDocOffsetIdx(docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	store interface{}, initOffset int64) (*DocOffsetIdxV1, error) {
-
-	return CreateDocOffsetIdxV1(docID, docVer, key, store, initOffset)
+// createDocOffsetIdx creates a new document offset index for writing
+func createDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey, initOffset int64) (*DocOffsetIdxV1, error) {
+	return createDocOffsetIdxV1(sdc, docID, docVer, key, initOffset)
 }
 
-// OpenDocOffsetIdx opens a document offset index for reading
-func OpenDocOffsetIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset int64) (DocOffsetIdx, error) {
-	reader, ok := store.(io.Reader)
-	if !ok {
-		return nil, errors.Errorf("The passed in storage does not implement io.Reader")
+// todo expose to user
+// Create document offset index and writes output
+func CreateAndSaveDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+	sourceData interface{}) error {
+	return CreateAndSaveDocOffsetIdxWithOffset(sdc, docID, docVer, key, sourceData, 0)
+}
+
+// todo expose to user
+func CreateAndSaveDocOffsetIdxWithOffset(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+	sourceData interface{}, initOffset int64) error {
+	tokenizer, err := utils.OpenFileTokenizer(sourceData)
+	if err != err {
+		return err
 	}
 
+	doi, err := createDocOffsetIdx(sdc, docID, docVer, key, initOffset)
+	if err != nil {
+		return err
+	}
+
+	for token, pos, err := tokenizer.NextToken(); err != io.EOF; token, pos, err = tokenizer.NextToken() {
+		addErr := doi.AddTermOffset(token, uint64(pos.Offset))
+		if addErr != nil {
+			return addErr
+		}
+	}
+
+	return doi.Close()
+}
+
+// todo expose to user
+// OpenDocOffsetIdx opens a document offset index for reading
+func OpenDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey) (DocOffsetIdx, error) {
+	return OpenDocOffsetIdxWithOffset(sdc, docID, docVer, key, 0)
+}
+
+// todo expose to user
+// OpenDocOffsetIdx opens a document offset index for reading
+func OpenDocOffsetIdxWithOffset(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey, initOffset int64) (DocOffsetIdx, error) {
+	reader, err := openDocOffsetIdxReader(sdc, docID, docVer)
+	if err != nil {
+		return nil, err
+	}
 	plainHdr, parsed, err := ssheaders.DeserializePlainHdrStream(reader)
 	if err != nil {
 		return nil, errors.New(err)

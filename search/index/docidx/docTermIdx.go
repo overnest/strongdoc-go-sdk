@@ -2,6 +2,7 @@ package docidx
 
 import (
 	"encoding/json"
+	"github.com/overnest/strongdoc-go-sdk/client"
 	"io"
 	"strings"
 
@@ -55,20 +56,61 @@ func DeserializeDtiVersion(data []byte) (*DtiVersionS, error) {
 //
 //////////////////////////////////////////////////////////////////
 
-// CreateDocTermIdx creates a new document term index for writing
-func CreateDocTermIdx(docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	source DocTermSourceV1, store interface{}, initOffset int64) (DocTermIdx, error) {
-
-	return CreateDocTermIdxV1(docID, docVer, key, source, store, initOffset)
+// todo exposed to user
+func CreateAndSaveDocTermIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+	sourcefile interface{}) error {
+	return CreateAndSaveDocTermIdxWithOffset(sdc, docID, docVer, key, sourcefile, 0)
 }
 
-// OpenDocTermIdx opens a document term index for reading
-func OpenDocTermIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset uint64, endOffset uint64) (DocTermIdx, error) {
-	reader, ok := store.(io.Reader)
-	if !ok {
-		return nil, errors.Errorf("The passed in storage does not implement io.Reader")
+func CreateAndSaveDocTermIdxWithOffset(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+	sourcefile interface{}, initOffset int64) error {
+	return createAndSaveDocTermIdxV1(sdc, docID, docVer, key, sourcefile, initOffset)
+}
+
+// Generate document term index from source data, and save created term index
+func createAndSaveDocTermIdxV1(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+	sourcefile interface{}, initOffset int64) error {
+
+	source, err := openDocTermSourceTextFileV1(sourcefile)
+	if err != nil {
+		return err
 	}
 
+	dtiWriter, err := openDocTermIdxWriter(sdc, docID, docVer)
+	if err != nil {
+		return err
+	}
+	// Create a document term index
+	dti, err := createDocTermIdxV1(docID, docVer, key, source, dtiWriter, initOffset)
+	if err != nil {
+		return err
+	}
+
+	for err == nil {
+		_, err = dti.WriteNextBlock()
+		if err != nil && err != io.EOF {
+			return err
+		}
+	}
+
+	err = dti.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func OpenDocTermIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey) (DocTermIdx, error) {
+	size, err := getDocTermIndexSize(sdc, docID, docVer)
+	if err != nil {
+		return nil, err
+	}
+	return OpenDocTermIdxWithOffset(sdc, docID, docVer, key, 0, size)
+}
+
+// OpenDocTermIdxWithOffset opens a document term index for reading
+func OpenDocTermIdxWithOffset(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey, initOffset uint64, endOffset uint64) (DocTermIdx, error) {
+	reader, err := openDocTermIdxReader(sdc, docID, docVer)
 	plainHdr, parsed, err := ssheaders.DeserializePlainHdrStream(reader)
 	if err != nil {
 		return nil, errors.New(err)

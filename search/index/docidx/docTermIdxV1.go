@@ -40,10 +40,11 @@ type DocTermIdxV1 struct {
 	Reader        ssblocks.BlockListReaderV1
 	Block         *DocTermIdxBlkV1
 	Source        DocTermSourceV1
+	Store         interface{}
 }
 
-// CreateDocTermIdxV1 creates a document term index writer V1
-func CreateDocTermIdxV1(docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+// createDocTermIdxV1 creates a document term index writer V1
+func createDocTermIdxV1(docID string, docVer uint64, key *sscrypto.StrongSaltKey,
 	source DocTermSourceV1, store interface{}, initOffset int64) (*DocTermIdxV1, error) {
 
 	var err error
@@ -140,7 +141,7 @@ func CreateDocTermIdxV1(docID string, docVer uint64, key *sscrypto.StrongSaltKey
 
 	index := &DocTermIdxV1{DtiVersionS{DtiVer: DTI_V1},
 		docID, docVer, key, plainHdrBody.Nonce, uint64(initOffset),
-		plainHdrBody, cipherHdrBody, blockWriter, nil, nil, source}
+		plainHdrBody, cipherHdrBody, blockWriter, nil, nil, source, store}
 	return index, nil
 }
 
@@ -193,7 +194,7 @@ func openDocTermIdxV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdrBody
 	}
 
 	// Initialize the streaming crypto to decrypt ciphertext header and the blocks after that
-	streamCrypto, err := crypto.CreateStreamCrypto(key, plainHdrBody.Nonce, store, int64(plainHdrOffset))
+	streamCrypto, err := crypto.OpenStreamCrypto(key, plainHdrBody.Nonce, store, int64(plainHdrOffset))
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -230,7 +231,7 @@ func openDocTermIdxV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdrBody
 	index := &DocTermIdxV1{DtiVersionS{DtiVer: plainHdrBody.GetDtiVersion()},
 		plainHdrBody.DocID, plainHdrBody.DocVer, key, plainHdrBody.Nonce,
 		uint64(initOffset), plainHdrBody, cipherHdrBody, nil, blockReader, nil,
-		nil}
+		nil, store}
 	return index, nil
 }
 
@@ -336,6 +337,14 @@ func (idx *DocTermIdxV1) Close() error {
 			return errors.New(err)
 		}
 		return idx.flush(serial)
+	}
+
+	if idx.Store != nil {
+		storeCloser := (idx.Store).(io.Closer)
+		err := storeCloser.Close()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
