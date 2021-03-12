@@ -1,6 +1,7 @@
 package searchidx
 
 import (
+	"github.com/overnest/strongdoc-go-sdk/client"
 	"io"
 	"strings"
 
@@ -42,7 +43,7 @@ type SearchTermBatchMgrV1 struct {
 	termHeap         *binaryheap.Heap
 }
 
-func CreateSearchTermBatchMgrV1(owner SearchIdxOwner, sources []SearchTermIdxSourceV1,
+func CreateSearchTermBatchMgrV1(sdc client.StrongDocClient, owner SearchIdxOwner, sources []SearchTermIdxSourceV1,
 	termKey, indexKey *sscrypto.StrongSaltKey, delDocs *DeletedDocsV1) (*SearchTermBatchMgrV1, error) {
 
 	var err error
@@ -59,7 +60,7 @@ func CreateSearchTermBatchMgrV1(owner SearchIdxOwner, sources []SearchTermIdxSou
 		for _, term := range source.GetAddTerms() {
 			stbw := termWriterMap[term]
 			if stbw == nil {
-				termWriterMap[term], err = CreateSearchTermBatchWriterV1(owner, term,
+				termWriterMap[term], err = CreateSearchTermBatchWriterV1(sdc, owner, term,
 					nil, nil, termKey, indexKey, delDocs)
 				if err != nil {
 					return nil, err
@@ -72,7 +73,7 @@ func CreateSearchTermBatchMgrV1(owner SearchIdxOwner, sources []SearchTermIdxSou
 		for _, term := range source.GetDelTerms() {
 			stbw := termWriterMap[term]
 			if stbw == nil {
-				termWriterMap[term], err = CreateSearchTermBatchWriterV1(owner, term,
+				termWriterMap[term], err = CreateSearchTermBatchWriterV1(sdc, owner, term,
 					nil, nil, termKey, indexKey, delDocs)
 				if err != nil {
 					return nil, err
@@ -218,7 +219,7 @@ type SearchTermBatchWriterV1 struct {
 	oldStiBlkDocIDs []string
 }
 
-func CreateSearchTermBatchWriterV1(owner SearchIdxOwner, term string,
+func CreateSearchTermBatchWriterV1(sdc client.StrongDocClient, owner SearchIdxOwner, term string,
 	addSource, delSource []SearchTermIdxSourceV1,
 	termKey, indexKey *sscrypto.StrongSaltKey, delDocs *DeletedDocsV1) (*SearchTermBatchWriterV1, error) {
 
@@ -271,23 +272,23 @@ func CreateSearchTermBatchWriterV1(owner SearchIdxOwner, term string,
 		}
 	}
 
-	updateID, err := GetLatestUpdateIdV1(owner, term, termKey)
+	updateID, err := GetLatestUpdateIdV1(sdc, owner, term, termKey)
 	if err != nil {
 		return nil, err
 	}
 
 	if updateID != "" {
-		stbw.oldSti, err = OpenSearchTermIdxV1(owner, term, termKey, indexKey, updateID)
+		stbw.oldSti, err = OpenSearchTermIdxV1(sdc, owner, term, termKey, indexKey, updateID)
 		if err != nil {
 			stbw.oldSti = nil
 		}
-		err = stbw.updateHighDocVersion(owner, term, termKey, indexKey, updateID)
+		err = stbw.updateHighDocVersion(sdc, owner, term, termKey, indexKey, updateID)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	stbw.newSti, err = CreateSearchTermIdxV1(owner, term, termKey, indexKey, nil, nil)
+	stbw.newSti, err = CreateSearchTermIdxV1(sdc, owner, term, termKey, indexKey, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -295,9 +296,9 @@ func CreateSearchTermBatchWriterV1(owner SearchIdxOwner, term string,
 	return stbw, nil
 }
 
-func (stbw *SearchTermBatchWriterV1) updateHighDocVersion(owner SearchIdxOwner, term string,
+func (stbw *SearchTermBatchWriterV1) updateHighDocVersion(sdc client.StrongDocClient, owner SearchIdxOwner, term string,
 	termKey, indexKey *sscrypto.StrongSaltKey, updateID string) error {
-	ssdi, err := OpenSearchSortDocIdxV1(owner, term, termKey, indexKey, updateID)
+	ssdi, err := OpenSearchSortDocIdxV1(sdc, owner, term, termKey, indexKey, updateID)
 	if err == nil {
 		err = nil
 		for err == nil {

@@ -1,13 +1,8 @@
 package searchidx
 
 import (
-	"fmt"
-	"io/ioutil"
-	"sort"
-	"strconv"
-	"time"
-
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/client"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
 )
@@ -18,24 +13,20 @@ import (
 //
 //////////////////////////////////////////////////////////////////
 
-func newUpdateIDV1() string {
-	return fmt.Sprintf("%x", time.Now().UnixNano())
-}
-
 // GetUpdateIdsV1 returns the list of available update IDs for a specific owner + term in
 // reverse chronological order. The most recent update ID will come first
-func GetUpdateIdsV1(owner SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) ([]string, error) {
+func GetUpdateIdsV1(sdc client.StrongDocClient, owner SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) ([]string, error) {
 	termHmac, err := createTermHmac(term, termKey)
 	if err != nil {
 		return nil, err
 	}
-	return GetUpdateIdsHmacV1(owner, termHmac)
+	return GetUpdateIdsHmacV1(sdc, owner, termHmac)
 }
 
 // GetLatestUpdateIdV1 returns the latest update IDs for a specific owner + term
-func GetLatestUpdateIdV1(owner SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) (string, error) {
+func GetLatestUpdateIdV1(sdc client.StrongDocClient, owner SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) (string, error) {
 
-	ids, err := GetUpdateIdsV1(owner, term, termKey)
+	ids, err := GetUpdateIdsV1(sdc, owner, term, termKey)
 	if err != nil {
 		return "", err
 	}
@@ -49,40 +40,13 @@ func GetLatestUpdateIdV1(owner SearchIdxOwner, term string, termKey *sscrypto.St
 
 // GetUpdateIdsHmacV1 returns the list of available update IDs for a specific owner + term in
 // reverse chronological order. The most recent update ID will come first
-func GetUpdateIdsHmacV1(owner SearchIdxOwner, termHmac string) ([]string, error) {
-	path := GetSearchIdxPathV1(GetSearchIdxPathPrefix(), owner, termHmac, "")
-
-	files, err := ioutil.ReadDir(path)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
-	updateIDs := make([]string, 0, len(files))
-	for _, file := range files {
-		if file.IsDir() {
-			updateIDs = append(updateIDs, file.Name())
-		}
-	}
-
-	updateIDsInt := make([]int64, len(updateIDs))
-	for i := 0; i < len(updateIDs); i++ {
-		id, err := strconv.ParseInt(updateIDs[i], 16, 64)
-		if err == nil {
-			updateIDsInt[i] = id
-		}
-	}
-
-	sort.Slice(updateIDsInt, func(i, j int) bool { return updateIDsInt[i] < updateIDsInt[j] })
-	for i := 0; i < len(updateIDs); i++ {
-		updateIDs[i] = fmt.Sprintf("%x", updateIDsInt[i])
-	}
-
-	return updateIDs, nil
+func GetUpdateIdsHmacV1(sdc client.StrongDocClient, owner SearchIdxOwner, termHmac string) ([]string, error) {
+	return getUpdateIDs(sdc, owner, termHmac)
 }
 
 // GetLatestUpdateIdsHmacV1 returns the latest update IDs for a specific owner + term
-func GetLatestUpdateIdsHmacV1(owner SearchIdxOwner, termHmac string) (string, error) {
-	ids, err := GetUpdateIdsHmacV1(owner, termHmac)
+func GetLatestUpdateIdsHmacV1(sdc client.StrongDocClient, owner SearchIdxOwner, termHmac string) (string, error) {
+	ids, err := GetUpdateIdsHmacV1(sdc, owner, termHmac)
 	if err != nil {
 		return "", err
 	}
@@ -114,17 +78,8 @@ type DeletedDocsV1 struct {
 	delDocMap map[string]bool // Map of DocID to boolean
 }
 
-// GetSearchIdxPathV1 gets the base path of the search index
-func GetSearchIdxPathV1(prefix string, owner SearchIdxOwner, term, updateID string) string {
-	if len(prefix) > 0 {
-		return fmt.Sprintf("%v/%v/sidx/%v/%v", prefix, owner, term, updateID)
-	}
-
-	return fmt.Sprintf("%v/sidx/%v/%v", owner, term, updateID)
-}
-
 // CreateSearchIdxV1 creates a search index writer V1
-func CreateSearchIdxV1(termKey, indexKey *sscrypto.StrongSaltKey,
+func CreateSearchIdxV1(sdc client.StrongDocClient, termKey, indexKey *sscrypto.StrongSaltKey,
 	sources []SearchTermIdxSourceV1) (*SearchIdxV1, error) {
 
 	var err error
@@ -145,7 +100,7 @@ func CreateSearchIdxV1(termKey, indexKey *sscrypto.StrongSaltKey,
 		delDocs:        &DeletedDocsV1{make([]string, 0), make(map[string]bool)},
 	}
 
-	searchIdx.batchMgr, err = CreateSearchTermBatchMgrV1(nil, sources, termKey, indexKey,
+	searchIdx.batchMgr, err = CreateSearchTermBatchMgrV1(sdc, nil, sources, termKey, indexKey,
 		searchIdx.delDocs)
 	if err != nil {
 		return nil, err
