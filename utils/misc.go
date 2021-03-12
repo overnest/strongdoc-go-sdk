@@ -1,5 +1,45 @@
 package utils
 
+import (
+	"os"
+	"path/filepath"
+)
+
+func OpenLocalFile(filepath string) (*os.File, error) {
+	return os.OpenFile(filepath, os.O_RDWR, 0755)
+}
+
+func CreateLocalFile(filepath string) (*os.File, error) {
+	return os.Create(filepath)
+}
+
+func MakeDirAndCreateFile(path string) (*os.File, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0770); err != nil {
+		return nil, err
+	}
+
+	writer, err := os.Create(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return writer, nil
+}
+
+func GetLocalFileSize(filepath string) (uint64, error) {
+	file, err := OpenLocalFile(filepath)
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return 0, err
+	}
+	filesize := uint64(fileInfo.Size())
+	return filesize, nil
+}
+
 // BinarySearchU64 finds a number in a sorted list.
 // Returns the index where the value is found.
 // Returns -1 if value is not found

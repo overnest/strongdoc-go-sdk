@@ -2,9 +2,7 @@ package testUtils
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -20,8 +18,6 @@ const (
 	PASSWORD                  = "passwd"
 	AUTHENTICATION            = "authorization"
 	AUTHENTICATION_BEARER     = "bearer"
-	SUPER_USER_ID             = "SUPER_USER_ID"
-	SUPER_USER_PASSWORD       = "SUPER_USER_PASSWORD"
 	MaxIdleConnections    int = 20
 	RequestTimeout        int = 5
 )
@@ -67,11 +63,11 @@ func sendRequest(req *http.Request) (*http.Response, error) {
 
 func superUserLogin() error {
 	// build request
-	if getSuperUserId() == "" || getSuperUserPwd() == "" {
-		return fmt.Errorf("please specify superuser id and superuser password in config file or export ENV varible")
-	}
+	superUserID := getSuperUserId()
+	superPassword := getSuperUserPwd()
+
 	req, err := buildRequest("GET",
-		LOGIN_API+"?"+USER_ID+"="+getSuperUserId()+"&"+PASSWORD+"="+getSuperUserPwd(),
+		LOGIN_API+"?"+USER_ID+"="+superUserID+"&"+PASSWORD+"="+superPassword,
 		false)
 	if err != nil {
 		return err
@@ -112,9 +108,9 @@ func hardRemoveOrg(orgid string) error {
 }
 
 func getSuperUserId() string {
-	return os.Getenv(SUPER_USER_ID)
+	return "account@strongsalt.com"
 }
 
 func getSuperUserPwd() string {
-	return os.Getenv(SUPER_USER_PASSWORD)
+	return "c2QQyWuhNC8bvxdn"
 }

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/overnest/strongdoc-go-sdk/search/index"
 	"io"
 	"regexp"
 	"testing"
@@ -57,7 +58,10 @@ func TestFileTokenizer(t *testing.T) {
 	path, err := FetchFileLoc(testFileName)
 	assert.NilError(t, err)
 
-	tokenizer, err := OpenFileTokenizer(path)
+	file, err := index.CreateLocalFile(path)
+	assert.NilError(t, err)
+
+	tokenizer, err := OpenFileTokenizer(file)
 	assert.NilError(t, err)
 
 	tokens1 := make([]string, 0, parsedTokens)
@@ -88,6 +92,6 @@ func TestFileTokenizer(t *testing.T) {
 
 	assert.DeepEqual(t, tokens1, tokens2)
 
-	err = tokenizer.Close()
+	err = file.Close()
 	assert.NilError(t, err)
 }
