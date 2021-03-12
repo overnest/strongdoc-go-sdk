@@ -2,9 +2,9 @@ package searchidx
 
 import (
 	"fmt"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 	"io"
 	"math/rand"
-	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -13,6 +13,19 @@ import (
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"gotest.tools/assert"
 )
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//					Search Index (sortedDoc)
+// assume user has access to two documents: doc1, doc2
+// doc1 ver1 "A(offset 1) B C D E A(offset 6)"
+// doc1 ver1 "B C D E F G H I A(offset 9)"
+// term A => sorted docs [D1_V1, D2_V1]
+// term B => sorted docs [D1_V1, D2_V1]
+// ...
+// term F => sorted docs [D2_V1]
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func TestSearchSortDocIdxBlockV1(t *testing.T) {
 	maxSize := uint64(10000)
@@ -66,22 +79,25 @@ func validateSsdibSize(t *testing.T, stib *SearchSortDocIdxBlkV1) {
 }
 
 func TestSearchSortDocIdxSimpleV1(t *testing.T) {
-	owner := CreateSearchIdxOwner(SI_OWNER_USR, "owner1")
+	// ================================ Prev Test ================================
+	sdc := prevTest(t)
+	owner := CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 	term := "term1"
 	maxDocID := 100000
 	maxOffsetCount := 30
 
+	// ================================ Generate Search Term Index ================================
 	termKey, err := sscrypto.GenerateKey(sscrypto.Type_HMACSha512)
 	assert.NilError(t, err)
 	indexKey, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	defer os.RemoveAll(GetSearchIdxPathPrefix())
+	defer generateTermHmacAndRemoveSearchIndex(sdc, owner, term, termKey)
 
 	//
 	// Create STI
 	//
-	_, stiBlocks := createSearchTermIdxSimpleV1(t, owner, term,
+	_, stiBlocks := createSearchTermIdxSimpleV1(t, sdc, owner, term,
 		termKey, indexKey, maxDocID, maxOffsetCount)
 
 	// Convert STI blocks to sorted SSDI DocIDVer list
@@ -99,13 +115,17 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 		return (strings.Compare(docIDVers[i].DocID, docIDVers[j].DocID) < 0)
 	})
 
+	time.Sleep(10 * time.Second)
+
+	// ================================ Get UpdateID ================================
 	//
 	// Create SSDI from STI
 	//
-	updateIDs, err := GetUpdateIdsV1(owner, term, termKey)
+	updateIDs, err := GetUpdateIdsV1(sdc, owner, term, termKey)
 	assert.NilError(t, err)
 
-	ssdi, err := CreateSearchSortDocIdxV1(owner, term, updateIDs[0], termKey, indexKey)
+	// ================================ Generate Search Sorted Doc Index ================================
+	ssdi, err := CreateSearchSortDocIdxV1(sdc, owner, term, updateIDs[0], termKey, indexKey)
 	assert.NilError(t, err)
 
 	err = nil
@@ -129,10 +149,13 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	//
 	validateSsdiBlocks(t, docIDVers, ssdiBlocks)
 
+	time.Sleep(10 * time.Second)
+
+	// ================================ Open Search Sorted Doc Index ================================
 	//
 	// Open SSDI for reading
 	//
-	ssdi, err = OpenSearchSortDocIdxV1(owner, term, termKey, indexKey, updateIDs[0])
+	ssdi, err = OpenSearchSortDocIdxV1(sdc, owner, term, termKey, indexKey, updateIDs[0])
 	assert.NilError(t, err)
 
 	err = nil
