@@ -1,10 +1,7 @@
 package utils
 
 import (
-	"compress/gzip"
 	"io"
-	"mime"
-	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -13,8 +10,6 @@ import (
 	"github.com/go-errors/errors"
 )
 
-var mimeGzip = regexp.MustCompilePOSIX(`^application\/.*gzip$`)
-var mimeText = regexp.MustCompilePOSIX(`^text\/plain$`)
 var alphaNumeric = regexp.MustCompilePOSIX(`^[a-zA-Z0-9]+$`)
 
 // FileTokenizer tokenizes a file
@@ -25,45 +20,33 @@ type FileTokenizer interface {
 }
 
 type fileTokenizer struct {
-	fileName  string
-	mediaType string
-	file      *os.File
-	reader    io.Reader
-	scanner   *scanner.Scanner
+	fileName string
+	fileType FileType
+	file     *os.File
+	reader   io.Reader
+	scanner  *scanner.Scanner
+}
+
+// IsAlphaNumeric shows whether term is alphanumeric
+func IsAlphaNumeric(term string) bool {
+	return alphaNumeric.MatchString(term)
 }
 
 // OpenFileTokenizer opens a file for tokenization
 func OpenFileTokenizer(fileName string) (FileTokenizer, error) {
-	file, err := os.Open(fileName)
+	fileType, file, reader, err := OpenFile(fileName)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, err
 	}
 
-	// Only the first 512 bytes are used to sniff the content type.
-	buffer := make([]byte, 512)
-	n, err := file.Read(buffer)
-	if err != nil {
-		file.Close()
-		return nil, errors.New(err)
-	}
-	file.Close()
+	tokenizer := &fileTokenizer{
+		fileName: fileName,
+		fileType: fileType,
+		file:     file,
+		reader:   reader}
 
-	contentType := http.DetectContentType(buffer[:n])
-	mediaType, _, err := mime.ParseMediaType(contentType)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
-	file, err = os.Open(fileName)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
-	tokenizer := &fileTokenizer{fileName: fileName, mediaType: mediaType, file: file}
-	err = tokenizer.Reset()
-	if err != nil {
-		return nil, errors.New(err)
-	}
+	var scanner scanner.Scanner
+	tokenizer.scanner = scanner.Init(tokenizer.reader)
 
 	return tokenizer, nil
 }
@@ -77,26 +60,14 @@ func (token *fileTokenizer) Close() error {
 }
 
 func (token *fileTokenizer) Reset() error {
-	_, err := token.file.Seek(0, io.SeekStart)
+	reader, err := ResetFile(token.fileType, token.file)
 	if err != nil {
-		return errors.New(err)
+		return err
 	}
-
-	if mimeText.MatchString(token.mediaType) {
-		token.reader = token.file
-	} else if mimeGzip.MatchString(token.mediaType) {
-		reader, err := gzip.NewReader(token.file)
-		if err != nil {
-			return errors.New(err)
-		}
-		token.reader = reader
-	} else {
-		token.file.Close()
-		return errors.Errorf("Can not process %v file", token.mediaType)
-	}
+	token.reader = reader
 
 	var scanner scanner.Scanner
-	token.scanner = scanner.Init(token.reader)
+	token.scanner = scanner.Init(reader)
 
 	return nil
 }
@@ -110,7 +81,7 @@ func (token *fileTokenizer) NextToken() (string, *scanner.Position, error) {
 		}
 
 		t := token.scanner.TokenText()
-		if alphaNumeric.MatchString(t) {
+		if IsAlphaNumeric(t) {
 			return strings.ToLower(token.scanner.TokenText()), &pos, nil
 		}
 	}

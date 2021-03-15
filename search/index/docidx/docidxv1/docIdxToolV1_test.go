@@ -2,6 +2,7 @@ package docidxv1
 
 import (
 	"io"
+	"math/rand"
 	"sort"
 	"testing"
 
@@ -96,4 +97,81 @@ func TestTools(t *testing.T) {
 
 		assert.Equal(t, len(terms), 0)
 	} // for _, idx := range indexes
+}
+
+func TestCreateModifiedDoc(t *testing.T) {
+	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
+	assert.NilError(t, err)
+
+	docs, err := InitTestDocuments(1, false)
+	assert.NilError(t, err)
+	oldDoc := docs[0]
+	defer CleanTestDocumentIndexes()
+
+	newDoc := testCreateModifiedDoc(t, oldDoc, key)
+	newDoc = testCreateModifiedDoc(t, newDoc, key)
+	newDoc = testCreateModifiedDoc(t, newDoc, key)
+	newDoc = testCreateModifiedDoc(t, newDoc, key)
+}
+
+func testCreateModifiedDoc(t *testing.T, oldDoc *TestDocumentIdxV1, key *sscrypto.StrongSaltKey) *TestDocumentIdxV1 {
+	addedTerms, deletedTerms := rand.Intn(99)+1, rand.Intn(99)+1
+
+	newDoc, err := oldDoc.CreateModifiedDoc(addedTerms, deletedTerms)
+	assert.NilError(t, err)
+	defer oldDoc.Close()
+	defer newDoc.Close()
+
+	assert.Equal(t, len(newDoc.addedTerms), addedTerms)
+	assert.Equal(t, len(newDoc.deletedTerms), deletedTerms)
+
+	err = oldDoc.CreateDoi(key)
+	assert.NilError(t, err)
+	err = oldDoc.CreateDti(key)
+	assert.NilError(t, err)
+	err = newDoc.CreateDoi(key)
+	assert.NilError(t, err)
+	err = newDoc.CreateDti(key)
+	assert.NilError(t, err)
+
+	oldDti, err := oldDoc.OpenDti(key)
+	assert.NilError(t, err)
+	newDti, err := newDoc.OpenDti(key)
+	assert.NilError(t, err)
+
+	oldTermList, oldTermMap, err := oldDti.ReadAllTerms()
+	assert.NilError(t, err)
+	newTermList, newTermMap, err := newDti.ReadAllTerms()
+	assert.NilError(t, err)
+
+	dtiDeleted := make([]string, 0, len(oldTermList))
+	for _, term := range oldTermList {
+		if !newTermMap[term] {
+			dtiDeleted = append(dtiDeleted, term)
+		}
+	}
+
+	dtiAdded := make([]string, 0, len(oldTermList))
+	for _, term := range newTermList {
+		if !oldTermMap[term] {
+			dtiAdded = append(dtiAdded, term)
+		}
+	}
+
+	docAdded := make([]string, 0, len(newDoc.addedTerms))
+	for term := range newDoc.addedTerms {
+		docAdded = append(docAdded, term)
+	}
+	sort.Strings(docAdded)
+
+	docDeleted := make([]string, 0, len(newDoc.deletedTerms))
+	for term := range newDoc.deletedTerms {
+		docDeleted = append(docDeleted, term)
+	}
+	sort.Strings(docDeleted)
+
+	assert.DeepEqual(t, dtiAdded, docAdded)
+	assert.DeepEqual(t, dtiDeleted, docDeleted)
+
+	return newDoc
 }

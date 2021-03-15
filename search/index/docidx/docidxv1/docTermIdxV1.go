@@ -321,6 +321,34 @@ func (idx *DocTermIdxV1) FindTerm(term string) (bool, error) {
 	return (blk != nil), nil
 }
 
+// ReadAllTerms reads all the terms in the index
+func (idx *DocTermIdxV1) ReadAllTerms() ([]string, map[string]bool, error) {
+	var err error = nil
+	termList := make([]string, 0, 1000)
+	termMap := make(map[string]bool)
+
+	err = idx.Reset()
+	if err != nil {
+		return termList, termMap, err
+	}
+
+	for err == nil {
+		var blk *DocTermIdxBlkV1 = nil
+		blk, err = idx.ReadNextBlock()
+		if err != nil && err != io.EOF {
+			return termList, termMap, err
+		}
+		if blk != nil {
+			for _, term := range blk.Terms {
+				termList = append(termList, term)
+				termMap[term] = true
+			}
+		}
+	}
+
+	return termList, termMap, nil
+}
+
 // Reset resets the term index for reading. Can not be done for writing
 func (idx *DocTermIdxV1) Reset() error {
 	if idx.Reader == nil {
