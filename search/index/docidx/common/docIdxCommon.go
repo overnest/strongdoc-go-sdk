@@ -2,7 +2,6 @@ package common
 
 import (
 	"encoding/json"
-
 	"github.com/go-errors/errors"
 )
 

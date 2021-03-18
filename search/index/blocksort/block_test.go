@@ -24,14 +24,16 @@ func TestTermIdxBlockV1(t *testing.T) {
 
 	total := 0
 
+	sourceFile, err := os.Open(sourceFilePath)
+	defer sourceFile.Close()
 	for true {
+		sourceFile.Seek(0, utils.SeekSet)
 		dtib := CreateDockTermIdxBlkV1(prevHighTerm, prevHighTermCount)
 
-		tokenizer, err := utils.OpenFileTokenizer(sourceFilePath)
+		tokenizer, err := utils.OpenFileTokenizer(sourceFile)
 		assert.NilError(t, err)
-		defer tokenizer.Close()
 
-		for token, pos, err := tokenizer.NextToken(); err != io.EOF; token, pos, err = tokenizer.NextToken() {
+		for token, pos, _, err := tokenizer.NextToken(); err != io.EOF; token, pos, _, err = tokenizer.NextToken() {
 			dtib.AddTerm(token)
 			_ = pos
 		}

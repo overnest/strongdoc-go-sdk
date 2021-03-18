@@ -1,70 +1,80 @@
-package docidxv1
+package docidx
 
 import (
-	"io"
-	"os"
-	"testing"
-
+	"github.com/overnest/strongdoc-go-sdk/api"
+	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
+	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
-
 	"gotest.tools/assert"
+	"io"
+	"testing"
+	"time"
 )
 
-func TestDocOffsetIdx(t *testing.T) {
-	sourceFilePath, err := utils.FetchFileLoc("./testDocuments/enwik8.txt.gz")
-	idxFileName := "/tmp/docoffsetidx_test"
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//
+//	data source	==FileTokenizer==> tokenized data ==doi Generator==> offset index ==dti Generator==> term index ==> search index
+//
+//  step1: tokenize data using FileTokenizer
+//	step2: generate Document Offset Index(doi) from tokenized data
+//	step3: generate Document Term Index(dti) from tokenized data or doi
+//  step4: generate Org/User Search Index(si) from  doi and dti(optional)
+//
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+func TestDocOffsetIdx(t *testing.T) {
+	// ================================ Prev Test ================================
+	testClient := prevTest(t)
+
+	docID := "docID100"
+	docVer := uint64(100)
+	sourceFileName := "./testDocuments/enwik8.txt.gz"
+	sourceFilepath, err := utils.FetchFileLoc(sourceFileName)
+	assert.NilError(t, err)
+
+	// ================================ Generate doc offset index ================================
+	// Open source file
+	sourceFile, err := utils.OpenLocalFile(sourceFilepath)
+	assert.NilError(t, err)
+
+	// Create encryption key
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	// Create file with encrypted content
-	createTestDocOffsetIndex(t, key, "docID100", 100, sourceFilePath, idxFileName)
-
-	idxFile, err := os.OpenFile(idxFileName, os.O_RDWR, 0755)
+	// Generate doc offset index, writes output
+	err = CreateAndSaveDocOffsetIdx(testClient, docID, docVer, key, sourceFile)
 	assert.NilError(t, err)
-	defer idxFile.Close()
 
-	doiVersion, err := OpenDocOffsetIdx(key, idxFile, 0)
+	// Close source file
+	err = sourceFile.Close()
 	assert.NilError(t, err)
+
+	time.Sleep(5 * time.Second)
+
+	// ================================ Open doc offset index ================================
+	doiVersion, err := OpenDocOffsetIdx(testClient, docID, docVer, key)
+	assert.NilError(t, err)
+	defer doiVersion.Close()
 
 	switch doiVersion.GetDoiVersion() {
 	case common.DOI_V1:
-		testDocOffsetIdxV1(t, doiVersion, sourceFilePath)
+		sourceFile, err = utils.OpenLocalFile(sourceFilepath)
+		defer sourceFile.Close()
+		assert.NilError(t, err)
+		testDocOffsetIdxV1(t, doiVersion, sourceFile)
 	default:
 		assert.Assert(t, false, "Unsupported DOI version %v", doiVersion.GetDoiVersion())
 	}
 }
 
-func createTestDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string, docVer uint64,
-	sourceFile, outputFile string) {
-
-	idxFile, err := os.Create(outputFile)
-	assert.NilError(t, err)
-	defer idxFile.Close()
-
-	doi, err := CreateDocOffsetIdx(docID, docVer, key, idxFile, 0)
-	assert.NilError(t, err)
-
+func testDocOffsetIdxV1(t *testing.T, doiVersion common.DocOffsetIdx, sourceFile utils.Storage) {
 	tokenizer, err := utils.OpenFileTokenizer(sourceFile)
 	assert.NilError(t, err)
-
-	for token, pos, err := tokenizer.NextToken(); err != io.EOF; token, pos, err = tokenizer.NextToken() {
-		adderr := doi.AddTermOffset(token, uint64(pos.Offset))
-		assert.NilError(t, adderr)
-	}
-
-	tokenizer.Close()
-	doi.Close()
-	idxFile.Close()
-}
-
-func testDocOffsetIdxV1(t *testing.T, doiVersion common.DocOffsetIdx, sourceFilePath string) {
-	tokenizer, err := utils.OpenFileTokenizer(sourceFilePath)
-	assert.NilError(t, err)
-	defer tokenizer.Close()
 
 	doi, ok := doiVersion.(*docidxv1.DocOffsetIdxV1)
 	assert.Assert(t, ok)
@@ -73,13 +83,13 @@ func testDocOffsetIdxV1(t *testing.T, doiVersion common.DocOffsetIdx, sourceFile
 	block, err := doi.ReadNextBlock()
 	assert.NilError(t, err)
 
-	for token, pos, err := tokenizer.NextToken(); err != io.EOF; token, pos, err = tokenizer.NextToken() {
+	for token, _, wordCounter, err := tokenizer.NextToken(); err != io.EOF; token, _, wordCounter, err = tokenizer.NextToken() {
 		// If we can't find the term/loc in this block, we should be
 		// able to find it in the next block
-		if !findTermLocationV1(block, token, uint64(pos.Offset)) {
+		if !findTermLocationV1(block, token, wordCounter) {
 			block, err = doi.ReadNextBlock()
 			assert.NilError(t, err)
-			assert.Assert(t, findTermLocationV1(block, token, uint64(pos.Offset)))
+			assert.Assert(t, findTermLocationV1(block, token, wordCounter))
 		}
 	}
 }
@@ -95,4 +105,18 @@ func findTermLocationV1(block *docidxv1.DocOffsetIdxBlkV1, term string, loc uint
 	}
 
 	return true
+}
+
+func prevTest(t *testing.T) client.StrongDocClient {
+	if utils.TestLocal {
+		return nil
+	}
+	// register org and admin
+	sdc, orgs, users := testUtils.PrevTest(t, 1, 1)
+	testUtils.DoRegistration(t, sdc, orgs, users)
+	// login
+	user := users[0][0]
+	err := api.Login(sdc, user.UserID, user.Password, user.OrgID)
+	assert.NilError(t, err)
+	return sdc
 }

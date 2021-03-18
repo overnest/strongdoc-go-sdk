@@ -57,13 +57,16 @@ func TestFileTokenizer(t *testing.T) {
 	path, err := FetchFileLoc(testFileName)
 	assert.NilError(t, err)
 
-	tokenizer, err := OpenFileTokenizer(path)
+	file, err := OpenLocalFile(path)
+	assert.NilError(t, err)
+
+	tokenizer, err := OpenFileTokenizer(file)
 	assert.NilError(t, err)
 
 	tokens1 := make([]string, 0, parsedTokens)
 
 	for i := 0; i < parsedTokens; i++ {
-		token, pos, err := tokenizer.NextToken()
+		token, pos, _, err := tokenizer.NextToken()
 		if err == io.EOF {
 			break
 		}
@@ -77,7 +80,7 @@ func TestFileTokenizer(t *testing.T) {
 
 	tokens2 := make([]string, 0, parsedTokens)
 	for i := 0; i < parsedTokens; i++ {
-		token, pos, err := tokenizer.NextToken()
+		token, pos, _, err := tokenizer.NextToken()
 		if err == io.EOF {
 			break
 		}
@@ -88,6 +91,6 @@ func TestFileTokenizer(t *testing.T) {
 
 	assert.DeepEqual(t, tokens1, tokens2)
 
-	err = tokenizer.Close()
+	err = file.Close()
 	assert.NilError(t, err)
 }

@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 	"io"
 	"path"
 
@@ -49,17 +50,17 @@ type SearchIdxOwnerType string
 
 // common.SearchIdxOwner is the search index owner interface
 type SearchIdxOwner interface {
-	GetOwnerType() SearchIdxOwnerType
+	GetOwnerType() utils.OwnerType
 	GetOwnerID() string
 	fmt.Stringer
 }
 
 type searchIdxOwner struct {
-	ownerType SearchIdxOwnerType
+	ownerType utils.OwnerType
 	ownerID   string
 }
 
-func (sio *searchIdxOwner) GetOwnerType() SearchIdxOwnerType {
+func (sio *searchIdxOwner) GetOwnerType() utils.OwnerType {
 	return sio.ownerType
 }
 
@@ -72,7 +73,7 @@ func (sio *searchIdxOwner) String() string {
 }
 
 // common.SearchIdxOwner creates a new searchh index owner
-func CreateSearchIdxOwner(ownerType SearchIdxOwnerType, ownerID string) SearchIdxOwner {
+func CreateSearchIdxOwner(ownerType utils.OwnerType, ownerID string) SearchIdxOwner {
 	return &searchIdxOwner{ownerType, ownerID}
 }
 

@@ -1,6 +1,7 @@
 package docidxv1
 
 import (
+	"github.com/overnest/strongdoc-go-sdk/client"
 	"io"
 
 	"github.com/go-errors/errors"
@@ -40,16 +41,16 @@ type DocOffsetIdxV1 struct {
 	Writer        ssblocks.BlockListWriterV1
 	Reader        ssblocks.BlockListReaderV1
 	Block         *DocOffsetIdxBlkV1
+	Store         interface{}
 }
 
 // CreateDocOffsetIdxV1 creates a document offset index writer V1
-func CreateDocOffsetIdxV1(docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	store interface{}, initOffset int64) (*DocOffsetIdxV1, error) {
+func CreateDocOffsetIdxV1(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey, initOffset int64) (*DocOffsetIdxV1, error) {
 
 	var err error
-	writer, ok := store.(io.Writer)
-	if !ok {
-		return nil, errors.Errorf("The passed in storage does not implement io.Writer")
+	writer, err := common.OpenDocOffsetIdxWriter(sdc, docID, docVer)
+	if err != nil {
+		return nil, err
 	}
 
 	if key.Type != sscrypto.Type_XChaCha20 {
@@ -111,7 +112,7 @@ func CreateDocOffsetIdxV1(docID string, docVer uint64, key *sscrypto.StrongSaltK
 
 	// Initialize the streaming crypto to encrypt ciphertext header and the
 	// blocks after that
-	streamCrypto, err := crypto.CreateStreamCrypto(key, plainHdrBody.Nonce, store,
+	streamCrypto, err := crypto.CreateStreamCrypto(key, plainHdrBody.Nonce, writer,
 		initOffset+int64(n))
 	if err != nil {
 		return nil, errors.New(err)
@@ -136,7 +137,7 @@ func CreateDocOffsetIdxV1(docID string, docVer uint64, key *sscrypto.StrongSaltK
 
 	index := &DocOffsetIdxV1{common.DoiVersionS{DoiVer: common.DOI_V1},
 		docID, docVer, key, plainHdrBody.Nonce, uint64(initOffset),
-		plainHdrBody, cipherHdrBody, blockWriter, nil, nil}
+		plainHdrBody, cipherHdrBody, blockWriter, nil, nil, writer}
 	return index, nil
 }
 
@@ -190,7 +191,7 @@ func OpenDocOffsetIdxPrivV1(key *sscrypto.StrongSaltKey, plainHdrBody *DoiPlainH
 	}
 
 	// Initialize the streaming crypto to decrypt ciphertext header and the blocks after that
-	streamCrypto, err := crypto.CreateStreamCrypto(key, plainHdrBody.Nonce, store, initOffset)
+	streamCrypto, err := crypto.OpenStreamCrypto(key, plainHdrBody.Nonce, store, initOffset)
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -226,7 +227,7 @@ func OpenDocOffsetIdxPrivV1(key *sscrypto.StrongSaltKey, plainHdrBody *DoiPlainH
 
 	index := &DocOffsetIdxV1{common.DoiVersionS{DoiVer: plainHdrBody.GetDoiVersion()},
 		plainHdrBody.DocID, plainHdrBody.DocVer, key, plainHdrBody.Nonce,
-		uint64(initOffset), plainHdrBody, cipherHdrBody, nil, blockReader, nil}
+		uint64(initOffset), plainHdrBody, cipherHdrBody, nil, blockReader, nil, store}
 	return index, nil
 }
 
@@ -290,8 +291,22 @@ func (idx *DocOffsetIdxV1) Close() error {
 		if err != nil {
 			return errors.New(err)
 		}
-		return idx.flush(serial)
+		err = idx.flush(serial)
+		if err != nil {
+			return err
+		}
 	}
+	if idx.Store != nil {
+		storeCloser, ok := (idx.Store).(io.Closer)
+		if !ok {
+			return errors.Errorf("The passed in storage does not implement io.Closer")
+		}
+		err := storeCloser.Close()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

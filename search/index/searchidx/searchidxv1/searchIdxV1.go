@@ -2,17 +2,12 @@ package searchidxv1
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
-	"path"
-	"sort"
-	"strconv"
-	"time"
-
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
+	"io"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -21,24 +16,20 @@ import (
 //
 //////////////////////////////////////////////////////////////////
 
-func newUpdateIDV1() string {
-	return fmt.Sprintf("%x", time.Now().UnixNano())
-}
-
 // GetUpdateIdsV1 returns the list of available update IDs for a specific owner + term in
 // reverse chronological order. The most recent update ID will come first
-func GetUpdateIdsV1(owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) ([]string, error) {
+func GetUpdateIdsV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) ([]string, error) {
 	termHmac, err := createTermHmac(term, termKey)
 	if err != nil {
 		return nil, err
 	}
-	return GetUpdateIdsHmacV1(owner, termHmac)
+	return GetUpdateIdsHmacV1(sdc, owner, termHmac)
 }
 
 // GetLatestUpdateIDV1 returns the latest update IDs for a specific owner + term
-func GetLatestUpdateIDV1(owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) (string, error) {
+func GetLatestUpdateIDV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) (string, error) {
 
-	ids, err := GetUpdateIdsV1(owner, term, termKey)
+	ids, err := GetUpdateIdsV1(sdc, owner, term, termKey)
 	if err != nil {
 		return "", err
 	}
@@ -52,40 +43,14 @@ func GetLatestUpdateIDV1(owner common.SearchIdxOwner, term string, termKey *sscr
 
 // GetUpdateIdsHmacV1 returns the list of available update IDs for a specific owner + term in
 // reverse chronological order. The most recent update ID will come first
-func GetUpdateIdsHmacV1(owner common.SearchIdxOwner, termHmac string) ([]string, error) {
-	path := GetSearchIdxPathV1(common.GetSearchIdxPathPrefix(), owner, termHmac, "")
+func GetUpdateIdsHmacV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, termHmac string) ([]string, error) {
+	return common.GetUpdateIDs(sdc, owner, termHmac)
 
-	files, err := ioutil.ReadDir(path)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
-	updateIDs := make([]string, 0, len(files))
-	for _, file := range files {
-		if file.IsDir() {
-			updateIDs = append(updateIDs, file.Name())
-		}
-	}
-
-	updateIDsInt := make([]int64, len(updateIDs))
-	for i := 0; i < len(updateIDs); i++ {
-		id, err := strconv.ParseInt(updateIDs[i], 16, 64)
-		if err == nil {
-			updateIDsInt[i] = id
-		}
-	}
-
-	sort.Slice(updateIDsInt, func(i, j int) bool { return updateIDsInt[i] < updateIDsInt[j] })
-	for i := 0; i < len(updateIDs); i++ {
-		updateIDs[i] = fmt.Sprintf("%x", updateIDsInt[i])
-	}
-
-	return updateIDs, nil
 }
 
 // GetLatestUpdateIdsHmacV1 returns the latest update IDs for a specific owner + term
-func GetLatestUpdateIdsHmacV1(owner common.SearchIdxOwner, termHmac string) (string, error) {
-	ids, err := GetUpdateIdsHmacV1(owner, termHmac)
+func GetLatestUpdateIdsHmacV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, termHmac string) (string, error) {
+	ids, err := GetUpdateIdsHmacV1(sdc, owner, termHmac)
 	if err != nil {
 		return "", err
 	}
@@ -116,15 +81,6 @@ type SearchIdxV1 struct {
 type DeletedDocsV1 struct {
 	DelDocs   []string        // List of DocIDs
 	delDocMap map[string]bool // Map of DocID to boolean
-}
-
-// GetSearchIdxPathV1 gets the base path of the search index
-func GetSearchIdxPathV1(prefix string, owner common.SearchIdxOwner, term, updateID string) string {
-	if len(prefix) > 0 {
-		return path.Clean(fmt.Sprintf("%v/%v/sidx/%v/%v", prefix, owner, term, updateID))
-	}
-
-	return path.Clean(fmt.Sprintf("%v/sidx/%v/%v", owner, term, updateID))
 }
 
 // CreateSearchIdxWriterV1 creates a search index writer V1
@@ -159,10 +115,10 @@ func CreateSearchIdxWriterV1(owner common.SearchIdxOwner, termKey, indexKey *ssc
 	return searchIdx, nil
 }
 
-func (idx *SearchIdxV1) ProcessBatchTerms() (map[string]error, error) {
+func (idx *SearchIdxV1) ProcessBatchTerms(sdc client.StrongDocClient) (map[string]error, error) {
 	emptyResult := make(map[string]error)
 
-	termBatch, err := idx.batchMgr.GetNextTermBatch(common.STI_TERM_BATCH_SIZE)
+	termBatch, err := idx.batchMgr.GetNextTermBatch(sdc, common.STI_TERM_BATCH_SIZE)
 	if err != nil {
 		return emptyResult, err
 	}
@@ -174,17 +130,17 @@ func (idx *SearchIdxV1) ProcessBatchTerms() (map[string]error, error) {
 	// PSL DEBUG
 	fmt.Println("batch", termBatch.termList)
 
-	return termBatch.ProcessTermBatch()
+	return termBatch.ProcessTermBatch(sdc)
 }
 
-func (idx *SearchIdxV1) ProcessAllTerms() (map[string]error, error) {
+func (idx *SearchIdxV1) ProcessAllTerms(sdc client.StrongDocClient) (map[string]error, error) {
 	finalResult := make(map[string]error)
 
 	var err error = nil
 	for err == nil {
 		var batchResult map[string]error
 
-		batchResult, err = idx.ProcessBatchTerms()
+		batchResult, err = idx.ProcessBatchTerms(sdc)
 		if err != nil && err != io.EOF {
 			return finalResult, err
 		}

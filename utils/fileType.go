@@ -5,8 +5,8 @@ import (
 	"io"
 	"mime"
 	"net/http"
-	"os"
 	"regexp"
+	"text/scanner"
 
 	"github.com/go-errors/errors"
 )
@@ -23,82 +23,70 @@ type FileType string
 var mimeGzip = regexp.MustCompilePOSIX(`^application\/.*gzip$`)
 var mimeText = regexp.MustCompilePOSIX(`^text\/plain$`)
 
-// GetFileType get the file type
-func GetFileType(fileName string) (FileType, error) {
-	file, err := os.Open(fileName)
-	if err != nil {
-		return FT_UNKNWON, errors.New(err)
-	}
-
+// getFileType get the file type
+func getFileType(file Storage) (fileType FileType, err error) {
 	// Only the first 512 bytes are used to sniff the content type.
 	buffer := make([]byte, 512)
 	n, err := file.Read(buffer)
 	if err != nil {
-		file.Close()
-		return FT_UNKNWON, errors.New(err)
+		return
 	}
-	file.Close()
 
 	contentType := http.DetectContentType(buffer[:n])
 	mediaType, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
-		return FT_UNKNWON, errors.New(err)
+		return
 	}
 
 	if mimeText.MatchString(mediaType) {
-		return FT_TEXT, nil
+		fileType = FT_TEXT
 	} else if mimeGzip.MatchString(mediaType) {
-		return FT_GZIP, nil
+		fileType = FT_GZIP
+	} else {
+		fileType = FT_UNKNWON
 	}
-
-	return FT_UNKNWON, nil
+	return
 }
 
-// OpenFile opens a file for reading
-func OpenFile(fileName string) (FileType, *os.File, io.ReadCloser, error) {
-	fileType, err := GetFileType(fileName)
+// GetFileTypeAndReader get type of storage and reader based on fileType
+func GetFileTypeAndReader(storage Storage) (fileType FileType, reader io.Reader, err error) {
+	fileType, err = getFileType(storage)
 	if err != nil {
-		return FT_UNKNWON, nil, nil, err
+		return
 	}
 
-	var reader io.ReadCloser = nil
-	file, err := os.Open(fileName)
-	if err != nil {
-		return fileType, nil, nil, errors.New(err)
-	}
-
-	switch fileType {
-	case FT_TEXT:
-		reader = file
-	case FT_GZIP:
-		reader, err = gzip.NewReader(file)
-		if err != nil {
-			return fileType, nil, nil, errors.New(err)
-		}
-	default:
-		return fileType, nil, nil, errors.Errorf("Can not process %v file", fileType)
-	}
-
-	return fileType, file, reader, nil
+	reader, err = resetFile(fileType, storage)
+	return
 }
 
-// ResetFile resets a file to be read again
-func ResetFile(fileType FileType, file *os.File) (io.ReadCloser, error) {
-	_, err := file.Seek(0, io.SeekStart)
+// resetFile resets a file to be read again
+func resetFile(fileType FileType, storage Storage) (io.Reader, error) {
+	//  data source seek to file beginning
+	_, err := storage.Seek(0, SeekSet)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, err
 	}
 
+	// get reader based on fileType
+	var reader io.Reader
 	switch fileType {
 	case FT_TEXT:
-		return file, nil
+		reader = storage
+		break
 	case FT_GZIP:
-		reader, err := gzip.NewReader(file)
+		var err error
+		reader, err = gzip.NewReader(storage)
 		if err != nil {
-			return nil, errors.New(err)
+			return nil, err
 		}
-		return reader, nil
+		break
 	default:
 		return nil, errors.Errorf("Can not process %v file", fileType)
 	}
+	return reader, nil
+}
+
+func readerToScanner(reader io.Reader) *scanner.Scanner {
+	var scanner scanner.Scanner
+	return scanner.Init(reader)
 }

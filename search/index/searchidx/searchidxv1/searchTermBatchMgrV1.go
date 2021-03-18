@@ -2,6 +2,7 @@ package searchidxv1
 
 import (
 	"fmt"
+	"github.com/overnest/strongdoc-go-sdk/client"
 	"io"
 	"sort"
 	"strings"
@@ -103,7 +104,7 @@ func CreateSearchTermBatchMgrV1(owner common.SearchIdxOwner, sources []SearchTer
 	return mgr, nil
 }
 
-func (mgr *SearchTermBatchMgrV1) GetNextTermBatch(batchSize int) (*SearchTermBatchV1, error) {
+func (mgr *SearchTermBatchMgrV1) GetNextTermBatch(sdc client.StrongDocClient, batchSize int) (*SearchTermBatchV1, error) {
 	sources := make([]*SearchTermBatchSources, 0, batchSize)
 	for i := 0; i < batchSize; i++ {
 		s, _ := mgr.termHeap.Pop()
@@ -115,13 +116,13 @@ func (mgr *SearchTermBatchMgrV1) GetNextTermBatch(batchSize int) (*SearchTermBat
 		sources = append(sources, stbs)
 	}
 
-	return CreateSearchTermBatchV1(mgr.Owner, sources)
+	return CreateSearchTermBatchV1(sdc, mgr.Owner, sources)
 }
 
-func (mgr *SearchTermBatchMgrV1) ProcessNextTermBatch(batchSize int) (map[string]error, error) {
+func (mgr *SearchTermBatchMgrV1) ProcessNextTermBatch(sdc client.StrongDocClient, batchSize int) (map[string]error, error) {
 	batchResult := make(map[string]error)
 
-	termBatch, err := mgr.GetNextTermBatch(batchSize)
+	termBatch, err := mgr.GetNextTermBatch(sdc, batchSize)
 	if err != nil {
 		return batchResult, err
 	}
@@ -131,17 +132,17 @@ func (mgr *SearchTermBatchMgrV1) ProcessNextTermBatch(batchSize int) (map[string
 		return batchResult, io.EOF
 	}
 
-	return termBatch.ProcessTermBatch()
+	return termBatch.ProcessTermBatch(sdc)
 }
 
-func (mgr *SearchTermBatchMgrV1) ProcessAllTermBatches(batchSize int) (map[string]error, error) {
+func (mgr *SearchTermBatchMgrV1) ProcessAllTermBatches(sdc client.StrongDocClient, batchSize int) (map[string]error, error) {
 	finalResult := make(map[string]error)
 
 	var err error = nil
 	for err == nil {
 		var batchResult map[string]error
 
-		batchResult, err = mgr.ProcessNextTermBatch(batchSize)
+		batchResult, err = mgr.ProcessNextTermBatch(sdc, batchSize)
 		if err != nil && err != io.EOF {
 			return finalResult, err
 		}
@@ -172,7 +173,7 @@ type SearchTermBatchV1 struct {
 	termList        []string
 }
 
-func CreateSearchTermBatchV1(owner common.SearchIdxOwner, sources []*SearchTermBatchSources) (*SearchTermBatchV1, error) {
+func CreateSearchTermBatchV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, sources []*SearchTermBatchSources) (*SearchTermBatchV1, error) {
 	batch := &SearchTermBatchV1{
 		Owner:           owner,
 		SourceList:      nil,
@@ -184,7 +185,7 @@ func CreateSearchTermBatchV1(owner common.SearchIdxOwner, sources []*SearchTermB
 	for _, source := range sources {
 
 		stiw, err := CreateSearchTermIdxWriterV1(
-			owner, source.Term, source.AddSources, source.DelSources,
+			sdc, owner, source.Term, source.AddSources, source.DelSources,
 			source.TermKey, source.IndexKey, source.delDocs)
 		if err != nil {
 			return nil, err
@@ -226,7 +227,7 @@ func CreateSearchTermBatchV1(owner common.SearchIdxOwner, sources []*SearchTermB
 	return batch, nil
 }
 
-func (batch *SearchTermBatchV1) ProcessTermBatch() (map[string]error, error) {
+func (batch *SearchTermBatchV1) ProcessTermBatch(sdc client.StrongDocClient) (map[string]error, error) {
 	respMap := make(map[string]error)
 
 	t1 := time.Now()
@@ -245,7 +246,7 @@ func (batch *SearchTermBatchV1) ProcessTermBatch() (map[string]error, error) {
 	}
 
 	t3 := time.Now()
-	ssdiResp, err := batch.processSsdiAll(stiSuccess)
+	ssdiResp, err := batch.processSsdiAll(sdc, stiSuccess)
 	for stiw, err := range ssdiResp {
 		respMap[stiw.Term] = err
 	}
@@ -352,7 +353,7 @@ func (batch *SearchTermBatchV1) processStiAll() (map[*SearchTermIdxWriterV1]erro
 	return respMap, nil
 }
 
-func (batch *SearchTermBatchV1) processSsdiAll(stiwList []*SearchTermIdxWriterV1) (map[*SearchTermIdxWriterV1]error, error) {
+func (batch *SearchTermBatchV1) processSsdiAll(sdc client.StrongDocClient, stiwList []*SearchTermIdxWriterV1) (map[*SearchTermIdxWriterV1]error, error) {
 	ssdiToChan := make(map[*SearchTermIdxWriterV1](chan error))
 
 	for _, stiw := range stiwList {
@@ -363,7 +364,7 @@ func (batch *SearchTermBatchV1) processSsdiAll(stiwList []*SearchTermIdxWriterV1
 		go func(stiw *SearchTermIdxWriterV1, ssdiChan chan<- error) {
 			defer close(ssdiChan)
 
-			ssdi, err := CreateSearchSortDocIdxV1(batch.Owner, stiw.Term,
+			ssdi, err := CreateSearchSortDocIdxV1(sdc, batch.Owner, stiw.Term,
 				stiw.GetUpdateID(), stiw.TermKey, stiw.IndexKey)
 			if err != nil {
 				ssdiChan <- err
@@ -433,7 +434,7 @@ type SearchTermIdxWriterV1 struct {
 	oldStiBlkDocIDs []string
 }
 
-func CreateSearchTermIdxWriterV1(owner common.SearchIdxOwner, term string,
+func CreateSearchTermIdxWriterV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string,
 	addSource, delSource []SearchTermIdxSourceV1,
 	termKey, indexKey *sscrypto.StrongSaltKey, delDocs *DeletedDocsV1) (*SearchTermIdxWriterV1, error) {
 
@@ -488,19 +489,19 @@ func CreateSearchTermIdxWriterV1(owner common.SearchIdxOwner, term string,
 	}
 
 	// Open previous STI if there is one
-	updateID, err := GetLatestUpdateIDV1(owner, term, termKey)
+	updateID, err := GetLatestUpdateIDV1(sdc, owner, term, termKey)
 	if updateID != "" {
-		stiw.oldSti, err = OpenSearchTermIdxV1(owner, term, termKey, indexKey, updateID)
+		stiw.oldSti, err = OpenSearchTermIdxV1(sdc, owner, term, termKey, indexKey, updateID)
 		if err != nil {
 			stiw.oldSti = nil
 		}
-		err = stiw.updateHighDocVersion(owner, term, termKey, indexKey, updateID)
+		err = stiw.updateHighDocVersion(sdc, owner, term, termKey, indexKey, updateID)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	stiw.newSti, err = CreateSearchTermIdxV1(owner, term, termKey, indexKey, nil, nil)
+	stiw.newSti, err = CreateSearchTermIdxV1(sdc, owner, term, termKey, indexKey, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -509,9 +510,9 @@ func CreateSearchTermIdxWriterV1(owner common.SearchIdxOwner, term string,
 	return stiw, nil
 }
 
-func (stiw *SearchTermIdxWriterV1) updateHighDocVersion(owner common.SearchIdxOwner, term string,
+func (stiw *SearchTermIdxWriterV1) updateHighDocVersion(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string,
 	termKey, indexKey *sscrypto.StrongSaltKey, updateID string) error {
-	ssdi, err := OpenSearchSortDocIdxV1(owner, term, termKey, indexKey, updateID)
+	ssdi, err := OpenSearchSortDocIdxV1(sdc, owner, term, termKey, indexKey, updateID)
 	if err == nil {
 		err = nil
 		for err == nil {

@@ -1,11 +1,15 @@
-package docidxv1
+package docidx
 
 import (
-	"io"
-
-	"github.com/go-errors/errors"
+	//"encoding/json"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
+	"io"
+
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/utils"
+
+	"github.com/go-errors/errors"
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 )
@@ -17,17 +21,51 @@ import (
 //////////////////////////////////////////////////////////////////
 
 // CreateDocOffsetIdx creates a new document offset index for writing
-func CreateDocOffsetIdx(docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	store interface{}, initOffset int64) (*docidxv1.DocOffsetIdxV1, error) {
+func CreateDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+	initOffset int64) (*docidxv1.DocOffsetIdxV1, error) {
+	return docidxv1.CreateDocOffsetIdxV1(sdc, docID, docVer, key, initOffset)
+}
 
-	return docidxv1.CreateDocOffsetIdxV1(docID, docVer, key, store, initOffset)
+// Create document offset index and writes output
+func CreateAndSaveDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+	sourceData utils.Storage) error {
+	return CreateAndSaveDocOffsetIdxWithOffset(sdc, docID, docVer, key, sourceData, 0)
+}
+
+func CreateAndSaveDocOffsetIdxWithOffset(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+	sourceData utils.Storage, initOffset int64) error {
+	tokenizer, err := utils.OpenFileTokenizer(sourceData)
+	if err != err {
+		return err
+	}
+
+	doi, err := CreateDocOffsetIdx(sdc, docID, docVer, key, initOffset)
+	if err != nil {
+		return err
+	}
+
+	for token, _, wordCounter, err := tokenizer.NextToken(); err != io.EOF; token, _, wordCounter, err = tokenizer.NextToken() {
+		if err != nil && err != io.EOF {
+			return err
+		}
+		addErr := doi.AddTermOffset(token, wordCounter)
+		if addErr != nil {
+			return addErr
+		}
+	}
+
+	return doi.Close()
+}
+
+func OpenDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey) (common.DocOffsetIdx, error) {
+	return OpenDocOffsetIdxWithOffset(sdc, docID, docVer, key, 0)
 }
 
 // OpenDocOffsetIdx opens a document offset index for reading
-func OpenDocOffsetIdx(key *sscrypto.StrongSaltKey, store interface{}, initOffset int64) (common.DocOffsetIdx, error) {
-	reader, ok := store.(io.Reader)
-	if !ok {
-		return nil, errors.Errorf("The passed in storage does not implement io.Reader")
+func OpenDocOffsetIdxWithOffset(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey, initOffset int64) (common.DocOffsetIdx, error) {
+	reader, err := common.OpenDocOffsetIdxReader(sdc, docID, docVer)
+	if err != nil {
+		return nil, err
 	}
 
 	plainHdr, parsed, err := ssheaders.DeserializePlainHdrStream(reader)

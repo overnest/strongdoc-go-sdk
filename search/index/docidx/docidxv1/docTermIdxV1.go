@@ -41,6 +41,7 @@ type DocTermIdxV1 struct {
 	Reader        ssblocks.BlockListReaderV1
 	Block         *DocTermIdxBlkV1
 	Source        DocTermSourceV1
+	Store         interface{}
 }
 
 // CreateDocTermIdxV1 creates a document term index writer V1
@@ -141,7 +142,7 @@ func CreateDocTermIdxV1(docID string, docVer uint64, key *sscrypto.StrongSaltKey
 
 	index := &DocTermIdxV1{common.DtiVersionS{DtiVer: common.DTI_V1},
 		docID, docVer, key, plainHdrBody.Nonce, uint64(initOffset),
-		plainHdrBody, cipherHdrBody, blockWriter, nil, nil, source}
+		plainHdrBody, cipherHdrBody, blockWriter, nil, nil, source, store}
 	return index, nil
 }
 
@@ -195,7 +196,7 @@ func OpenDocTermIdxPrivV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdr
 	}
 
 	// Initialize the streaming crypto to decrypt ciphertext header and the blocks after that
-	streamCrypto, err := crypto.CreateStreamCrypto(key, plainHdrBody.Nonce, store, int64(plainHdrOffset))
+	streamCrypto, err := crypto.OpenStreamCrypto(key, plainHdrBody.Nonce, store, int64(plainHdrOffset))
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -232,7 +233,7 @@ func OpenDocTermIdxPrivV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdr
 	index := &DocTermIdxV1{common.DtiVersionS{DtiVer: plainHdrBody.GetDtiVersion()},
 		plainHdrBody.DocID, plainHdrBody.DocVer, key, plainHdrBody.Nonce,
 		uint64(initOffset), plainHdrBody, cipherHdrBody, nil, blockReader, nil,
-		nil}
+		nil, store}
 	return index, nil
 }
 
@@ -365,7 +366,21 @@ func (idx *DocTermIdxV1) Close() error {
 		if err != nil {
 			return errors.New(err)
 		}
-		return idx.flush(serial)
+		err = idx.flush(serial)
+		if err != nil {
+			return err
+		}
+	}
+
+	if idx.Store != nil {
+		storeCloser, ok := (idx.Store).(io.Closer)
+		if !ok {
+			return errors.Errorf("The passed in storage does not implement io.Closer")
+		}
+		err := storeCloser.Close()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
