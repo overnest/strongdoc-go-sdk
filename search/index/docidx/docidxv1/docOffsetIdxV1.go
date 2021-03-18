@@ -2,6 +2,7 @@ package docidxv1
 
 import (
 	"io"
+	"sort"
 
 	"github.com/go-errors/errors"
 
@@ -272,6 +273,44 @@ func (idx *DocOffsetIdxV1) ReadNextBlock() (*DocOffsetIdxBlkV1, error) {
 	}
 
 	return nil, io.EOF
+}
+
+// ReadAllTermLoc returns all the term location index
+func (idx *DocOffsetIdxV1) ReadAllTermLoc() ([]string, map[string][]uint64, error) {
+	terms := make([]string, 0)
+	termLocMap := make(map[string][]uint64)
+
+	if idx.Reader == nil {
+		return terms, termLocMap, errors.Errorf("The document offset index is not open for reading")
+	}
+
+	err := idx.Reset()
+	if err != nil {
+		return terms, termLocMap, err
+	}
+
+	for err == nil {
+		var blk *DocOffsetIdxBlkV1
+		blk, err = idx.ReadNextBlock()
+		if err != nil && err != io.EOF {
+			return terms, termLocMap, err
+		}
+
+		if blk != nil && len(blk.TermLoc) > 0 {
+			for term, locs := range blk.TermLoc {
+				rlocs := termLocMap[term]
+				termLocMap[term] = append(rlocs, locs...)
+			}
+		}
+	}
+
+	terms = make([]string, 0, len(termLocMap))
+	for term := range termLocMap {
+		terms = append(terms, term)
+	}
+	sort.Strings(terms)
+
+	return terms, termLocMap, nil
 }
 
 // Reset resets the offset index for reading. Can not be done for writing

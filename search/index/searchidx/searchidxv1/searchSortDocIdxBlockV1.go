@@ -126,12 +126,12 @@ func (blk *SearchSortDocIdxBlkV1) AddDocVer(docID string, docVer uint64) {
 				blk.removeHighTerm()
 				blk.addDocVer(docID, docVer)
 			}
-		} else {
-			// The current term is either:
-			//   1. comes after the high docID
-			//   2. equal the high docID
-			// In either case, discard
-		}
+		} //else {
+		// The current term is either:
+		//   1. comes after the high docID
+		//   2. equal the high docID
+		// In either case, discard
+		//}
 	}
 }
 

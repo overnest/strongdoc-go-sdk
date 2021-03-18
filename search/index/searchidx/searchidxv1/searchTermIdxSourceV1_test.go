@@ -157,8 +157,6 @@ func createDocTermIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string,
 	assert.NilError(t, err)
 	err = outfile.Close()
 	assert.NilError(t, err)
-
-	return
 }
 
 func openDocTermIndex(t *testing.T, key *sscrypto.StrongSaltKey, fileName string) (dtiFile *os.File, dti *didxv1.DocTermIdxV1) {

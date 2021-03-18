@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sync"
 
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/crypto"
@@ -15,7 +14,6 @@ import (
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
-	"github.com/shengdoushi/base58"
 )
 
 // SearchTermIdxV1 is a structure for search term index V1
@@ -270,30 +268,6 @@ func openSearchTermIdxV1(sti *SearchTermIdxV1, plainHdrBody *StiPlainHdrBodyV1, 
 	return sti, nil
 }
 
-var termHmacMutex sync.Mutex
-
-func createTermHmac(term string, termKey *sscrypto.StrongSaltKey) (string, error) {
-	termHmacMutex.Lock()
-	defer termHmacMutex.Unlock()
-
-	err := termKey.MACReset()
-	if err != nil {
-		return "", errors.New(err)
-	}
-
-	_, err = termKey.MACWrite([]byte(term))
-	if err != nil {
-		return "", errors.New(err)
-	}
-
-	hmac, err := termKey.MACSum(nil)
-	if err != nil {
-		return "", errors.New(err)
-	}
-
-	return base58.Encode(hmac, base58.BitcoinAlphabet), nil
-}
-
 func (sti *SearchTermIdxV1) createTermHmac() (string, error) {
 	return createTermHmac(sti.Term, sti.TermKey)
 }
@@ -330,6 +304,9 @@ func createStiReader(owner common.SearchIdxOwner, termHmac, updateID string) (io
 	path := getSearchTermIdxPathV1(common.GetSearchIdxPathPrefix(), owner, termHmac, updateID)
 	reader, err := os.Open(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, 0, os.ErrNotExist
+		}
 		return nil, 0, errors.New(err)
 	}
 

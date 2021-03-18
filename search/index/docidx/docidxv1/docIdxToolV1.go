@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -44,10 +45,10 @@ type TestDocumentIdxV1 struct {
 	docFileSize  int64
 	docFile      *os.File
 	docReader    io.ReadCloser
-	docID        string
-	docVer       uint64
-	addedTerms   map[string]bool
-	deletedTerms map[string]bool
+	DocID        string
+	DocVer       uint64
+	AddedTerms   map[string]bool
+	DeletedTerms map[string]bool
 
 	// DOI
 	doiFilePath string
@@ -112,11 +113,14 @@ func createDocumentIdx(name string, size int64, id string, ver uint64) (*TestDoc
 		docFileSize:  size,
 		docFile:      nil,
 		docReader:    nil,
-		docID:        id,
-		docVer:       ver,
-		addedTerms:   make(map[string]bool),
-		deletedTerms: make(map[string]bool),
+		DocID:        id,
+		DocVer:       ver,
+		AddedTerms:   make(map[string]bool),
+		DeletedTerms: make(map[string]bool),
 	}
+
+	doc.doiFilePath = fmt.Sprintf(doiPathFmt, doc.DocID, doc.DocVer)
+	doc.dtiFilePath = fmt.Sprintf(dtiPathFmt, doc.DocID, doc.DocVer)
 
 	return doc, nil
 }
@@ -145,7 +149,7 @@ func (doc *TestDocumentIdxV1) CreateModifiedDoc(addTerms, deleteTerms int) (*Tes
 	var term string
 	var space rune
 
-	newDoc, err := createDocumentIdx(doc.docFileName, 0, doc.docFileName, doc.docVer+1)
+	newDoc, err := createDocumentIdx(doc.docFileName, 0, doc.docFileName, doc.DocVer+1)
 	if err != nil {
 		return nil, err
 	}
@@ -174,18 +178,22 @@ func (doc *TestDocumentIdxV1) CreateModifiedDoc(addTerms, deleteTerms int) (*Tes
 		terms = append(terms, term)
 	}
 
+	// If you want to enable more randomization of the added
+	// or removed terms, comment out the following line
+	sort.Strings(terms)
+
 	for addTerms > 0 {
 		term = strings.ToLower(terms[rand.Intn(len(terms))])
-		if !newDoc.addedTerms[term] {
-			newDoc.addedTerms[term] = true
+		if !newDoc.AddedTerms[term] {
+			newDoc.AddedTerms[term] = true
 			addTerms--
 		}
 	}
 
 	for deleteTerms > 0 {
 		term = strings.ToLower(terms[rand.Intn(len(terms))])
-		if !newDoc.addedTerms[term] && !newDoc.deletedTerms[term] {
-			newDoc.deletedTerms[term] = true
+		if !newDoc.AddedTerms[term] && !newDoc.DeletedTerms[term] {
+			newDoc.DeletedTerms[term] = true
 			deleteTerms--
 		}
 	}
@@ -199,7 +207,7 @@ func (doc *TestDocumentIdxV1) CreateModifiedDoc(addTerms, deleteTerms int) (*Tes
 	reader = bufio.NewReader(freader)
 
 	// Create the new file
-	newDoc.docFilePath = fmt.Sprintf(docDocPathFmt, newDoc.docID, newDoc.docVer, newDoc.docFileName)
+	newDoc.docFilePath = fmt.Sprintf(docDocPathFmt, newDoc.DocID, newDoc.DocVer, newDoc.docFileName)
 	if err := os.MkdirAll(filepath.Dir(newDoc.docFilePath), 0770); err != nil {
 		return nil, errors.New(err)
 	}
@@ -242,7 +250,7 @@ func (doc *TestDocumentIdxV1) CreateModifiedDoc(addTerms, deleteTerms int) (*Tes
 
 		lterm := strings.ToLower(term)
 
-		if newDoc.addedTerms[lterm] {
+		if newDoc.AddedTerms[lterm] {
 			_, err = newDocWriter.WriteString(term)
 			if err != nil {
 				return nil, errors.New(err)
@@ -253,7 +261,7 @@ func (doc *TestDocumentIdxV1) CreateModifiedDoc(addTerms, deleteTerms int) (*Tes
 			if err != nil {
 				return nil, errors.New(err)
 			}
-		} else if !newDoc.deletedTerms[lterm] {
+		} else if !newDoc.DeletedTerms[lterm] {
 			_, err = newDocWriter.WriteString(term)
 			if err != nil {
 				return nil, errors.New(err)
@@ -269,11 +277,11 @@ func (doc *TestDocumentIdxV1) CreateModifiedDoc(addTerms, deleteTerms int) (*Tes
 	}
 
 	newAddedTerms := make(map[string]bool)
-	for term, v := range newDoc.addedTerms {
+	for term, v := range newDoc.AddedTerms {
 		addTerm := strings.ToLower(fmt.Sprintf("%v%v", term, newDoc.getAddTermSuffix()))
 		newAddedTerms[addTerm] = v
 	}
-	newDoc.addedTerms = newAddedTerms
+	newDoc.AddedTerms = newAddedTerms
 
 	newDocWriter.Flush()
 	gzipWriter.Close()
@@ -296,7 +304,7 @@ func (doc *TestDocumentIdxV1) CreateModifiedDoc(addTerms, deleteTerms int) (*Tes
 }
 
 func (doc *TestDocumentIdxV1) getAddTermSuffix() string {
-	return fmt.Sprintf("ADDTERM%v", doc.docVer)
+	return fmt.Sprintf("ADDTERM%v", doc.DocVer)
 }
 
 func (doc *TestDocumentIdxV1) readNextTerm(reader *bufio.Reader) (term string, space rune, err error) {
@@ -350,7 +358,7 @@ func (doc *TestDocumentIdxV1) CloseDoc() error {
 }
 
 func (doc *TestDocumentIdxV1) CreateDoi(key *sscrypto.StrongSaltKey) error {
-	doc.doiFilePath = fmt.Sprintf(doiPathFmt, doc.docID, doc.docVer)
+	doc.doiFilePath = fmt.Sprintf(doiPathFmt, doc.DocID, doc.DocVer)
 	if err := os.MkdirAll(filepath.Dir(doc.doiFilePath), 0770); err != nil {
 		return errors.New(err)
 	}
@@ -362,7 +370,7 @@ func (doc *TestDocumentIdxV1) CreateDoi(key *sscrypto.StrongSaltKey) error {
 	}
 	defer doc.CloseDoi()
 
-	doc.doi, err = CreateDocOffsetIdxV1(doc.docID, doc.docVer, key, doc.doiFile, 0)
+	doc.doi, err = CreateDocOffsetIdxV1(doc.DocID, doc.DocVer, key, doc.doiFile, 0)
 	if err != nil {
 		return err
 	}
@@ -390,21 +398,6 @@ func (doc *TestDocumentIdxV1) CreateDoi(key *sscrypto.StrongSaltKey) error {
 		i++
 	}
 	file.Close()
-
-	// tokenizer, err := utils.OpenFileTokenizer(doc.docFilePath)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer tokenizer.Close()
-
-	// i := uint64(0)
-	// for token, _, err := tokenizer.NextToken(); err != io.EOF; token, _, err = tokenizer.NextToken() {
-	// 	err = doc.doi.AddTermOffset(token, i)
-	// 	if err != nil && err != io.EOF {
-	// 		return err
-	// 	}
-	// 	i++
-	// }
 
 	return nil
 }
@@ -451,7 +444,7 @@ func (doc *TestDocumentIdxV1) CloseDoi() error {
 }
 
 func (doc *TestDocumentIdxV1) CreateDti(key *sscrypto.StrongSaltKey) error {
-	doc.dtiFilePath = fmt.Sprintf(dtiPathFmt, doc.docID, doc.docVer)
+	doc.dtiFilePath = fmt.Sprintf(dtiPathFmt, doc.DocID, doc.DocVer)
 	if err := os.MkdirAll(filepath.Dir(doc.dtiFilePath), 0770); err != nil {
 		return errors.New(err)
 	}
@@ -475,7 +468,7 @@ func (doc *TestDocumentIdxV1) CreateDti(key *sscrypto.StrongSaltKey) error {
 	}
 	defer src.Close()
 
-	doc.dti, err = CreateDocTermIdxV1(doc.docID, doc.docVer, key, src, doc.dtiFile, 0)
+	doc.dti, err = CreateDocTermIdxV1(doc.DocID, doc.DocVer, key, src, doc.dtiFile, 0)
 	if err != nil {
 		return err
 	}
@@ -550,7 +543,7 @@ func (doc *TestDocumentIdxV1) Clean() error {
 	var err error = nil
 
 	err = firstError(err, doc.Close())
-	err = firstError(err, os.RemoveAll(fmt.Sprintf(docPathFmt, doc.docID, doc.docVer)))
+	err = firstError(err, os.RemoveAll(fmt.Sprintf(docPathFmt, doc.DocID, doc.DocVer)))
 
 	return err
 }

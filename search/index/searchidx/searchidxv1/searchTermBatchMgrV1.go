@@ -238,7 +238,7 @@ func (batch *SearchTermBatchV1) ProcessTermBatch() (map[string]error, error) {
 	t2 := time.Now()
 	stiSuccess := make([]*SearchTermIdxWriterV1, 0, len(stiResp))
 	for stiw, err := range stiResp {
-		respMap[stiw.Term] = err
+		respMap[stiw.Term] = utils.FirstError(respMap[stiw.Term], err)
 		if err == nil {
 			stiSuccess = append(stiSuccess, stiw)
 		}
@@ -246,8 +246,12 @@ func (batch *SearchTermBatchV1) ProcessTermBatch() (map[string]error, error) {
 
 	t3 := time.Now()
 	ssdiResp, err := batch.processSsdiAll(stiSuccess)
+	if err != nil {
+		return respMap, err
+	}
+
 	for stiw, err := range ssdiResp {
-		respMap[stiw.Term] = err
+		respMap[stiw.Term] = utils.FirstError(respMap[stiw.Term], err)
 	}
 
 	t4 := time.Now()
@@ -285,7 +289,7 @@ func (batch *SearchTermBatchV1) processStiBatch() (map[*SearchTermIdxWriterV1]*S
 
 	stiwToChan := make(map[*SearchTermIdxWriterV1](chan *SearchTermIdxWriterRespV1))
 	for stiw, blkList := range stiwToBlks {
-		if blkList != nil && len(blkList) > 0 {
+		if len(blkList) > 0 {
 			stiwChan := make(chan *SearchTermIdxWriterRespV1)
 			stiwToChan[stiw] = stiwChan
 
@@ -319,13 +323,13 @@ func (batch *SearchTermBatchV1) processStiAll() (map[*SearchTermIdxWriterV1]erro
 		source.Reset()
 	}
 
-	for true {
+	for {
 		stiBlocksResp, err := batch.processStiBatch()
 		if err != nil && err != io.EOF {
 			return nil, err
 		}
 
-		if stiBlocksResp != nil && len(stiBlocksResp) > 0 {
+		if len(stiBlocksResp) > 0 {
 			for stiw, resp := range stiBlocksResp {
 				if resp != nil {
 					// If there is already an error for this STIW, do not overwrite
@@ -384,6 +388,7 @@ func (batch *SearchTermBatchV1) processSsdiAll(stiwList []*SearchTermIdxWriterV1
 				}
 			}
 
+			ssdi.Close()
 			ssdiChan <- nil
 		}(stiw, ssdiChan)
 	}
@@ -488,7 +493,7 @@ func CreateSearchTermIdxWriterV1(owner common.SearchIdxOwner, term string,
 	}
 
 	// Open previous STI if there is one
-	updateID, err := GetLatestUpdateIDV1(owner, term, termKey)
+	updateID, _ := GetLatestUpdateIDV1(owner, term, termKey)
 	if updateID != "" {
 		stiw.oldSti, err = OpenSearchTermIdxV1(owner, term, termKey, indexKey, updateID)
 		if err != nil {
@@ -625,7 +630,7 @@ func (stiw *SearchTermIdxWriterV1) processSourceBlocks(
 	// Process the source blocks
 	for _, srcBlk := range sourceBlocks {
 		srcOffsets := srcOffsetMap[srcBlk]
-		if srcOffsets == nil || len(srcOffsets) == 0 {
+		if len(srcOffsets) == 0 {
 			continue
 		}
 
@@ -767,7 +772,7 @@ func (stiw *SearchTermIdxWriterV1) Close() ([]*SearchTermIdxBlkV1, error) {
 			if err != nil && err != io.EOF {
 				finalErr = err
 			}
-			if blks != nil && len(blks) > 0 {
+			if len(blks) > 0 {
 				returnBlocks = append(returnBlocks, blks...)
 			}
 		}

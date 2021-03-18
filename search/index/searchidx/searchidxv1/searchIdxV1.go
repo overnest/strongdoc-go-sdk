@@ -7,12 +7,14 @@ import (
 	"path"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
+	"github.com/shengdoushi/base58"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -23,6 +25,30 @@ import (
 
 func newUpdateIDV1() string {
 	return fmt.Sprintf("%x", time.Now().UnixNano())
+}
+
+var termHmacMutex sync.Mutex
+
+func createTermHmac(term string, termKey *sscrypto.StrongSaltKey) (string, error) {
+	termHmacMutex.Lock()
+	defer termHmacMutex.Unlock()
+
+	err := termKey.MACReset()
+	if err != nil {
+		return "", errors.New(err)
+	}
+
+	_, err = termKey.MACWrite([]byte(term))
+	if err != nil {
+		return "", errors.New(err)
+	}
+
+	hmac, err := termKey.MACSum(nil)
+	if err != nil {
+		return "", errors.New(err)
+	}
+
+	return base58.Encode(hmac, base58.BitcoinAlphabet), nil
 }
 
 // GetUpdateIdsV1 returns the list of available update IDs for a specific owner + term in
@@ -43,7 +69,7 @@ func GetLatestUpdateIDV1(owner common.SearchIdxOwner, term string, termKey *sscr
 		return "", err
 	}
 
-	if ids == nil || len(ids) == 0 {
+	if len(ids) == 0 {
 		return "", nil
 	}
 
@@ -75,7 +101,7 @@ func GetUpdateIdsHmacV1(owner common.SearchIdxOwner, termHmac string) ([]string,
 		}
 	}
 
-	sort.Slice(updateIDsInt, func(i, j int) bool { return updateIDsInt[i] < updateIDsInt[j] })
+	sort.Slice(updateIDsInt, func(i, j int) bool { return updateIDsInt[i] > updateIDsInt[j] })
 	for i := 0; i < len(updateIDs); i++ {
 		updateIDs[i] = fmt.Sprintf("%x", updateIDsInt[i])
 	}
@@ -90,7 +116,7 @@ func GetLatestUpdateIdsHmacV1(owner common.SearchIdxOwner, termHmac string) (str
 		return "", err
 	}
 
-	if ids == nil || len(ids) == 0 {
+	if len(ids) == 0 {
 		return "", nil
 	}
 
@@ -172,7 +198,7 @@ func (idx *SearchIdxV1) ProcessBatchTerms() (map[string]error, error) {
 	}
 
 	// PSL DEBUG
-	fmt.Println("batch", termBatch.termList)
+	fmt.Println("batch: ", termBatch.termList[0], "->", termBatch.termList[len(termBatch.termList)-1])
 
 	return termBatch.ProcessTermBatch()
 }

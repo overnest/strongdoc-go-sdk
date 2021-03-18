@@ -100,21 +100,32 @@ func TestTools(t *testing.T) {
 }
 
 func TestCreateModifiedDoc(t *testing.T) {
+	documents := 30
+	versions := 3
+
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	docs, err := InitTestDocuments(1, false)
+	docs, err := InitTestDocuments(documents, false)
 	assert.NilError(t, err)
-	oldDoc := docs[0]
 	defer CleanTestDocumentIndexes()
 
-	newDoc := testCreateModifiedDoc(t, oldDoc, key)
-	newDoc = testCreateModifiedDoc(t, newDoc, key)
-	newDoc = testCreateModifiedDoc(t, newDoc, key)
-	newDoc = testCreateModifiedDoc(t, newDoc, key)
+	docVers := make([][]*TestDocumentIdxV1, len(docs))
+	for i, doc := range docs {
+		docVers[i] = make([]*TestDocumentIdxV1, versions+1)
+		docVers[i][0] = doc
+	}
+
+	for v := 0; v < versions; v++ {
+		for _, oldDocs := range docVers {
+			oldDoc := oldDocs[v]
+			newDoc := testCreateModifiedDoc(t, oldDoc, key, v == 0)
+			oldDocs[v+1] = newDoc
+		}
+	}
 }
 
-func testCreateModifiedDoc(t *testing.T, oldDoc *TestDocumentIdxV1, key *sscrypto.StrongSaltKey) *TestDocumentIdxV1 {
+func testCreateModifiedDoc(t *testing.T, oldDoc *TestDocumentIdxV1, key *sscrypto.StrongSaltKey, createOldIdx bool) *TestDocumentIdxV1 {
 	addedTerms, deletedTerms := rand.Intn(99)+1, rand.Intn(99)+1
 
 	newDoc, err := oldDoc.CreateModifiedDoc(addedTerms, deletedTerms)
@@ -122,13 +133,15 @@ func testCreateModifiedDoc(t *testing.T, oldDoc *TestDocumentIdxV1, key *sscrypt
 	defer oldDoc.Close()
 	defer newDoc.Close()
 
-	assert.Equal(t, len(newDoc.addedTerms), addedTerms)
-	assert.Equal(t, len(newDoc.deletedTerms), deletedTerms)
+	assert.Equal(t, len(newDoc.AddedTerms), addedTerms)
+	assert.Equal(t, len(newDoc.DeletedTerms), deletedTerms)
 
-	err = oldDoc.CreateDoi(key)
-	assert.NilError(t, err)
-	err = oldDoc.CreateDti(key)
-	assert.NilError(t, err)
+	if createOldIdx {
+		err = oldDoc.CreateDoi(key)
+		assert.NilError(t, err)
+		err = oldDoc.CreateDti(key)
+		assert.NilError(t, err)
+	}
 	err = newDoc.CreateDoi(key)
 	assert.NilError(t, err)
 	err = newDoc.CreateDti(key)
@@ -158,14 +171,14 @@ func testCreateModifiedDoc(t *testing.T, oldDoc *TestDocumentIdxV1, key *sscrypt
 		}
 	}
 
-	docAdded := make([]string, 0, len(newDoc.addedTerms))
-	for term := range newDoc.addedTerms {
+	docAdded := make([]string, 0, len(newDoc.AddedTerms))
+	for term := range newDoc.AddedTerms {
 		docAdded = append(docAdded, term)
 	}
 	sort.Strings(docAdded)
 
-	docDeleted := make([]string, 0, len(newDoc.deletedTerms))
-	for term := range newDoc.deletedTerms {
+	docDeleted := make([]string, 0, len(newDoc.DeletedTerms))
+	for term := range newDoc.DeletedTerms {
 		docDeleted = append(docDeleted, term)
 	}
 	sort.Strings(docDeleted)
