@@ -184,7 +184,6 @@ func CreateSearchTermBatchV1(sdc client.StrongDocClient, owner common.SearchIdxO
 	}
 
 	for _, source := range sources {
-
 		stiw, err := CreateSearchTermIdxWriterV1(
 			sdc, owner, source.Term, source.AddSources, source.DelSources,
 			source.TermKey, source.IndexKey, source.delDocs)

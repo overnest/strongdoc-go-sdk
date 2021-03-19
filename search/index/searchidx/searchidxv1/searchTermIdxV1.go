@@ -144,7 +144,7 @@ func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwn
 
 	// Create a block list writer using the streaming crypto so the blocks will be
 	// encrypted.
-	sti.bwriter, err = ssblocks.NewBlockListWriterV1(streamCrypto, uint32(common.STI_BLOCK_SIZE_MAX),
+	sti.bwriter, err = ssblocks.NewBlockListWriterV1(streamCrypto, 0,
 		sti.InitOffset+uint64(len(plainHdrSerial)+len(cipherHdrSerial)))
 	if err != nil {
 		return nil, errors.New(err)

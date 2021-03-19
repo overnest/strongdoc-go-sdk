@@ -11,7 +11,6 @@ import (
 	"path"
 	"sort"
 	"strings"
-	"time"
 	"unicode"
 
 	"github.com/overnest/strongdoc-go-sdk/client"
@@ -279,10 +278,10 @@ func (doc *TestDocumentIdxV1) CreateDoiAndDti(sdc client.StrongDocClient, key *s
 	if err != nil {
 		return err
 	}
-	time.Sleep(10 * time.Second)
+	//time.Sleep(10 * time.Second)
 
 	err = doc.CreateDti(sdc, key)
-	time.Sleep(10 * time.Second)
+	//time.Sleep(10 * time.Second)
 	return err
 }
 
