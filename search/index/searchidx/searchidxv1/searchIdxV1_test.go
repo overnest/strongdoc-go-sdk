@@ -66,6 +66,7 @@ func TestSearchTermUpdateIDsV1(t *testing.T) {
 func TestSearchIdxWriterV1(t *testing.T) {
 	versions := 3
 	numDocs := 10
+	delDocs := 4
 	sdc := prevTest(t)
 	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 
@@ -129,6 +130,21 @@ func TestSearchIdxWriterV1(t *testing.T) {
 		testCreateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, oldDocs, newDocs)
 		testValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, newDocs)
 	}
+
+	// Test remove document
+	remDocs := make([]*docidx.TestDocumentIdxV1, numDocs)
+	for i, docVer := range docVers {
+		remDocs[i] = docVer[len(docVer)-1]
+	}
+
+	for i := 0; i < numDocs-delDocs; i++ {
+		j := rand.Intn(len(remDocs))
+		remDocs[j] = remDocs[len(remDocs)-1]
+		remDocs = remDocs[:len(remDocs)-1]
+	}
+
+	testDeleteSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, remDocs)
+	testValidateDeleteSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, remDocs)
 }
 
 func testCreateSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
@@ -360,6 +376,70 @@ func testValidateDeletedSortedDocIdxV1(t *testing.T, sdc client.StrongDocClient,
 
 	err = ssdi.Close()
 	assert.NilError(t, err)
+}
+
+func testDeleteSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
+	owner common.SearchIdxOwner, docKey, termKey, indexKey *sscrypto.StrongSaltKey,
+	delDocs []*docidx.TestDocumentIdxV1) {
+
+	sources := make([]SearchTermIdxSourceV1, 0, len(delDocs))
+	for _, delDoc := range delDocs {
+		assert.NilError(t, delDoc.CreateDoiAndDti(sdc, docKey))
+		delDoi, err := delDoc.OpenDoi(sdc, docKey)
+		assert.NilError(t, err)
+		defer delDoi.Close()
+		delDti, err := delDoc.OpenDti(sdc, docKey)
+		assert.NilError(t, err)
+		defer delDti.Close()
+
+		source, err := SearchTermIdxSourceDeleteDoc(delDoi, delDti)
+		assert.NilError(t, err)
+		sources = append(sources, source)
+	}
+
+	siw, err := CreateSearchIdxWriterV1(owner, termKey, indexKey, sources)
+	assert.NilError(t, err)
+
+	termErr, err := siw.ProcessAllTerms(sdc)
+	if err != nil {
+		fmt.Println(err.(*errors.Error).ErrorStack())
+	}
+	assert.NilError(t, err)
+
+	for term, err := range termErr {
+		if err != nil {
+			fmt.Println(term, err.(*errors.Error).ErrorStack())
+		}
+		assert.NilError(t, err)
+	}
+}
+
+func testValidateDeleteSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
+	owner common.SearchIdxOwner, docKey, termKey, indexKey *sscrypto.StrongSaltKey,
+	delDocs []*docidx.TestDocumentIdxV1) {
+
+	delTermsMap := make(map[string][]*docidx.TestDocumentIdxV1) // term -> []testDocs
+
+	for _, doc := range delDocs {
+		dti, err := doc.OpenDti(sdc, docKey)
+		assert.NilError(t, err)
+
+		terms, _, err := dti.(*docidxv1.DocTermIdxV1).ReadAllTerms()
+		assert.NilError(t, err)
+
+		for _, term := range terms {
+			delTermsMap[term] = append(delTermsMap[term], doc)
+		}
+
+		err = dti.Close()
+		assert.NilError(t, err)
+
+	}
+
+	for term, docs := range delTermsMap {
+		testValidateDeletedSearchTermIdxV1(t, sdc, owner, termKey, indexKey, term, docs)
+		testValidateDeletedSortedDocIdxV1(t, sdc, owner, termKey, indexKey, term, docs)
+	}
 }
 
 func cleanupSearchIndexes(owner common.SearchIdxOwner, numToKeep int) error {

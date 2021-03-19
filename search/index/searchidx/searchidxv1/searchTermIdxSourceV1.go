@@ -50,8 +50,8 @@ func SearchTermIdxSourceUpdateDoc(doiNew didxcommon.DocOffsetIdx, dtiOld, dtiNew
 }
 
 // SearchTermIdxSourceDeleteDoc opens a search source when an existing document is deleted
-func SearchTermIdxSourceDeleteDoc(doiNew didxcommon.DocOffsetIdx, dti didxcommon.DocTermIdx) (SearchTermIdxSourceV1, error) {
-	return createSearchTermIdxSourceV1(doiNew, dti, nil)
+func SearchTermIdxSourceDeleteDoc(doiDel didxcommon.DocOffsetIdx, dtiDel didxcommon.DocTermIdx) (SearchTermIdxSourceV1, error) {
+	return createSearchTermIdxSourceV1(doiDel, dtiDel, nil)
 }
 
 func createSearchTermIdxSourceV1(doiNew didxcommon.DocOffsetIdx, dtiOld, dtiNew didxcommon.DocTermIdx) (SearchTermIdxSourceV1, error) {
