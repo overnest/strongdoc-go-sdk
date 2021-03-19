@@ -1,187 +1,106 @@
 package searchidxv1
 
 import (
-	"fmt"
-	"io"
-	"os"
 	"testing"
+	"time"
+
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"gotest.tools/assert"
 
 	docidx "github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 	didxcommon "github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
-	didxv1 "github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
-	"gotest.tools/assert"
 )
 
 func TestSearchTermIdxSourceTextFileV1(t *testing.T) {
+	// ================================ Prev Test ================================
+	testClient := prevTest(t)
 	docID1 := "DOC1"
 	docVer1 := uint64(1)
-	docID2 := "DOC2"
+	//docID2 := "DOC2"
 	docVer2 := uint64(2)
 
+	sourceFilePath1, err := utils.FetchFileLoc("./testDocuments/doc1.txt.gz")
+	assert.NilError(t, err)
+	sourceFilePath2, err := utils.FetchFileLoc("./testDocuments/doc1.chg.txt.gz")
+	assert.NilError(t, err)
+	//sourceFilePath3, err := utils.FetchFileLoc("./testDocuments/doc2.txt.gz")
+	//assert.NilError(t, err)
+	//sourceFilePath4, err := utils.FetchFileLoc("./testDocuments/doc2.chg.txt.gz")
+	//assert.NilError(t, err)
+
+	// ================================ Generate doc index (offset + term) ================================
+	// Create encryption key
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	docFileNameOld1, docFileNameNew1, docFileNameOld2, docFileNameNew2 := createDocumentFileName(t)
-	doiFileNameOld1, dtiFileNameOld1 := createDocumentIndexes(t, key, docID1, docVer1, docFileNameOld1)
-	doiFileNameNew1, dtiFileNameNew1 := createDocumentIndexes(t, key, docID1, docVer2, docFileNameNew1)
-	doiFileNameOld2, dtiFileNameOld2 := createDocumentIndexes(t, key, docID2, docVer1, docFileNameOld2)
-	doiFileNameNew2, dtiFileNameNew2 := createDocumentIndexes(t, key, docID2, docVer2, docFileNameNew2)
+	// Create doc indexes
+	createDocumentIndexes(t, testClient, key, docID1, docVer1, sourceFilePath1) // doc1 ver1
+	createDocumentIndexes(t, testClient, key, docID1, docVer2, sourceFilePath2) // doc1 ver2
+	//createDocumentIndexes(t, testClient, key, docID2, docVer1, sourceFilePath3) // doc2 ver1
+	//createDocumentIndexes(t, testClient, key, docID2, docVer2, sourceFilePath4) // doc2 ver2
 
-	// Create new doc
-	doiFileOld1, doiOld1 := openDocOffsetIndex(t, key, doiFileNameOld1)
-	dtiFileOld1, dtiOld1 := openDocTermIndex(t, key, dtiFileNameOld1)
-	source1, err := SearchTermIdxSourceCreateDoc(doiOld1, dtiOld1)
+	defer didxcommon.RemoveDocIndexes(testClient, docID1)
+	//defer didxcommon.RemoveDocIndexes(testClient, docID2)
+
+	time.Sleep(100 * time.Second)
+
+	// Open doc1 ver1 index
+	doi1 := openDocOffsetIndex(t, testClient, key, docID1, docVer1)
+	dti1 := openDocTermIndex(t, testClient, key, docID1, docVer1)
+
+	source1, err := SearchTermIdxSourceCreateDoc(doi1, dti1)
 	assert.NilError(t, err)
 	assert.Assert(t, len(source1.GetAddTerms()) > 0)
 	assert.Assert(t, len(source1.GetDelTerms()) == 0)
 	assert.Equal(t, source1.GetDocID(), docID1)
 	assert.Equal(t, source1.GetDocVer(), docVer1)
-	closeFiles(t, source1, dtiOld1, dtiFileOld1, doiOld1, doiFileOld1)
+	//closeFiles(t, source1, doi1, dti1)
+	source1.Close()
 
 	// Update existing doc
-	doiFileNew1, doiNew1 := openDocOffsetIndex(t, key, doiFileNameNew1)
-	dtiFileNew1, dtiNew1 := openDocTermIndex(t, key, dtiFileNameNew1)
-	dtiFileOld1, dtiOld1 = openDocTermIndex(t, key, dtiFileNameOld1)
-	source2, err := SearchTermIdxSourceUpdateDoc(doiNew1, dtiOld1, dtiNew1)
+	doi2 := openDocOffsetIndex(t, testClient, key, docID1, docVer2)
+	dti2 := openDocTermIndex(t, testClient, key, docID1, docVer2)
+	dti1 = openDocTermIndex(t, testClient, key, docID1, docVer1)
+	source2, err := SearchTermIdxSourceUpdateDoc(doi2, dti1, dti2)
 	assert.NilError(t, err)
 	assert.Assert(t, len(source2.GetAddTerms()) > 0)
 	assert.Assert(t, len(source2.GetDelTerms()) > 0)
 	assert.Equal(t, source2.GetDocID(), docID1)
 	assert.Equal(t, source2.GetDocVer(), docVer2)
-	closeFiles(t, source2, dtiOld1, dtiFileOld1, dtiNew1, dtiFileNew1, doiNew1, doiFileNew1)
+	source2.Close()
 
 	// Delete existing doc
-	doiFileNew1, doiNew1 = openDocOffsetIndex(t, key, doiFileNameNew1)
-	dtiFileNew1, dtiNew1 = openDocTermIndex(t, key, dtiFileNameNew1)
-	source3, err := SearchTermIdxSourceDeleteDoc(doiNew1, dtiNew1)
+	doi2 = openDocOffsetIndex(t, testClient, key, docID1, docVer2)
+	dti2 = openDocTermIndex(t, testClient, key, docID1, docVer2)
+	source3, err := SearchTermIdxSourceDeleteDoc(doi2, dti2)
 	assert.NilError(t, err)
 	assert.Assert(t, len(source3.GetAddTerms()) == 0)
 	assert.Assert(t, len(source3.GetDelTerms()) > 0)
 	assert.Equal(t, source3.GetDocID(), docID1)
 	assert.Equal(t, source3.GetDocVer(), docVer2)
-	closeFiles(t, source3, dtiNew1, dtiFileNew1, doiNew1, doiFileNew1)
-
-	removeFiles(t, doiFileNameOld1, dtiFileNameOld1, doiFileNameNew1,
-		dtiFileNameNew1, doiFileNameOld2, dtiFileNameOld2, doiFileNameNew2,
-		dtiFileNameNew2)
+	//closeFiles(t, source3, doi2, dti2)
+	source3.Close()
 }
 
-func createDocumentFileName(t *testing.T) (string, string, string, string) {
-	docFileNameOld1, err := utils.FetchFileLoc("./testDocuments/doc1.txt.gz")
+func createDocumentIndexes(t *testing.T, sdc client.StrongDocClient, key *sscrypto.StrongSaltKey,
+	docID string, docVer uint64, sourceFilepath string) {
+	sourceFile, err := utils.OpenLocalFile(sourceFilepath)
 	assert.NilError(t, err)
-	docFileNameNew1, err := utils.FetchFileLoc("./testDocuments/doc1.chg.txt.gz")
-	assert.NilError(t, err)
-	docFileNameOld2, err := utils.FetchFileLoc("./testDocuments/doc2.txt.gz")
-	assert.NilError(t, err)
-	docFileNameNew2, err := utils.FetchFileLoc("./testDocuments/doc2.chg.txt.gz")
-	assert.NilError(t, err)
-	return docFileNameOld1, docFileNameNew1, docFileNameOld2, docFileNameNew2
-}
-
-func createDocumentIndexes(t *testing.T, key *sscrypto.StrongSaltKey,
-	docID string, docVer uint64, sourceFile string) (doiFileName, dtiFileName string) {
-
-	doiFileName = fmt.Sprintf("/tmp/doi_%v_%v.idx", docID, docVer)
-	dtiFileName = fmt.Sprintf("/tmp/dti_%v_%v.idx", docID, docVer)
-
-	createDocOffsetIndex(t, key, docID, docVer, sourceFile, doiFileName)
-
-	doiFile, doi := openDocOffsetIndex(t, key, doiFileName)
-	defer doiFile.Close()
-	defer doi.Close()
-
-	createDocTermIndex(t, key, docID, docVer, doi, dtiFileName)
-	return
-}
-
-func createDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string, docVer uint64,
-	sourceFile, outputFile string) {
-
-	idxFile, err := os.Create(outputFile)
-	assert.NilError(t, err)
-	defer idxFile.Close()
-
-	doi, err := docidx.CreateDocOffsetIdx(docID, docVer, key, idxFile, 0)
-	assert.NilError(t, err)
-	defer doi.Close()
-
-	tokenizer, err := utils.OpenFileTokenizer(sourceFile)
-	assert.NilError(t, err)
-	defer tokenizer.Close()
-
-	for token, pos, err := tokenizer.NextToken(); err != io.EOF; token, pos, err = tokenizer.NextToken() {
-		adderr := doi.AddTermOffset(token, uint64(pos.Offset))
-		assert.NilError(t, adderr)
-	}
-}
-
-func openDocOffsetIndex(t *testing.T, key *sscrypto.StrongSaltKey, fileName string) (doiFile *os.File, doi *didxv1.DocOffsetIdxV1) {
-	var err error
-
-	doiFile, err = os.Open(fileName)
-	assert.NilError(t, err)
-
-	doi, err = didxv1.OpenDocOffsetIdxV1(key, doiFile, 0)
-	assert.NilError(t, err)
-
-	return
-}
-
-func createDocTermIndex(t *testing.T, key *sscrypto.StrongSaltKey, docID string, docVer uint64,
-	doi didxcommon.DocOffsetIdx, outputFile string) {
-
-	outfile, err := os.Create(outputFile)
-	assert.NilError(t, err)
-
-	source, err := didxv1.OpenDocTermSourceDocOffsetV1(doi)
-	assert.NilError(t, err)
-	defer source.Close()
-
-	//
-	// Create a document term index
-	//
-	dti, err := didxv1.CreateDocTermIdxV1(docID, docVer, key, source, outfile, 0)
-	assert.NilError(t, err)
-
-	err = nil
-	for err == nil {
-		_, err = dti.WriteNextBlock()
-		if err != nil {
-			assert.Equal(t, err, io.EOF)
-		}
-	}
-
-	err = dti.Close()
-	assert.NilError(t, err)
-	err = outfile.Close()
+	defer sourceFile.Close()
+	err = docidx.CreateAndSaveDocIndexes(sdc, docID, docVer, key, sourceFile)
 	assert.NilError(t, err)
 }
 
-func openDocTermIndex(t *testing.T, key *sscrypto.StrongSaltKey, fileName string) (dtiFile *os.File, dti *didxv1.DocTermIdxV1) {
-	var err error
-
-	dtiFile, err = os.Open(fileName)
+func openDocOffsetIndex(t *testing.T, sdc client.StrongDocClient, key *sscrypto.StrongSaltKey, docID string, docVer uint64) didxcommon.DocOffsetIdx {
+	doi, err := docidx.OpenDocOffsetIdx(sdc, docID, docVer, key)
 	assert.NilError(t, err)
-	info, err := os.Stat(fileName)
-	assert.NilError(t, err)
-
-	dti, err = didxv1.OpenDocTermIdxV1(key, dtiFile, 0, uint64(info.Size()))
-	assert.NilError(t, err)
-
-	return
+	return doi
 }
 
-func closeFiles(t *testing.T, objs ...io.Closer) {
-	for _, obj := range objs {
-		err := obj.Close()
-		assert.NilError(t, err)
-	}
-}
-
-func removeFiles(t *testing.T, filenames ...string) {
-	for _, filename := range filenames {
-		os.Remove(filename)
-	}
+func openDocTermIndex(t *testing.T, sdc client.StrongDocClient, key *sscrypto.StrongSaltKey, docID string, docVer uint64) docidx.DocTermIdx {
+	dti, err := docidx.OpenDocTermIdx(sdc, docID, docVer, key)
+	assert.NilError(t, err)
+	return dti
 }

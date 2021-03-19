@@ -1,12 +1,11 @@
 package searchidxv1
 
 import (
-	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/overnest/strongdoc-go-sdk/client"
 
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/crypto"
@@ -39,12 +38,8 @@ type SearchSortDocIdxV1 struct {
 	totalDocIDs uint64
 }
 
-func getSearchSortDocIdxPathV1(prefix string, owner common.SearchIdxOwner, term, updateID string) string {
-	return fmt.Sprintf("%v/sortdoc", GetSearchIdxPathV1(prefix, owner, term, updateID))
-}
-
 // CreateSearchSortDocIdxV1 creates a search sorted document index writer V1
-func CreateSearchSortDocIdxV1(owner common.SearchIdxOwner, term, updateID string,
+func CreateSearchSortDocIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term, updateID string,
 	termKey, indexKey *sscrypto.StrongSaltKey) (*SearchSortDocIdxV1, error) {
 
 	var err error
@@ -81,7 +76,7 @@ func CreateSearchSortDocIdxV1(owner common.SearchIdxOwner, term, updateID string
 		return nil, errors.Errorf("The key type %v is not a midstream key", indexKey.Type.Name)
 	}
 
-	ssdi.sti, err = OpenSearchTermIdxV1(owner, term, termKey, indexKey, updateID)
+	ssdi.sti, err = OpenSearchTermIdxV1(sdc, owner, term, termKey, indexKey, updateID)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +86,7 @@ func CreateSearchSortDocIdxV1(owner common.SearchIdxOwner, term, updateID string
 		return nil, err
 	}
 
-	_, err = ssdi.createWriter()
+	_, err = ssdi.createWriter(sdc)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +164,7 @@ func CreateSearchSortDocIdxV1(owner common.SearchIdxOwner, term, updateID string
 }
 
 // OpenSearchSortDocIdxV1 opens a search sorted document index reader V1
-func OpenSearchSortDocIdxV1(owner common.SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchSortDocIdxV1, error) {
+func OpenSearchSortDocIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchSortDocIdxV1, error) {
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
 		return nil, errors.Errorf("The term key type %v is not a MAC key", termKey.Type.Name)
 	}
@@ -184,7 +179,7 @@ func OpenSearchSortDocIdxV1(owner common.SearchIdxOwner, term string, termKey, i
 		return nil, err
 	}
 
-	reader, size, err := createSsdiReader(owner, termHmac, updateID)
+	reader, size, err := createSsdiReader(sdc, owner, termHmac, updateID)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +236,7 @@ func OpenSearchSortDocIdxV1(owner common.SearchIdxOwner, term string, termKey, i
 
 func openSearchSortDocIdxV1(ssdi *SearchSortDocIdxV1, plainHdrBody *SsdiPlainHdrBodyV1, plainHdrOffset, endOffset uint64) (*SearchSortDocIdxV1, error) {
 	// Initialize the streaming crypto to decrypt ciphertext header and the blocks after that
-	streamCrypto, err := crypto.CreateStreamCrypto(ssdi.IndexKey, ssdi.IndexNonce, ssdi.reader, int64(plainHdrOffset))
+	streamCrypto, err := crypto.OpenStreamCrypto(ssdi.IndexKey, ssdi.IndexNonce, ssdi.reader, int64(plainHdrOffset))
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -277,50 +272,34 @@ func openSearchSortDocIdxV1(ssdi *SearchSortDocIdxV1, plainHdrBody *SsdiPlainHdr
 	return ssdi, nil
 }
 
-func (ssdi *SearchSortDocIdxV1) createWriter() (io.WriteCloser, error) {
+func (ssdi *SearchSortDocIdxV1) createWriter(sdc client.StrongDocClient) (io.WriteCloser, error) {
 	if ssdi.writer != nil {
 		return ssdi.writer, nil
 	}
 
-	var err error
-	path := getSearchSortDocIdxPathV1(common.GetSearchIdxPathPrefix(), ssdi.Owner, ssdi.termHmac, ssdi.updateID)
-
-	if err = os.MkdirAll(filepath.Dir(path), 0770); err != nil {
+	writer, err := common.OpenSearchSortDocIndexWriter(sdc, ssdi.Owner, ssdi.termHmac, ssdi.updateID)
+	if err != nil {
 		return nil, err
 	}
-
-	ssdi.writer, err = os.Create(path)
-	if err != nil {
-		return nil, errors.New(err)
-	}
+	ssdi.writer = writer
 
 	return ssdi.writer, nil
 }
 
-func (ssdi *SearchSortDocIdxV1) createReader() (io.ReadCloser, uint64, error) {
+func (ssdi *SearchSortDocIdxV1) createReader(sdc client.StrongDocClient) (io.ReadCloser, uint64, error) {
 	if ssdi.reader != nil {
 		return ssdi.reader, ssdi.storeSize, nil
 	}
 
-	return createSsdiReader(ssdi.Owner, ssdi.termHmac, ssdi.updateID)
+	return createSsdiReader(sdc, ssdi.Owner, ssdi.termHmac, ssdi.updateID)
 }
 
-func createSsdiReader(owner common.SearchIdxOwner, termHmac, updateID string) (io.ReadCloser, uint64, error) {
-	path := getSearchSortDocIdxPathV1(common.GetSearchIdxPathPrefix(), owner, termHmac, updateID)
-	reader, err := os.Open(path)
+func createSsdiReader(sdc client.StrongDocClient, owner common.SearchIdxOwner, termHmac, updateID string) (io.ReadCloser, uint64, error) {
+	reader, size, err := common.OpenSearchSortDocIndexReader(sdc, owner, termHmac, updateID)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, 0, os.ErrNotExist
-		}
-		return nil, 0, errors.New(err)
+		return nil, 0, err
 	}
-
-	stat, err := reader.Stat()
-	if err != nil {
-		return nil, 0, errors.New(err)
-	}
-
-	return reader, uint64(stat.Size()), nil
+	return reader, size, nil
 }
 
 func (ssdi *SearchSortDocIdxV1) WriteNextBlock() (*SearchSortDocIdxBlkV1, error) {

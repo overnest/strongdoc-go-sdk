@@ -2,10 +2,12 @@ package searchidxv1
 
 import (
 	"fmt"
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 	"io"
 	"math/rand"
-	"os"
 	"testing"
+	"time"
 
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
@@ -118,11 +120,15 @@ func TestSearchTermIdxBatchRemoveString(t *testing.T) {
 }
 
 func TestSearchTermIdxSimpleV1(t *testing.T) {
-	owner := common.CreateSearchIdxOwner(common.SI_OWNER_USR, "owner1")
+	// ================================ Prev Test ================================
+	sdc := prevTest(t)
+
+	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 	term := "term1"
 	maxDocID := 20
 	maxOffsetCount := 30
 
+	// ================================ Generate doc search index (termIdx) ================================
 	termKey, err := sscrypto.GenerateKey(sscrypto.Type_HMACSha512)
 	assert.NilError(t, err)
 	indexKey, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
@@ -131,17 +137,20 @@ func TestSearchTermIdxSimpleV1(t *testing.T) {
 	//
 	// Create New STI and write a lot of blocks with random info
 	//
-	sti, writtenBlocks := createSearchTermIdxSimpleV1(t, owner, term,
+	sti, writtenBlocks := createSearchTermIdxSimpleV1(t, sdc, owner, term,
 		termKey, indexKey, maxDocID, maxOffsetCount)
-	defer os.RemoveAll(common.GetSearchIdxPathPrefix())
+
+	defer generateTermHmacAndRemoveSearchIndex(sdc, owner, term, termKey)
+
+	time.Sleep(10 * time.Second)
 
 	//
 	// Open STI and make sure the blocks match
 	//
-	updateIDs, err := GetUpdateIdsV1(owner, term, termKey)
+	updateIDs, err := GetUpdateIdsV1(sdc, owner, term, termKey)
 	assert.NilError(t, err)
 
-	sti, err = OpenSearchTermIdxV1(owner, term, termKey, indexKey, updateIDs[0])
+	sti, err = OpenSearchTermIdxV1(sdc, owner, term, termKey, indexKey, updateIDs[0])
 	assert.NilError(t, err)
 
 	var block *SearchTermIdxBlkV1
@@ -169,6 +178,7 @@ func TestSearchTermIdxSimpleV1(t *testing.T) {
 }
 
 func createSearchTermIdxSimpleV1(t *testing.T,
+	sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, term string,
 	termKey, indexKey *sscrypto.StrongSaltKey,
 	maxDocID, maxOffsetCount int) (*SearchTermIdxV1, []*SearchTermIdxBlkV1) {
@@ -177,7 +187,7 @@ func createSearchTermIdxSimpleV1(t *testing.T,
 	// Create New STI and write a lot of blocks with random info
 	//
 	writtenBlocks := make([]*SearchTermIdxBlkV1, 0, 100)
-	sti, err := CreateSearchTermIdxV1(owner, term, termKey, indexKey, nil, nil)
+	sti, err := CreateSearchTermIdxV1(sdc, owner, term, termKey, indexKey, nil, nil)
 	assert.NilError(t, err)
 
 	var block *SearchTermIdxBlkV1 = CreateSearchTermIdxBlkV1(sti.GetMaxBlockDataSize())

@@ -12,8 +12,12 @@ import (
 	"time"
 
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/api"
+	"github.com/overnest/strongdoc-go-sdk/client"
+	docidx "github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
+	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 
@@ -27,37 +31,43 @@ const (
 )
 
 func TestSearchTermUpdateIDsV1(t *testing.T) {
+	// ================================ Prev Test ================================
+	sdc := prevTest(t)
 	idCount := 10
 	updateIDs := make([]string, idCount)
 	term := "myTerm"
-	owner := common.CreateSearchIdxOwner(common.SI_OWNER_USR, "owner1")
+	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 
+	// ================================ Generate updateID ================================
 	termKey, err := sscrypto.GenerateKey(sscrypto.Type_HMACSha512)
 	assert.NilError(t, err)
 	termHmac, err := createTermHmac(term, termKey)
 	assert.NilError(t, err)
 
 	for i := 0; i < idCount; i++ {
-		updateID := newUpdateIDV1()
+		writer, updateID, err := common.OpenSearchTermIndexWriter(sdc, owner, termHmac)
 		updateIDs[idCount-i-1] = updateID
-		path := GetSearchIdxPathV1(common.GetSearchIdxPathPrefix(), owner, termHmac, updateID)
-		err = os.MkdirAll(path, 0770)
 		assert.NilError(t, err)
-		time.Sleep(time.Millisecond * 100)
+		err = writer.Close()
+		assert.NilError(t, err)
 	}
 
-	defer os.RemoveAll(common.GetSearchIdxPathPrefix())
+	time.Sleep(time.Second * 10)
 
-	resultIDs, err := GetUpdateIdsHmacV1(owner, termHmac)
+	defer common.RemoveSearchIndex(sdc, owner, termHmac)
+
+	resultIDs, err := GetUpdateIdsHmacV1(sdc, owner, termHmac)
 	assert.NilError(t, err)
 
 	assert.DeepEqual(t, updateIDs, resultIDs)
 }
 
+//  TODO only available for localTest
 func TestSearchIdxWriterV1(t *testing.T) {
 	versions := 3
 	numDocs := 10
-	owner := common.CreateSearchIdxOwner(common.SI_OWNER_USR, "owner1")
+	sdc := prevTest(t)
+	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 
 	var docKey, termKey, indexKey *sscrypto.StrongSaltKey = nil, nil, nil
 
@@ -82,26 +92,26 @@ func TestSearchIdxWriterV1(t *testing.T) {
 		assert.Assert(t, docKey != nil && termKey != nil && indexKey != nil)
 	}
 
-	firstDocs, err := docidxv1.InitTestDocuments(numDocs, false)
+	firstDocs, err := docidx.InitTestDocuments(numDocs, false)
 	assert.NilError(t, err)
 
-	docVers := make([][]*docidxv1.TestDocumentIdxV1, len(firstDocs))
+	docVers := make([][]*docidx.TestDocumentIdxV1, len(firstDocs))
 	for i, doc := range firstDocs {
-		docVers[i] = make([]*docidxv1.TestDocumentIdxV1, versions+1)
+		docVers[i] = make([]*docidx.TestDocumentIdxV1, versions+1)
 		docVers[i][0] = doc
 	}
 
-	testCreateSearchIdxV1(t, owner, docKey, termKey, indexKey, nil, firstDocs)
-	testValidateSearchIdxV1(t, owner, docKey, termKey, indexKey, firstDocs)
-	defer docidxv1.CleanTestDocumentIndexes()
+	testCreateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, nil, firstDocs)
+	testValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, firstDocs)
+	defer docidx.CleanAllTmpFiles()
 	defer os.RemoveAll(common.GetSearchIdxPathPrefix())
 
 	// err = cleanupSearchIndexes(owner, 1)
 	// assert.NilError(t, err)
 
 	for v := 1; v <= versions; v++ {
-		oldDocs := make([]*docidxv1.TestDocumentIdxV1, 0, numDocs)
-		newDocs := make([]*docidxv1.TestDocumentIdxV1, 0, numDocs)
+		oldDocs := make([]*docidx.TestDocumentIdxV1, 0, numDocs)
+		newDocs := make([]*docidx.TestDocumentIdxV1, 0, numDocs)
 		for _, docVerList := range docVers {
 			oldDoc := docVerList[v-1]
 
@@ -116,26 +126,26 @@ func TestSearchIdxWriterV1(t *testing.T) {
 			oldDocs = append(oldDocs, oldDoc)
 		}
 
-		testCreateSearchIdxV1(t, owner, docKey, termKey, indexKey, oldDocs, newDocs)
-		testValidateSearchIdxV1(t, owner, docKey, termKey, indexKey, newDocs)
+		testCreateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, oldDocs, newDocs)
+		testValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, newDocs)
 	}
 }
 
-func testCreateSearchIdxV1(t *testing.T, owner common.SearchIdxOwner,
+func testCreateSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
+	owner common.SearchIdxOwner,
 	docKey, termKey, indexKey *sscrypto.StrongSaltKey,
-	oldDocs []*docidxv1.TestDocumentIdxV1,
-	newDocs []*docidxv1.TestDocumentIdxV1) {
+	oldDocs []*docidx.TestDocumentIdxV1,
+	newDocs []*docidx.TestDocumentIdxV1) {
 
 	sources := make([]SearchTermIdxSourceV1, 0, len(newDocs))
 	for i, newDoc := range newDocs {
-		assert.NilError(t, newDoc.CreateDoi(docKey))
-		assert.NilError(t, newDoc.CreateDti(docKey))
-		newDoi, err := newDoc.OpenDoi(docKey)
+		assert.NilError(t, newDoc.CreateDoiAndDti(sdc, docKey))
+		newDoi, err := newDoc.OpenDoi(sdc, docKey)
 		assert.NilError(t, err)
-		defer newDoc.CloseDoi()
-		newDti, err := newDoc.OpenDti(docKey)
+		defer newDoi.Close()
+		newDti, err := newDoc.OpenDti(sdc, docKey)
 		assert.NilError(t, err)
-		defer newDoc.CloseDti()
+		defer newDti.Close()
 
 		if oldDocs == nil {
 			source, err := SearchTermIdxSourceCreateDoc(newDoi, newDti)
@@ -143,9 +153,9 @@ func testCreateSearchIdxV1(t *testing.T, owner common.SearchIdxOwner,
 			sources = append(sources, source)
 		} else {
 			oldDoc := oldDocs[i]
-			oldDti, err := oldDoc.OpenDti(docKey)
+			oldDti, err := oldDoc.OpenDti(sdc, docKey)
 			assert.NilError(t, err)
-			defer oldDoc.CloseDti()
+			defer oldDti.Close()
 
 			source, err := SearchTermIdxSourceUpdateDoc(newDoi, oldDti, newDti)
 			assert.NilError(t, err)
@@ -156,7 +166,7 @@ func testCreateSearchIdxV1(t *testing.T, owner common.SearchIdxOwner,
 	siw, err := CreateSearchIdxWriterV1(owner, termKey, indexKey, sources)
 	assert.NilError(t, err)
 
-	termErr, err := siw.ProcessAllTerms()
+	termErr, err := siw.ProcessAllTerms(sdc)
 	if err != nil {
 		fmt.Println(err.(*errors.Error).ErrorStack())
 	}
@@ -170,19 +180,19 @@ func testCreateSearchIdxV1(t *testing.T, owner common.SearchIdxOwner,
 	}
 }
 
-func testValidateSearchIdxV1(t *testing.T, owner common.SearchIdxOwner,
-	docKey, termKey, indexKey *sscrypto.StrongSaltKey,
-	newDocs []*docidxv1.TestDocumentIdxV1) {
+func testValidateSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
+	owner common.SearchIdxOwner, docKey, termKey, indexKey *sscrypto.StrongSaltKey,
+	newDocs []*docidx.TestDocumentIdxV1) {
 
 	docTermsMap := make(map[string]bool)
-	docTermLocMap := make(map[*docidxv1.TestDocumentIdxV1]map[string][]uint64) // term -> []locations
-	delTermsMap := make(map[string][]*docidxv1.TestDocumentIdxV1)              // term -> []testDocs
+	docTermLocMap := make(map[*docidx.TestDocumentIdxV1]map[string][]uint64) // term -> []locations
+	delTermsMap := make(map[string][]*docidx.TestDocumentIdxV1)              // term -> []testDocs
 
 	for _, doc := range newDocs {
-		doi, err := doc.OpenDoi(docKey)
+		doi, err := doc.OpenDoi(sdc, docKey)
 		assert.NilError(t, err)
 
-		terms, termloc, err := doi.ReadAllTermLoc()
+		terms, termloc, err := doi.(*docidxv1.DocOffsetIdxV1).ReadAllTermLoc()
 		assert.NilError(t, err)
 
 		docTermLocMap[doc] = termloc
@@ -190,7 +200,7 @@ func testValidateSearchIdxV1(t *testing.T, owner common.SearchIdxOwner,
 			docTermsMap[term] = true
 		}
 
-		err = doc.CloseDoi()
+		err = doi.Close()
 		assert.NilError(t, err)
 
 		for term := range doc.DeletedTerms {
@@ -205,31 +215,31 @@ func testValidateSearchIdxV1(t *testing.T, owner common.SearchIdxOwner,
 	sort.Strings(docTerms)
 
 	for _, term := range docTerms {
-		docLocMap := make(map[*docidxv1.TestDocumentIdxV1][]uint64) // doc -> locations
+		docLocMap := make(map[*docidx.TestDocumentIdxV1][]uint64) // doc -> locations
 		for doc, termLocMap := range docTermLocMap {
 			if locs, exist := termLocMap[term]; exist {
 				docLocMap[doc] = locs
 			}
 		}
 
-		testValidateSearchTermIdxV1(t, owner, termKey, indexKey, term, docLocMap)
-		testValidateSortedDocIdxV1(t, owner, termKey, indexKey, term, docLocMap)
+		testValidateSearchTermIdxV1(t, sdc, owner, termKey, indexKey, term, docLocMap)
+		testValidateSortedDocIdxV1(t, sdc, owner, termKey, indexKey, term, docLocMap)
 	}
 
 	for term, docs := range delTermsMap {
-		testValidateDeletedSearchTermIdxV1(t, owner, termKey, indexKey, term, docs)
-		testValidateDeletedSortedDocIdxV1(t, owner, termKey, indexKey, term, docs)
+		testValidateDeletedSearchTermIdxV1(t, sdc, owner, termKey, indexKey, term, docs)
+		testValidateDeletedSortedDocIdxV1(t, sdc, owner, termKey, indexKey, term, docs)
 	}
 }
 
-func testValidateSearchTermIdxV1(t *testing.T, owner common.SearchIdxOwner,
-	termKey, indexKey *sscrypto.StrongSaltKey, term string,
-	docLocMap map[*docidxv1.TestDocumentIdxV1][]uint64) {
+func testValidateSearchTermIdxV1(t *testing.T, sdc client.StrongDocClient,
+	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
+	term string, docLocMap map[*docidx.TestDocumentIdxV1][]uint64) {
 
-	updateIDs, err := GetUpdateIdsV1(owner, term, termKey)
+	updateIDs, err := GetUpdateIdsV1(sdc, owner, term, termKey)
 	assert.NilError(t, err)
 
-	sti, err := OpenSearchTermIdxV1(owner, term, termKey, indexKey, updateIDs[0])
+	sti, err := OpenSearchTermIdxV1(sdc, owner, term, termKey, indexKey, updateIDs[0])
 	assert.NilError(t, err)
 
 	for err == nil {
@@ -263,14 +273,14 @@ func testValidateSearchTermIdxV1(t *testing.T, owner common.SearchIdxOwner,
 	}
 }
 
-func testValidateDeletedSearchTermIdxV1(t *testing.T, owner common.SearchIdxOwner,
-	termKey, indexKey *sscrypto.StrongSaltKey, term string,
-	delDocs []*docidxv1.TestDocumentIdxV1) {
+func testValidateDeletedSearchTermIdxV1(t *testing.T, sdc client.StrongDocClient,
+	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
+	term string, delDocs []*docidx.TestDocumentIdxV1) {
 
-	updateIDs, err := GetUpdateIdsV1(owner, term, termKey)
+	updateIDs, err := GetUpdateIdsV1(sdc, owner, term, termKey)
 	assert.NilError(t, err)
 
-	sti, err := OpenSearchTermIdxV1(owner, term, termKey, indexKey, updateIDs[0])
+	sti, err := OpenSearchTermIdxV1(sdc, owner, term, termKey, indexKey, updateIDs[0])
 	assert.NilError(t, err)
 
 	for err == nil {
@@ -293,14 +303,14 @@ func testValidateDeletedSearchTermIdxV1(t *testing.T, owner common.SearchIdxOwne
 	assert.NilError(t, err)
 }
 
-func testValidateSortedDocIdxV1(t *testing.T, owner common.SearchIdxOwner,
-	termKey, indexKey *sscrypto.StrongSaltKey, term string,
-	docLocMap map[*docidxv1.TestDocumentIdxV1][]uint64) {
+func testValidateSortedDocIdxV1(t *testing.T, sdc client.StrongDocClient,
+	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
+	term string, docLocMap map[*docidx.TestDocumentIdxV1][]uint64) {
 
-	updateIDs, err := GetUpdateIdsV1(owner, term, termKey)
+	updateIDs, err := GetUpdateIdsV1(sdc, owner, term, termKey)
 	assert.NilError(t, err)
 
-	ssdi, err := OpenSearchSortDocIdxV1(owner, term, termKey, indexKey, updateIDs[0])
+	ssdi, err := OpenSearchSortDocIdxV1(sdc, owner, term, termKey, indexKey, updateIDs[0])
 	assert.NilError(t, err)
 
 	docIDs := make([]string, 0, len(docLocMap))
@@ -323,14 +333,14 @@ func testValidateSortedDocIdxV1(t *testing.T, owner common.SearchIdxOwner,
 	assert.NilError(t, err)
 }
 
-func testValidateDeletedSortedDocIdxV1(t *testing.T, owner common.SearchIdxOwner,
-	termKey, indexKey *sscrypto.StrongSaltKey, term string,
-	delDocs []*docidxv1.TestDocumentIdxV1) {
+func testValidateDeletedSortedDocIdxV1(t *testing.T, sdc client.StrongDocClient,
+	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
+	term string, delDocs []*docidx.TestDocumentIdxV1) {
 
-	updateIDs, err := GetUpdateIdsV1(owner, term, termKey)
+	updateIDs, err := GetUpdateIdsV1(sdc, owner, term, termKey)
 	assert.NilError(t, err)
 
-	ssdi, err := OpenSearchSortDocIdxV1(owner, term, termKey, indexKey, updateIDs[0])
+	ssdi, err := OpenSearchSortDocIdxV1(sdc, owner, term, termKey, indexKey, updateIDs[0])
 	if err != nil {
 		assert.Equal(t, err, os.ErrNotExist)
 		return
@@ -451,4 +461,26 @@ func loadKeys() (map[string]*sscrypto.StrongSaltKey, error) {
 	}
 
 	return keyMap, err
+}
+
+func prevTest(t *testing.T) client.StrongDocClient {
+	if utils.TestLocal {
+		return nil
+	}
+	// register org and admin
+	sdc, orgs, users := testUtils.PrevTest(t, 1, 1)
+	testUtils.DoRegistration(t, sdc, orgs, users)
+	// login
+	user := users[0][0]
+	err := api.Login(sdc, user.UserID, user.Password, user.OrgID)
+	assert.NilError(t, err)
+	return sdc
+}
+
+func generateTermHmacAndRemoveSearchIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) error {
+	hamcTerm, err := createTermHmac(term, termKey)
+	if err != nil {
+		return err
+	}
+	return common.RemoveSearchIndex(sdc, owner, hamcTerm)
 }

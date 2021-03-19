@@ -6,15 +6,14 @@ import (
 	"io"
 	"path"
 
+	"github.com/overnest/strongdoc-go-sdk/utils"
+
 	"github.com/go-errors/errors"
 )
 
 const (
 	// SI_V1  = uint32(1)
 	// SI_VER = SI_V1
-
-	SI_OWNER_ORG = SearchIdxOwnerType("ORG")
-	SI_OWNER_USR = SearchIdxOwnerType("USR")
 
 	STI_BLOCK_V1  = uint32(1)
 	STI_BLOCK_VER = STI_BLOCK_V1
@@ -49,17 +48,17 @@ type SearchIdxOwnerType string
 
 // common.SearchIdxOwner is the search index owner interface
 type SearchIdxOwner interface {
-	GetOwnerType() SearchIdxOwnerType
+	GetOwnerType() utils.OwnerType
 	GetOwnerID() string
 	fmt.Stringer
 }
 
 type searchIdxOwner struct {
-	ownerType SearchIdxOwnerType
+	ownerType utils.OwnerType
 	ownerID   string
 }
 
-func (sio *searchIdxOwner) GetOwnerType() SearchIdxOwnerType {
+func (sio *searchIdxOwner) GetOwnerType() utils.OwnerType {
 	return sio.ownerType
 }
 
@@ -72,7 +71,7 @@ func (sio *searchIdxOwner) String() string {
 }
 
 // common.SearchIdxOwner creates a new searchh index owner
-func CreateSearchIdxOwner(ownerType SearchIdxOwnerType, ownerID string) SearchIdxOwner {
+func CreateSearchIdxOwner(ownerType utils.OwnerType, ownerID string) SearchIdxOwner {
 	return &searchIdxOwner{ownerType, ownerID}
 }
 

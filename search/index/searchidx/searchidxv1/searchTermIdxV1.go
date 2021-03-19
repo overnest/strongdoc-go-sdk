@@ -1,13 +1,10 @@
 package searchidxv1
 
 import (
-	"fmt"
 	"io"
-	"os"
-	"path"
-	"path/filepath"
 
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/crypto"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	ssblocks "github.com/overnest/strongsalt-common-go/blocks"
@@ -36,14 +33,10 @@ type SearchTermIdxV1 struct {
 	storeSize  uint64
 }
 
-func getSearchTermIdxPathV1(prefix string, owner common.SearchIdxOwner, term, updateID string) string {
-	return path.Clean(fmt.Sprintf("%v/searchterm", GetSearchIdxPathV1(prefix, owner, term, updateID)))
-}
-
 // CreateSearchTermIdxV1 creates a search term index writer V1
-func CreateSearchTermIdxV1(owner common.SearchIdxOwner, term string,
-	termKey, indexKey *sscrypto.StrongSaltKey,
-	oldSti common.SearchTermIdx, delDocs *DeletedDocsV1) (*SearchTermIdxV1, error) {
+func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string,
+	termKey, indexKey *sscrypto.StrongSaltKey, oldSti common.SearchTermIdx,
+	delDocs *DeletedDocsV1) (*SearchTermIdxV1, error) {
 
 	var err error
 	sti := &SearchTermIdxV1{
@@ -57,7 +50,7 @@ func CreateSearchTermIdxV1(owner common.SearchIdxOwner, term string,
 		IndexNonce:  nil,
 		InitOffset:  0,
 		termHmac:    "",
-		updateID:    newUpdateIDV1(),
+		updateID:    "",
 		writer:      nil,
 		reader:      nil,
 		bwriter:     nil,
@@ -83,7 +76,7 @@ func CreateSearchTermIdxV1(owner common.SearchIdxOwner, term string,
 		return nil, err
 	}
 
-	_, err = sti.createWriter()
+	err = sti.createWriter(sdc)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +144,7 @@ func CreateSearchTermIdxV1(owner common.SearchIdxOwner, term string,
 
 	// Create a block list writer using the streaming crypto so the blocks will be
 	// encrypted.
-	sti.bwriter, err = ssblocks.NewBlockListWriterV1(streamCrypto, 0,
+	sti.bwriter, err = ssblocks.NewBlockListWriterV1(streamCrypto, uint32(common.STI_BLOCK_SIZE_MAX),
 		sti.InitOffset+uint64(len(plainHdrSerial)+len(cipherHdrSerial)))
 	if err != nil {
 		return nil, errors.New(err)
@@ -161,7 +154,7 @@ func CreateSearchTermIdxV1(owner common.SearchIdxOwner, term string,
 }
 
 // OpenSearchTermIdxV1 opens a search term index reader V1
-func OpenSearchTermIdxV1(owner common.SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV1, error) {
+func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV1, error) {
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
 		return nil, errors.Errorf("The term key type %v is not a MAC key", termKey.Type.Name)
 	}
@@ -176,7 +169,7 @@ func OpenSearchTermIdxV1(owner common.SearchIdxOwner, term string, termKey, inde
 		return nil, err
 	}
 
-	reader, size, err := createStiReader(owner, termHmac, updateID)
+	reader, size, err := createStiReader(sdc, owner, termHmac, updateID)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +225,7 @@ func OpenSearchTermIdxV1(owner common.SearchIdxOwner, term string, termKey, inde
 
 func openSearchTermIdxV1(sti *SearchTermIdxV1, plainHdrBody *StiPlainHdrBodyV1, plainHdrOffset, endOffset uint64) (*SearchTermIdxV1, error) {
 	// Initialize the streaming crypto to decrypt ciphertext header and the blocks after that
-	streamCrypto, err := crypto.CreateStreamCrypto(sti.IndexKey, sti.IndexNonce, sti.reader, int64(plainHdrOffset))
+	streamCrypto, err := crypto.OpenStreamCrypto(sti.IndexKey, sti.IndexNonce, sti.reader, int64(plainHdrOffset))
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -272,50 +265,30 @@ func (sti *SearchTermIdxV1) createTermHmac() (string, error) {
 	return createTermHmac(sti.Term, sti.TermKey)
 }
 
-func (sti *SearchTermIdxV1) createWriter() (io.WriteCloser, error) {
+func (sti *SearchTermIdxV1) createWriter(sdc client.StrongDocClient) error {
 	if sti.writer != nil {
-		return sti.writer, nil
+		return nil
 	}
 
-	var err error
-	path := getSearchTermIdxPathV1(common.GetSearchIdxPathPrefix(), sti.Owner, sti.termHmac, sti.updateID)
-
-	if err = os.MkdirAll(filepath.Dir(path), 0770); err != nil {
-		return nil, err
-	}
-
-	sti.writer, err = os.Create(path)
+	writer, updateID, err := common.OpenSearchTermIndexWriter(sdc, sti.Owner, sti.termHmac)
 	if err != nil {
-		return nil, errors.New(err)
+		return err
 	}
-
-	return sti.writer, nil
+	sti.writer = writer
+	sti.updateID = updateID
+	return nil
 }
 
-func (sti *SearchTermIdxV1) createReader() (io.ReadCloser, uint64, error) {
+func (sti *SearchTermIdxV1) createReader(sdc client.StrongDocClient) (io.ReadCloser, uint64, error) {
 	if sti.reader != nil {
 		return sti.reader, sti.storeSize, nil
 	}
 
-	return createStiReader(sti.Owner, sti.termHmac, sti.updateID)
+	return createStiReader(sdc, sti.Owner, sti.termHmac, sti.updateID)
 }
 
-func createStiReader(owner common.SearchIdxOwner, termHmac, updateID string) (io.ReadCloser, uint64, error) {
-	path := getSearchTermIdxPathV1(common.GetSearchIdxPathPrefix(), owner, termHmac, updateID)
-	reader, err := os.Open(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, 0, os.ErrNotExist
-		}
-		return nil, 0, errors.New(err)
-	}
-
-	stat, err := reader.Stat()
-	if err != nil {
-		return nil, 0, errors.New(err)
-	}
-
-	return reader, uint64(stat.Size()), nil
+func createStiReader(sdc client.StrongDocClient, owner common.SearchIdxOwner, termHmac, updateID string) (io.ReadCloser, uint64, error) {
+	return common.OpenSearchTermIndexReader(sdc, owner, termHmac, updateID)
 }
 
 func (sti *SearchTermIdxV1) GetMaxBlockDataSize() uint64 {
