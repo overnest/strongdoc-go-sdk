@@ -1,8 +1,7 @@
 package searchidxv1
 
 import (
-	"io"
-
+	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/crypto"
@@ -11,6 +10,7 @@ import (
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
+	"io"
 )
 
 // SearchTermIdxV1 is a structure for search term index V1
@@ -78,6 +78,7 @@ func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwn
 
 	err = sti.createWriter(sdc)
 	if err != nil {
+		fmt.Println("create writer error ", err)
 		return nil, err
 	}
 
@@ -155,6 +156,13 @@ func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwn
 
 // OpenSearchTermIdxV1 opens a search term index reader V1
 func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV1, error) {
+	//fmt.Println("............ 	open search term index start ............")
+	//t0 := time.Now()
+	//defer func() {
+	//	fmt.Println("used ", time.Now().Sub(t0).Milliseconds(), "ms")
+	//	fmt.Println("............ 	open search term index end ............")
+	//}()
+
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
 		return nil, errors.Errorf("The term key type %v is not a MAC key", termKey.Type.Name)
 	}
@@ -169,6 +177,7 @@ func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner
 		return nil, err
 	}
 
+	//t1 := time.Now()
 	reader, size, err := createStiReader(sdc, owner, termHmac, updateID)
 	if err != nil {
 		return nil, err
@@ -178,7 +187,8 @@ func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner
 	if err != nil {
 		return nil, err
 	}
-
+	//t2 := time.Now()
+	//fmt.Println("create s3 reader, use reader", t2.Sub(t1).Milliseconds(), "ms")
 	plainHdrBodyData, err := plainHdr.GetBody()
 	if err != nil {
 		return nil, err
@@ -224,7 +234,13 @@ func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner
 }
 
 func openSearchTermIdxV1(sti *SearchTermIdxV1, plainHdrBody *StiPlainHdrBodyV1, plainHdrOffset, endOffset uint64) (*SearchTermIdxV1, error) {
-	// Initialize the streaming crypto to decrypt ciphertext header and the blocks after that
+	//t1 := time.Now()
+	//defer func() {
+	//	t2 := time.Now()
+	//	fmt.Println("openSearchTermIdxV1", t2.Sub(t1).Milliseconds(), "ms")
+	//}()
+
+	//Initialize the streaming crypto to decrypt ciphertext header and the blocks after that
 	streamCrypto, err := crypto.OpenStreamCrypto(sti.IndexKey, sti.IndexNonce, sti.reader, int64(plainHdrOffset))
 	if err != nil {
 		return nil, errors.New(err)

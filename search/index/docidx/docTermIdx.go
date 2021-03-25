@@ -108,12 +108,8 @@ func createAndSaveDocTermIdxV1FromDOI(sdc client.StrongDocClient, docID string, 
 
 func doCreateAndSaveTermIdxV1(sdc client.StrongDocClient, docID string, docVer uint64,
 	key *sscrypto.StrongSaltKey, initOffset int64, source docidxv1.DocTermSourceV1) error {
-	dtiWriter, err := common.OpenDocTermIdxWriter(sdc, docID, docVer)
-	if err != nil {
-		return err
-	}
 	// Create a new document term index for writing
-	dti, err := docidxv1.CreateDocTermIdxV1(docID, docVer, key, source, dtiWriter, initOffset)
+	dti, err := docidxv1.CreateDocTermIdxV1(sdc, docID, docVer, key, source, initOffset)
 	if err != nil {
 		return err
 	}

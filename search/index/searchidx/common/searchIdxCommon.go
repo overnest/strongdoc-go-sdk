@@ -3,10 +3,8 @@ package common
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"path"
-
 	"github.com/overnest/strongdoc-go-sdk/utils"
+	"io"
 
 	"github.com/go-errors/errors"
 )
@@ -23,7 +21,7 @@ const (
 
 	STI_V1              = uint32(1)
 	STI_VER             = STI_V1
-	STI_TERM_BATCH_SIZE = 1000 // Process terms in batches of 1000
+	STI_TERM_BATCH_SIZE = 5 // Process terms in batches of 1000
 
 	SSDI_BLOCK_SIZE_MAX       = uint64(1024 * 1) //1024 * 5) // 5MB
 	SSDI_BLOCK_MARGIN_PERCENT = uint64(10)       // 10% margin
@@ -32,10 +30,10 @@ const (
 	SSDI_VER = SSDI_V1
 )
 
-// GetSearchIdxPathPrefix gets the search index path prefix
-func GetSearchIdxPathPrefix() string {
-	return path.Clean("/tmp/search")
-}
+//// GetSearchIdxPathPrefix gets the search index path prefix
+//func GetSearchIdxPathPrefix() string {
+//	return path.Clean("/tmp/search")
+//}
 
 //////////////////////////////////////////////////////////////////
 //

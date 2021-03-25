@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"path"
 	"sort"
@@ -54,7 +53,7 @@ func TestSearchTermUpdateIDsV1(t *testing.T) {
 
 	time.Sleep(time.Second * 10)
 
-	defer common.RemoveSearchIndex(sdc, owner, termHmac)
+	defer common.RemoveSearchIndex(sdc, owner)
 
 	resultIDs, err := GetUpdateIdsHmacV1(sdc, owner, termHmac)
 	assert.NilError(t, err)
@@ -64,8 +63,8 @@ func TestSearchTermUpdateIDsV1(t *testing.T) {
 
 //  TODO only available for localTest
 func TestSearchIdxWriterV1(t *testing.T) {
-	versions := 3
-	numDocs := 10
+	versions := 1
+	numDocs := 1
 	sdc := prevTest(t)
 	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 
@@ -97,38 +96,41 @@ func TestSearchIdxWriterV1(t *testing.T) {
 
 	docVers := make([][]*docidx.TestDocumentIdxV1, len(firstDocs))
 	for i, doc := range firstDocs {
+		//fmt.Println(doc.DocID)
 		docVers[i] = make([]*docidx.TestDocumentIdxV1, versions+1)
 		docVers[i][0] = doc
 	}
 
+	fmt.Println("create search index")
 	testCreateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, nil, firstDocs)
+	fmt.Println("validate search index")
 	testValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, firstDocs)
 	defer docidx.CleanAllTmpFiles()
-	defer os.RemoveAll(common.GetSearchIdxPathPrefix())
+	defer common.RemoveSearchIndex(sdc, owner)
 
-	// err = cleanupSearchIndexes(owner, 1)
-	// assert.NilError(t, err)
-
-	for v := 1; v <= versions; v++ {
-		oldDocs := make([]*docidx.TestDocumentIdxV1, 0, numDocs)
-		newDocs := make([]*docidx.TestDocumentIdxV1, 0, numDocs)
-		for _, docVerList := range docVers {
-			oldDoc := docVerList[v-1]
-
-			addedTerms, deletedTerms := rand.Intn(99)+1, rand.Intn(99)+1
-			// addedTerms, deletedTerms := 20, 10
-
-			newDoc, err := oldDoc.CreateModifiedDoc(addedTerms, deletedTerms)
-			assert.NilError(t, err)
-
-			docVerList[v] = newDoc
-			newDocs = append(newDocs, newDoc)
-			oldDocs = append(oldDocs, oldDoc)
-		}
-
-		testCreateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, oldDocs, newDocs)
-		testValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, newDocs)
-	}
+	//for v := 1; v <= versions; v++ {
+	//	fmt.Println("version ", v)
+	//
+	//	oldDocs := make([]*docidx.TestDocumentIdxV1, 0, numDocs)
+	//	newDocs := make([]*docidx.TestDocumentIdxV1, 0, numDocs)
+	//	for _, docVerList := range docVers {
+	//		oldDoc := docVerList[v-1]
+	//
+	//		addedTerms, deletedTerms := rand.Intn(99)+1, rand.Intn(99)+1
+	//		// addedTerms, deletedTerms := 20, 10
+	//
+	//		newDoc, err := oldDoc.CreateModifiedDoc(addedTerms, deletedTerms)
+	//		assert.NilError(t, err)
+	//
+	//		docVerList[v] = newDoc
+	//		newDocs = append(newDocs, newDoc)
+	//		oldDocs = append(oldDocs, oldDoc)
+	//	}
+	//	fmt.Println("create search index")
+	//	testCreateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, oldDocs, newDocs)
+	//	fmt.Println("validate search index")
+	//	testValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, newDocs)
+	//}
 }
 
 func testCreateSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
@@ -236,6 +238,7 @@ func testValidateSearchTermIdxV1(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
 	term string, docLocMap map[*docidx.TestDocumentIdxV1][]uint64) {
 
+	fmt.Println("validate search term index, term ", term)
 	updateIDs, err := GetUpdateIdsV1(sdc, owner, term, termKey)
 	assert.NilError(t, err)
 
@@ -258,7 +261,12 @@ func testValidateSearchTermIdxV1(t *testing.T, sdc client.StrongDocClient,
 			if verOff == nil {
 				continue
 			}
+			fmt.Println("docID ", doc.DocID)
+			fmt.Println("locs ", locs)
+			fmt.Println("verOff.Offsets ", verOff.Offsets)
+
 			assert.Equal(t, doc.DocVer, verOff.Version)
+			// todo here!
 			assert.Assert(t, len(locs) >= len(verOff.Offsets))
 			assert.DeepEqual(t, verOff.Offsets, locs[:len(verOff.Offsets)])
 			docLocMap[doc] = locs[len(verOff.Offsets):]
@@ -362,44 +370,6 @@ func testValidateDeletedSortedDocIdxV1(t *testing.T, sdc client.StrongDocClient,
 	assert.NilError(t, err)
 }
 
-func cleanupSearchIndexes(owner common.SearchIdxOwner, numToKeep int) error {
-	searchIdxPath := path.Clean(fmt.Sprintf("%v/%v/sidx", common.GetSearchIdxPathPrefix(), owner))
-
-	termDirInfos, err := ioutil.ReadDir(searchIdxPath)
-	if err != nil {
-		return err
-	}
-
-	for _, termDirInfo := range termDirInfos {
-		if !termDirInfo.IsDir() {
-			continue
-		}
-
-		termDirPath := path.Clean(fmt.Sprintf("%v/%v", searchIdxPath, termDirInfo.Name()))
-		updateIdInfos, err := ioutil.ReadDir(termDirPath)
-		if err != nil {
-			return err
-		}
-
-		// Sort by update time
-		sort.Slice(updateIdInfos, func(i, j int) bool {
-			return updateIdInfos[i].ModTime().Before(updateIdInfos[j].ModTime())
-		})
-
-		keep := utils.Min(numToKeep, len(updateIdInfos))
-		removeDirInfos := updateIdInfos[len(updateIdInfos)-keep:]
-		for _, removeDirInfo := range removeDirInfos {
-			removeDirPath := path.Clean(fmt.Sprintf("%v/%v", termDirPath, removeDirInfo.Name()))
-			err := os.RemoveAll(removeDirPath)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
 var savedKeyPath string = path.Clean("/tmp/savedKeys")
 
 func saveKeys(keyMap map[string]*sscrypto.StrongSaltKey) error {
@@ -475,12 +445,4 @@ func prevTest(t *testing.T) client.StrongDocClient {
 	err := api.Login(sdc, user.UserID, user.Password, user.OrgID)
 	assert.NilError(t, err)
 	return sdc
-}
-
-func generateTermHmacAndRemoveSearchIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) error {
-	hamcTerm, err := createTermHmac(term, termKey)
-	if err != nil {
-		return err
-	}
-	return common.RemoveSearchIndex(sdc, owner, hamcTerm)
 }

@@ -52,7 +52,7 @@ func (dts *docTermSourceTextFileV1) Reset() error {
 }
 
 //func (dts *docTermSourceTextFileV1) Close() error {
-//	return dts.tokenizer.Close()
+//	return nil
 //}
 
 //
@@ -153,17 +153,17 @@ func (dts *docTermSourceDocOffsetV1) Reset() error {
 	}
 }
 
-func (dts *docTermSourceDocOffsetV1) Close() error {
-	switch dts.doi.GetDoiVersion() {
-	case common.DOI_V1:
-		doiv1, ok := dts.doi.(*DocOffsetIdxV1)
-		if !ok {
-			return errors.Errorf("Document offset index is not version %v",
-				dts.doi.GetDoiVersion())
-		}
-		return doiv1.Close()
-	default:
-		return errors.Errorf("Document offset index version %v is not supported",
-			dts.doi.GetDoiVersion())
-	}
-}
+//func (dts *docTermSourceDocOffsetV1) Close() error {
+//	switch dts.doi.GetDoiVersion() {
+//	case common.DOI_V1:
+//		doiv1, ok := dts.doi.(*DocOffsetIdxV1)
+//		if !ok {
+//			return errors.Errorf("Document offset index is not version %v",
+//				dts.doi.GetDoiVersion())
+//		}
+//		return doiv1.Close()
+//	default:
+//		return errors.Errorf("Document offset index version %v is not supported",
+//			dts.doi.GetDoiVersion())
+//	}
+//}

@@ -59,7 +59,7 @@ var batchSourceComparator func(a, b interface{}) int = func(a, b interface{}) in
 
 func CreateSearchTermBatchMgrV1(owner common.SearchIdxOwner, sources []SearchTermIdxSourceV1,
 	termKey, indexKey *sscrypto.StrongSaltKey, delDocs *DeletedDocsV1) (*SearchTermBatchMgrV1, error) {
-
+	fmt.Println("init search term batch manager")
 	mgr := &SearchTermBatchMgrV1{
 		Owner:    owner,
 		TermKey:  termKey,
@@ -261,7 +261,9 @@ func (batch *SearchTermBatchV1) ProcessTermBatch(sdc client.StrongDocClient) (ma
 	if true {
 		fmt.Println("Process STI", t2.Sub(t1).Milliseconds(), "ms")
 		fmt.Println("Process SSDI", t4.Sub(t3).Milliseconds(), "ms")
+		fmt.Println("Process time", t4.Sub(t3).Seconds()+t2.Sub(t1).Seconds(), "s for ", len(batch.termList), " terms")
 		fmt.Println("--------------------------")
+
 	}
 
 	return respMap, nil
@@ -272,11 +274,13 @@ func (batch *SearchTermBatchV1) processStiBatch() (map[*SearchTermIdxWriterV1]*S
 	stiwToBlks := make(map[*SearchTermIdxWriterV1][]*SearchTermIdxSourceBlockV1)
 
 	for _, source := range batch.SourceList {
+		//t1 := time.Now()
 		blk, err := source.GetNextSourceBlock(batch.termList)
 		if err != nil && err != io.EOF {
 			return nil, err
 		}
-
+		//t2 := time.Now()
+		//fmt.Println("GetNextSourceBlock", t2.Sub(t1).Milliseconds(), "ms")
 		if blk != nil && len(blk.TermOffset) > 0 {
 			for _, stiw := range batch.sourceToWriters[source] {
 				blkList := stiwToBlks[stiw]
@@ -319,10 +323,13 @@ func (batch *SearchTermBatchV1) processStiBatch() (map[*SearchTermIdxWriterV1]*S
 }
 
 func (batch *SearchTermBatchV1) processStiAll() (map[*SearchTermIdxWriterV1]error, error) {
+	//t1 := time.Now()
+
 	respMap := make(map[*SearchTermIdxWriterV1]error)
 	for _, source := range batch.SourceList {
 		source.Reset()
 	}
+	//t2 := time.Now()
 
 	for {
 		stiBlocksResp, err := batch.processStiBatch()
@@ -348,19 +355,27 @@ func (batch *SearchTermBatchV1) processStiAll() (map[*SearchTermIdxWriterV1]erro
 			break
 		}
 	}
+	//t3 := time.Now()
 
 	for _, stiw := range batch.TermToWriter {
 		// TODO: Do this in parallel
 		stiw.Close()
 	}
+	//t4 := time.Now()
+
+	//fmt.Println("Process STI, reset source", t2.Sub(t1).Milliseconds(), "ms")
+	//fmt.Println("Process STI, processStiBatch (readNextBlocK)", t3.Sub(t2).Milliseconds(), "ms")
+	//fmt.Println("Process STI, close writers", t4.Sub(t3).Milliseconds(), "ms")
 
 	return respMap, nil
 }
 
 func (batch *SearchTermBatchV1) processSsdiAll(sdc client.StrongDocClient, stiwList []*SearchTermIdxWriterV1) (map[*SearchTermIdxWriterV1]error, error) {
 	ssdiToChan := make(map[*SearchTermIdxWriterV1](chan error))
+	//t1 := time.Now()
 
 	for _, stiw := range stiwList {
+		// chan type error
 		ssdiChan := make(chan error)
 		ssdiToChan[stiw] = ssdiChan
 
@@ -368,14 +383,19 @@ func (batch *SearchTermBatchV1) processSsdiAll(sdc client.StrongDocClient, stiwL
 		go func(stiw *SearchTermIdxWriterV1, ssdiChan chan<- error) {
 			defer close(ssdiChan)
 
+			//t3 := time.Now()
 			ssdi, err := CreateSearchSortDocIdxV1(sdc, batch.Owner, stiw.Term,
 				stiw.GetUpdateID(), stiw.TermKey, stiw.IndexKey)
+			//t4 := time.Now()
+			//fmt.Println("create sort doc index ", t4.Sub(t3).Milliseconds(), "ms")
+
 			if err != nil {
 				ssdiChan <- err
 				return
 			}
 			defer ssdi.Close()
 
+			//t5 := time.Now()
 			for err == nil {
 				var blk *SearchSortDocIdxBlkV1
 				blk, err = ssdi.WriteNextBlock()
@@ -388,12 +408,20 @@ func (batch *SearchTermBatchV1) processSsdiAll(sdc client.StrongDocClient, stiwL
 					return
 				}
 			}
+			//t6 := time.Now()
+			//fmt.Println("for loop write next Block ", t6.Sub(t5).Milliseconds(), "ms")
+			//t7 := time.Now()
 
 			ssdi.Close()
+
+			//t8 := time.Now()
+			//fmt.Println("close ssdi ", t8.Sub(t7).Milliseconds(), "ms")
+
 			ssdiChan <- nil
 		}(stiw, ssdiChan)
 	}
-
+	//t2 := time.Now()
+	//fmt.Println("processSsdiAll for loop", t2.Sub(t1).Milliseconds(), "ms")
 	respMap := make(map[*SearchTermIdxWriterV1]error)
 	for stiw, ssdiChan := range ssdiToChan {
 		respMap[stiw] = <-ssdiChan

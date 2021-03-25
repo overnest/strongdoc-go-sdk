@@ -140,7 +140,7 @@ func TestSearchTermIdxSimpleV1(t *testing.T) {
 	sti, writtenBlocks := createSearchTermIdxSimpleV1(t, sdc, owner, term,
 		termKey, indexKey, maxDocID, maxOffsetCount)
 
-	defer generateTermHmacAndRemoveSearchIndex(sdc, owner, term, termKey)
+	defer common.RemoveSearchIndex(sdc, owner)
 
 	time.Sleep(10 * time.Second)
 

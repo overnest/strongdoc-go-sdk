@@ -80,7 +80,7 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	indexKey, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	defer generateTermHmacAndRemoveSearchIndex(sdc, owner, term, termKey)
+	defer common.RemoveSearchIndex(sdc, owner)
 
 	//
 	// Create STI

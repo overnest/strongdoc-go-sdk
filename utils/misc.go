@@ -14,6 +14,7 @@ func OpenLocalFile(filepath string) (*os.File, error) {
 
 func MakeDirAndCreateFile(path string) (*os.File, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0770); err != nil {
+		fmt.Println(path)
 		return nil, err
 	}
 

@@ -3,7 +3,7 @@ module github.com/overnest/strongdoc-go-sdk
 go 1.13
 
 require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/blevesearch/bleve/v2 v2.0.2
 	github.com/emirpasic/gods v1.12.0
 	github.com/go-errors/errors v1.1.1
 	github.com/golang/protobuf v1.3.3
@@ -22,6 +22,5 @@ require (
 	google.golang.org/genproto v0.0.0-20200513103714-09dca8ec2884
 	google.golang.org/grpc v1.32.0
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	gopkg.in/yaml.v2 v2.2.8 // indirect
 	gotest.tools v2.2.0+incompatible
 )

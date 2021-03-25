@@ -1,11 +1,10 @@
 package searchidxv1
 
 import (
+	"github.com/overnest/strongdoc-go-sdk/client"
 	"io"
 	"sort"
 	"strings"
-
-	"github.com/overnest/strongdoc-go-sdk/client"
 
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/crypto"
@@ -76,20 +75,27 @@ func CreateSearchSortDocIdxV1(sdc client.StrongDocClient, owner common.SearchIdx
 		return nil, errors.Errorf("The key type %v is not a midstream key", indexKey.Type.Name)
 	}
 
+	//t1 := time.Now()
 	ssdi.sti, err = OpenSearchTermIdxV1(sdc, owner, term, termKey, indexKey, updateID)
 	if err != nil {
 		return nil, err
 	}
+	//t2 := time.Now()
+	//fmt.Println("open search term index", t2.Sub(t1).Milliseconds(), "ms")
 
 	ssdi.termHmac, err = createTermHmac(term, termKey)
 	if err != nil {
 		return nil, err
 	}
 
+	//t3 := time.Now()
 	_, err = ssdi.createWriter(sdc)
 	if err != nil {
 		return nil, err
 	}
+	//t4 := time.Now()
+
+	//fmt.Println("createWriter", t4.Sub(t3).Milliseconds(), "ms")
 
 	// Create plaintext and ciphertext headers
 	plainHdrBody := &SsdiPlainHdrBodyV1{

@@ -231,13 +231,8 @@ func createTermIndexAndGetTerms(sdc client.StrongDocClient, docID string, docVer
 		return nil, err
 	}
 
-	dtiWriter, err := common.OpenDocTermIdxWriter(sdc, docID, docVer)
-	if err != nil {
-		return nil, err
-	}
-
 	// Create a document term index
-	dti, err := docidxv1.CreateDocTermIdxV1(docID, docVer, key, source, dtiWriter, 0)
+	dti, err := docidxv1.CreateDocTermIdxV1(sdc, docID, docVer, key, source, 0)
 	if err != nil {
 		return nil, err
 	}
