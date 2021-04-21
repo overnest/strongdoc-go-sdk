@@ -223,6 +223,7 @@ func writeNewDoc(oldDoc *TestDocumentIdxV1, newDoc *TestDocumentIdxV1) error {
 }
 
 // create new version of local file (add some terms and delete some terms)
+// make sure addTerms, deleteTerms < the number of all terms
 func (doc *TestDocumentIdxV1) CreateModifiedDoc(addTerms, deleteTerms int) (*TestDocumentIdxV1, error) {
 	// Open old file, get all terms
 	terms, err := doc.getTermsFromRawData()
@@ -278,10 +279,8 @@ func (doc *TestDocumentIdxV1) CreateDoiAndDti(sdc client.StrongDocClient, key *s
 	if err != nil {
 		return err
 	}
-	//time.Sleep(10 * time.Second)
 
 	err = doc.CreateDti(sdc, key)
-	//time.Sleep(10 * time.Second)
 	return err
 }
 
@@ -335,9 +334,14 @@ func (doc *TestDocumentIdxV1) OpenDti(sdc client.StrongDocClient, key *sscrypto.
 	return dti, nil
 }
 
-// remove doi and dti
-func (doc *TestDocumentIdxV1) RemoveAllVersionsIndexes(sdc client.StrongDocClient) error {
-	return common.RemoveDocIndexes(sdc, doc.DocID)
+func RemoveTestDocumentsDocIdx(sdc client.StrongDocClient, docs []*TestDocumentIdxV1) error {
+	for _, doc := range docs {
+		err := common.RemoveDocIndexes(sdc, doc.DocID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // clean all tmp files

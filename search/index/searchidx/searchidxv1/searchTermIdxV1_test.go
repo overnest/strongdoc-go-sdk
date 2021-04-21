@@ -3,14 +3,12 @@ package searchidxv1
 import (
 	"fmt"
 	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"github.com/overnest/strongdoc-go-sdk/utils"
+	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"io"
 	"math/rand"
 	"testing"
-	"time"
-
-	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
-	sscrypto "github.com/overnest/strongsalt-crypto-go"
 
 	"gotest.tools/assert"
 )
@@ -127,6 +125,7 @@ func TestSearchTermIdxSimpleV1(t *testing.T) {
 	term := "term1"
 	maxDocID := 20
 	maxOffsetCount := 30
+	defer common.RemoveSearchIndex(sdc, owner)
 
 	// ================================ Generate doc search index (termIdx) ================================
 	termKey, err := sscrypto.GenerateKey(sscrypto.Type_HMACSha512)
@@ -139,10 +138,6 @@ func TestSearchTermIdxSimpleV1(t *testing.T) {
 	//
 	sti, writtenBlocks := createSearchTermIdxSimpleV1(t, sdc, owner, term,
 		termKey, indexKey, maxDocID, maxOffsetCount)
-
-	defer generateTermHmacAndRemoveSearchIndex(sdc, owner, term, termKey)
-
-	time.Sleep(10 * time.Second)
 
 	//
 	// Open STI and make sure the blocks match

@@ -320,6 +320,19 @@ func (writer *fileWriter) Close() (err error) {
 	if writer.stream == nil {
 		return fmt.Errorf("stream already closed")
 	}
+	// send write_end to server, make sure file exists
+	req := &proto.WriteFileReq{
+		WriteType: proto.WriteType_WRITE_END,
+	}
+	err = writer.stream.Send(req)
+	if err != nil {
+		return err
+	}
+	_, err = writer.stream.Recv()
+	if err != nil {
+		return err
+	}
+	// close send
 	err = writer.stream.CloseSend()
 	if err != nil {
 		return err
@@ -655,8 +668,8 @@ func GetUpdateIDs(sdc client.StrongDocClient, ownerType utils.OwnerType, term st
 	return res.UpdateIDs, nil
 }
 
-// remove search term index, sorted doc index with all available updateIDs
-func RemoveSearchIndexes(sdc client.StrongDocClient, termHmac string, ownerType utils.OwnerType) error {
+// remove owner's all search indexes (term index + sorted doc index with all available updateIDs)
+func RemoveSearchIndexes(sdc client.StrongDocClient, ownerType utils.OwnerType) error {
 	protoOwnerType, err := utils.TranslateOwnerType(ownerType)
 	if err != nil {
 		return err
@@ -664,7 +677,6 @@ func RemoveSearchIndexes(sdc client.StrongDocClient, termHmac string, ownerType 
 	fileMeta := &proto.FileMeta{
 		FileType: proto.FileType_SEARCH_INDEX,
 		SearchIndexMeta: &proto.SearchIndexMeta{
-			Term:       termHmac,
 			AccessType: protoOwnerType,
 		},
 	}

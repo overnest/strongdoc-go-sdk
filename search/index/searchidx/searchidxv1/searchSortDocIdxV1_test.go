@@ -73,14 +73,13 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	term := "term1"
 	maxDocID := 2000
 	maxOffsetCount := 30
+	defer common.RemoveSearchIndex(sdc, owner)
 
 	// ================================ Generate Search Term Index ================================
 	termKey, err := sscrypto.GenerateKey(sscrypto.Type_HMACSha512)
 	assert.NilError(t, err)
 	indexKey, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
-
-	defer generateTermHmacAndRemoveSearchIndex(sdc, owner, term, termKey)
 
 	//
 	// Create STI
@@ -102,8 +101,6 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	sort.Slice(docIDVers, func(i, j int) bool {
 		return (strings.Compare(docIDVers[i].DocID, docIDVers[j].DocID) < 0)
 	})
-
-	time.Sleep(10 * time.Second)
 
 	// ================================ Get UpdateID ================================
 	//
@@ -139,8 +136,6 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	// Validate the written SSDI blocks
 	//
 	validateSsdiBlocks(t, docIDVers, ssdiBlocks)
-
-	time.Sleep(10 * time.Second)
 
 	// ================================ Open Search Sorted Doc Index ================================
 	//

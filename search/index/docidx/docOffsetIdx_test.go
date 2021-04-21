@@ -11,7 +11,6 @@ import (
 	"gotest.tools/assert"
 	"io"
 	"testing"
-	"time"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -21,8 +20,7 @@ import (
 //
 //  step1: tokenize data using FileTokenizer
 //	step2: generate Document Offset Index(doi) from tokenized data
-//	step3: generate Document Term Index(dti) from tokenized data or doi
-//  step4: generate Org/User Search Index(si) from  doi and dti(optional)
+//	step3: generate Document Term Index(dti) from tokenized source data or doi(preferred)
 //
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,6 +31,8 @@ func TestDocOffsetIdx(t *testing.T) {
 
 	docID := "docID100"
 	docVer := uint64(100)
+	defer common.RemoveDocIndexes(testClient, docID)
+
 	sourceFileName := "./testDocuments/enwik8.txt.gz"
 	sourceFilepath, err := utils.FetchFileLoc(sourceFileName)
 	assert.NilError(t, err)
@@ -53,8 +53,6 @@ func TestDocOffsetIdx(t *testing.T) {
 	// Close source file
 	err = sourceFile.Close()
 	assert.NilError(t, err)
-
-	time.Sleep(5 * time.Second)
 
 	// ================================ Open doc offset index ================================
 	doiVersion, err := OpenDocOffsetIdx(testClient, docID, docVer, key)

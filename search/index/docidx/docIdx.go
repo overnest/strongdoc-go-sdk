@@ -13,9 +13,5 @@ func CreateAndSaveDocIndexes(sdc client.StrongDocClient, docID string, docVer ui
 		return err
 	}
 
-	_, err = sourceData.Seek(0, utils.SeekSet)
-	if err != nil {
-		return err
-	}
-	return CreateAndSaveDocTermIdx(sdc, docID, docVer, key, sourceData)
+	return CreateAndSaveDocTermIdxFromDOI(sdc, docID, docVer, key)
 }

@@ -1,11 +1,9 @@
 package searchidxv1
 
 import (
-	"testing"
-	"time"
-
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"gotest.tools/assert"
+	"testing"
 
 	docidx "github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 	didxcommon "github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
@@ -30,6 +28,9 @@ func TestSearchTermIdxSourceTextFileV1(t *testing.T) {
 	//sourceFilePath4, err := utils.FetchFileLoc("./testDocuments/doc2.chg.txt.gz")
 	//assert.NilError(t, err)
 
+	defer didxcommon.RemoveDocIndexes(testClient, docID1)
+	// defer didxcommon.RemoveDocIndexes(testClient, docID2)
+
 	// ================================ Generate doc index (offset + term) ================================
 	// Create encryption key
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
@@ -40,11 +41,6 @@ func TestSearchTermIdxSourceTextFileV1(t *testing.T) {
 	createDocumentIndexes(t, testClient, key, docID1, docVer2, sourceFilePath2) // doc1 ver2
 	//createDocumentIndexes(t, testClient, key, docID2, docVer1, sourceFilePath3) // doc2 ver1
 	//createDocumentIndexes(t, testClient, key, docID2, docVer2, sourceFilePath4) // doc2 ver2
-
-	defer didxcommon.RemoveDocIndexes(testClient, docID1)
-	//defer didxcommon.RemoveDocIndexes(testClient, docID2)
-
-	time.Sleep(100 * time.Second)
 
 	// Open doc1 ver1 index
 	doi1 := openDocOffsetIndex(t, testClient, key, docID1, docVer1)

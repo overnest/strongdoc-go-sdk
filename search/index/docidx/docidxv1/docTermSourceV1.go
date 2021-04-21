@@ -13,7 +13,6 @@ type DocTermSourceV1 interface {
 	// Returns io.EOF error if there are no more terms
 	GetNextTerm() (string, uint64, error)
 	Reset() error
-	//Close() error
 }
 
 //
@@ -50,10 +49,6 @@ func (dts *docTermSourceTextFileV1) GetNextTerm() (string, uint64, error) {
 func (dts *docTermSourceTextFileV1) Reset() error {
 	return dts.tokenizer.Reset()
 }
-
-//func (dts *docTermSourceTextFileV1) Close() error {
-//	return dts.tokenizer.Close()
-//}
 
 //
 // Document Offset Index Source
@@ -147,21 +142,6 @@ func (dts *docTermSourceDocOffsetV1) Reset() error {
 				dts.doi.GetDoiVersion())
 		}
 		return doiv1.Reset()
-	default:
-		return errors.Errorf("Document offset index version %v is not supported",
-			dts.doi.GetDoiVersion())
-	}
-}
-
-func (dts *docTermSourceDocOffsetV1) Close() error {
-	switch dts.doi.GetDoiVersion() {
-	case common.DOI_V1:
-		doiv1, ok := dts.doi.(*DocOffsetIdxV1)
-		if !ok {
-			return errors.Errorf("Document offset index is not version %v",
-				dts.doi.GetDoiVersion())
-		}
-		return doiv1.Close()
 	default:
 		return errors.Errorf("Document offset index version %v is not supported",
 			dts.doi.GetDoiVersion())

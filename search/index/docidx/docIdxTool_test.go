@@ -34,9 +34,7 @@ func TestTools(t *testing.T) {
 		validateDocDti(t, sdc, key, doc, terms)
 	}
 	// ================================ Remove Doc Indexes ================================
-	for _, doc := range docs {
-		assert.NilError(t, doc.RemoveAllVersionsIndexes(sdc))
-	}
+	RemoveTestDocumentsDocIdx(sdc, docs)
 }
 
 // validate doi, return sorted term list
@@ -142,7 +140,8 @@ func TestCreateModifiedDoc(t *testing.T) {
 	docs, err := InitTestDocuments(documents, false)
 	assert.NilError(t, err)
 	oldDoc := docs[0]
-	defer oldDoc.RemoveAllVersionsIndexes(sdc)
+	defer RemoveTestDocumentsDocIdx(sdc, docs)
+
 	err = oldDoc.CreateDoiAndDti(sdc, key)
 	assert.NilError(t, err)
 

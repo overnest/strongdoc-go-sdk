@@ -60,15 +60,10 @@ func DeserializeDtiVersion(data []byte) (*DtiVersionS, error) {
 //
 //////////////////////////////////////////////////////////////////
 
-// create term index from source data
-func CreateAndSaveDocTermIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+// create term index from source file, initOffset = 0
+func CreateAndSaveDocTermIdxFromSource(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
 	sourcefile utils.Storage) error {
-	return CreateAndSaveDocTermIdxWithOffset(sdc, docID, docVer, key, sourcefile, 0)
-}
-
-func CreateAndSaveDocTermIdxWithOffset(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	sourcefile utils.Storage, initOffset int64) error {
-	return createAndSaveDocTermIdxV1(sdc, docID, docVer, key, sourcefile, initOffset)
+	return createAndSaveDocTermIdxV1(sdc, docID, docVer, key, sourcefile, 0)
 }
 
 func createAndSaveDocTermIdxV1(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
@@ -80,14 +75,9 @@ func createAndSaveDocTermIdxV1(sdc client.StrongDocClient, docID string, docVer 
 	return doCreateAndSaveTermIdxV1(sdc, docID, docVer, key, initOffset, source)
 }
 
-// create term index from doi
+// create term index from doi, initOffset = 0
 func CreateAndSaveDocTermIdxFromDOI(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey) error {
-	return CreateAndSaveDocTermIdxFromDOIWithOffset(sdc, docID, docVer, key, 0)
-}
-
-func CreateAndSaveDocTermIdxFromDOIWithOffset(sdc client.StrongDocClient, docID string, docVer uint64,
-	key *sscrypto.StrongSaltKey, initOffset int64) error {
-	return createAndSaveDocTermIdxV1FromDOI(sdc, docID, docVer, key, initOffset)
+	return createAndSaveDocTermIdxV1FromDOI(sdc, docID, docVer, key, 0)
 }
 
 func createAndSaveDocTermIdxV1FromDOI(sdc client.StrongDocClient, docID string, docVer uint64,
@@ -108,12 +98,8 @@ func createAndSaveDocTermIdxV1FromDOI(sdc client.StrongDocClient, docID string, 
 
 func doCreateAndSaveTermIdxV1(sdc client.StrongDocClient, docID string, docVer uint64,
 	key *sscrypto.StrongSaltKey, initOffset int64, source docidxv1.DocTermSourceV1) error {
-	dtiWriter, err := common.OpenDocTermIdxWriter(sdc, docID, docVer)
-	if err != nil {
-		return err
-	}
 	// Create a new document term index for writing
-	dti, err := docidxv1.CreateDocTermIdxV1(docID, docVer, key, source, dtiWriter, initOffset)
+	dti, err := docidxv1.CreateDocTermIdxV1(sdc, docID, docVer, key, source, initOffset)
 	if err != nil {
 		return err
 	}

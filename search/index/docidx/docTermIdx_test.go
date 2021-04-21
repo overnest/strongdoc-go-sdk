@@ -12,7 +12,6 @@ import (
 	"os"
 	"sort"
 	"testing"
-	"time"
 )
 
 func TestTermIdxBlockV1(t *testing.T) {
@@ -93,8 +92,6 @@ func TestTermIdxSourcesV1(t *testing.T) {
 	err = sourceFile.Close()
 	assert.NilError(t, err)
 
-	time.Sleep(100 * time.Second)
-
 	// ================================ Open doc offset index ================================
 	doiv, err := OpenDocOffsetIdx(testClient, docID, docVer, key)
 	assert.NilError(t, err)
@@ -150,11 +147,11 @@ func TestTermIdxV1(t *testing.T) {
 
 	docID := "DocID1"
 	docVer := uint64(1)
+	defer common.RemoveDocIndexes(testClient, docID)
+
 	sourceFileName := "./testDocuments/enwik8.txt.gz"
 	sourceFilepath, err := utils.FetchFileLoc(sourceFileName)
 	assert.NilError(t, err)
-
-	defer common.RemoveDocIndexes(testClient, docID)
 
 	// ================================ Generate doc term index ================================
 	// Open source file
@@ -170,8 +167,6 @@ func TestTermIdxV1(t *testing.T) {
 
 	err = sourceFile.Close()
 	assert.NilError(t, err)
-
-	time.Sleep(30 * time.Second)
 
 	// ================================ Open doc term index ================================
 	// Open the previously written document term index
@@ -231,13 +226,8 @@ func createTermIndexAndGetTerms(sdc client.StrongDocClient, docID string, docVer
 		return nil, err
 	}
 
-	dtiWriter, err := common.OpenDocTermIdxWriter(sdc, docID, docVer)
-	if err != nil {
-		return nil, err
-	}
-
 	// Create a document term index
-	dti, err := docidxv1.CreateDocTermIdxV1(docID, docVer, key, source, dtiWriter, 0)
+	dti, err := docidxv1.CreateDocTermIdxV1(sdc, docID, docVer, key, source, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -269,6 +259,7 @@ func TestTermIdxDiffV1(t *testing.T) {
 	docID := "DocIDsomething"
 	docVer1 := uint64(1)
 	docVer2 := uint64(2)
+	defer common.RemoveDocIndexes(testClient, docID)
 
 	sourcefilepath1, err := utils.FetchFileLoc("./testDocuments/enwik8.uniq.txt.gz")
 	assert.NilError(t, err)
@@ -298,8 +289,6 @@ func TestTermIdxDiffV1(t *testing.T) {
 
 	err = source2.Close()
 	assert.NilError(t, err)
-
-	time.Sleep(20 * time.Second)
 
 	// ================================ Open doc term index ================================
 	// Open the previously written document term index
