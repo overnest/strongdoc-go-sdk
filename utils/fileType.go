@@ -2,13 +2,11 @@ package utils
 
 import (
 	"compress/gzip"
+	"github.com/go-errors/errors"
 	"io"
 	"mime"
 	"net/http"
 	"regexp"
-	"text/scanner"
-
-	"github.com/go-errors/errors"
 )
 
 const (
@@ -24,10 +22,10 @@ var mimeGzip = regexp.MustCompilePOSIX(`^application\/.*gzip$`)
 var mimeText = regexp.MustCompilePOSIX(`^text\/plain$`)
 
 // getFileType get the file type
-func getFileType(file Storage) (fileType FileType, err error) {
+func getFileType(source Source) (fileType FileType, err error) {
 	// Only the first 512 bytes are used to sniff the content type.
 	buffer := make([]byte, 512)
-	n, err := file.Read(buffer)
+	n, err := source.Read(buffer)
 	if err != nil {
 		return
 	}
@@ -48,45 +46,37 @@ func getFileType(file Storage) (fileType FileType, err error) {
 	return
 }
 
-// GetFileTypeAndReader get type of storage and reader based on fileType
-func GetFileTypeAndReader(storage Storage) (fileType FileType, reader io.Reader, err error) {
-	fileType, err = getFileType(storage)
+// getFileTypeAndReaderCloser get fileType, reader and Closer
+func getFileTypeAndReaderCloser(source Source) (fileType FileType, reader io.Reader, closer io.Closer, err error) {
+	fileType, err = getFileType(source)
 	if err != nil {
 		return
 	}
 
-	reader, err = resetFile(fileType, storage)
+	reader, closer, err = resetFile(fileType, source)
 	return
 }
 
 // resetFile resets a file to be read again
-func resetFile(fileType FileType, storage Storage) (io.Reader, error) {
+func resetFile(fileType FileType, source Source) (io.Reader, io.Closer, error) {
 	//  data source seek to file beginning
-	_, err := storage.Seek(0, SeekSet)
+	_, err := source.Seek(0, SeekSet)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// get reader based on fileType
-	var reader io.Reader
+	// get reader and closer based on fileType
 	switch fileType {
 	case FT_TEXT:
-		reader = storage
-		break
+		return source, nil, nil
 	case FT_GZIP:
-		var err error
-		reader, err = gzip.NewReader(storage)
+		readerCloser, err := gzip.NewReader(source)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		break
+		return readerCloser, readerCloser, nil
 	default:
-		return nil, errors.Errorf("Can not process %v file", fileType)
+		return nil, nil, errors.Errorf("Can not process %v file", fileType)
 	}
-	return reader, nil
-}
 
-func readerToScanner(reader io.Reader) *scanner.Scanner {
-	var scanner scanner.Scanner
-	return scanner.Init(reader)
 }

@@ -19,12 +19,12 @@ type DocTermSourceV1 interface {
 // Text File Source
 //
 type docTermSourceTextFileV1 struct {
-	tokenizer utils.FileTokenizer
+	tokenizer utils.BleveTokenizer
 }
 
 // OpenDocTermSourceTextFileV1 opens the text file Document Term Source V1
-func OpenDocTermSourceTextFileV1(storeage utils.Storage) (DocTermSourceV1, error) {
-	tokenizer, err := utils.OpenFileTokenizer(storeage)
+func OpenDocTermSourceTextFileV1(source utils.Source) (*docTermSourceTextFileV1, error) {
+	tokenizer, err := utils.OpenBleveTokenizer(source)
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -33,21 +33,15 @@ func OpenDocTermSourceTextFileV1(storeage utils.Storage) (DocTermSourceV1, error
 }
 
 func (dts *docTermSourceTextFileV1) GetNextTerm() (string, uint64, error) {
-	token, pos, _, err := dts.tokenizer.NextToken()
-	if err == io.EOF {
-		if pos != nil {
-			return token, uint64(pos.Offset), err
-		}
-		return "", 0, err
-	}
-	if err != nil {
-		return "", 0, errors.New(err)
-	}
-	return token, uint64(pos.Offset), nil
+	return dts.tokenizer.NextToken()
 }
 
 func (dts *docTermSourceTextFileV1) Reset() error {
 	return dts.tokenizer.Reset()
+}
+
+func (dts *docTermSourceTextFileV1) Close() error {
+	return dts.tokenizer.Close()
 }
 
 //

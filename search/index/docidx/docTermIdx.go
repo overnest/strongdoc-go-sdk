@@ -62,16 +62,17 @@ func DeserializeDtiVersion(data []byte) (*DtiVersionS, error) {
 
 // create term index from source file, initOffset = 0
 func CreateAndSaveDocTermIdxFromSource(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	sourcefile utils.Storage) error {
+	sourcefile utils.Source) error {
 	return createAndSaveDocTermIdxV1(sdc, docID, docVer, key, sourcefile, 0)
 }
 
 func createAndSaveDocTermIdxV1(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	sourcefile utils.Storage, initOffset int64) error {
+	sourcefile utils.Source, initOffset int64) error {
 	source, err := docidxv1.OpenDocTermSourceTextFileV1(sourcefile)
 	if err != nil {
 		return err
 	}
+	defer source.Close()
 	return doCreateAndSaveTermIdxV1(sdc, docID, docVer, key, initOffset, source)
 }
 

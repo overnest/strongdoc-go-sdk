@@ -19,6 +19,7 @@ func TestDocTermSourceTextFileV1(t *testing.T) {
 
 	dts, err := OpenDocTermSourceTextFileV1(sourceFile)
 	assert.NilError(t, err)
+	defer dts.Close()
 
 	terms := make([]string, 0, 1000000)
 

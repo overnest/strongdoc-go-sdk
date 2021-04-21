@@ -4,6 +4,11 @@ import (
 	"bufio"
 	"compress/gzip"
 	"fmt"
+	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
+	"github.com/overnest/strongdoc-go-sdk/utils"
+	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -12,13 +17,6 @@ import (
 	"sort"
 	"strings"
 	"unicode"
-
-	"github.com/overnest/strongdoc-go-sdk/client"
-	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
-
-	"github.com/go-errors/errors"
-	"github.com/overnest/strongdoc-go-sdk/utils"
-	sscrypto "github.com/overnest/strongsalt-crypto-go"
 )
 
 const (
@@ -116,30 +114,19 @@ func createNewDocumentIdx(oldDoc *TestDocumentIdxV1, addTerms map[string]bool, d
 	return
 }
 
-// get tokenized term (standardized in lower case)
-func (doc *TestDocumentIdxV1) getTermsFromRawData() ([]string, error) {
+// get tokenized pure terms
+func (doc *TestDocumentIdxV1) getPureTerms() ([]string, error) {
 	file, err := utils.OpenLocalFile(doc.docFilePath)
+	if err != nil {
+		return nil, err
+	}
 	defer file.Close()
 	tokenizer, err := utils.OpenRawFileTokenizer(file)
 	if err != nil {
 		return nil, err
 	}
-
-	// term map
-	termMap := make(map[string]bool)
-	for token, _, _, err := tokenizer.NextToken(); err != io.EOF; token, _, _, err = tokenizer.NextToken() {
-		if err != nil && err != io.EOF {
-			return nil, err
-		}
-		termMap[token] = true
-	}
-
-	// term list
-	var terms []string
-	for term := range termMap {
-		terms = append(terms, term)
-	}
-	return terms, nil
+	defer tokenizer.Close()
+	return tokenizer.GetAllPureTerms()
 }
 
 // write modified doc
@@ -154,6 +141,8 @@ func writeNewDoc(oldDoc *TestDocumentIdxV1, newDoc *TestDocumentIdxV1) error {
 	if err != nil {
 		return err
 	}
+	defer tokenizer.Close()
+
 	// Create the new file
 	newDocFile, err := utils.OpenLocalFile(newDoc.docFilePath)
 	if err != nil {
@@ -165,48 +154,40 @@ func writeNewDoc(oldDoc *TestDocumentIdxV1, newDoc *TestDocumentIdxV1) error {
 	newDocWriter := bufio.NewWriter(gzipWriter)
 
 	// Copy old file content to new file
-	for term, space, err := tokenizer.NextRawToken(); err != io.EOF; term, space, err = tokenizer.NextRawToken() {
-		if !utils.IsAlphaNumeric(term) {
-			_, err = newDocWriter.WriteString(term)
-			if err != nil {
-				return err
-			}
+	for rawToken, space, err := tokenizer.NextRawToken(); err != io.EOF; rawToken, space, err = tokenizer.NextRawToken() {
+		isPure, term := tokenizer.IsPureTerm(rawToken)
+		if isPure {
+			if newDoc.AddedTerms[term] {
+				_, err = newDocWriter.WriteString(rawToken)
+				if err != nil {
+					return err
+				}
 
-			if space != unicode.ReplacementChar {
-				_, err = newDocWriter.WriteRune(space)
+				_, err = newDocWriter.WriteString(
+					fmt.Sprintf(" %v%v", rawToken, newDoc.getAddTermSuffix()))
+				if err != nil {
+					return err
+				}
+			} else if !newDoc.DeletedTerms[term] {
+				_, err = newDocWriter.WriteString(rawToken)
 				if err != nil {
 					return err
 				}
 			}
-			continue
-		}
 
-		lterm := strings.ToLower(term)
-
-		if newDoc.AddedTerms[lterm] {
-			_, err = newDocWriter.WriteString(term)
-			if err != nil {
-				return err
-			}
-
-			_, err = newDocWriter.WriteString(
-				fmt.Sprintf(" %v%v", term, newDoc.getAddTermSuffix()))
-			if err != nil {
-				return err
-			}
-		} else if !newDoc.DeletedTerms[lterm] {
-			_, err = newDocWriter.WriteString(term)
+		} else {
+			_, err = newDocWriter.WriteString(rawToken)
 			if err != nil {
 				return err
 			}
 		}
-
 		if space != unicode.ReplacementChar {
 			_, err = newDocWriter.WriteRune(space)
 			if err != nil {
 				return err
 			}
 		}
+
 	}
 
 	newAddedTerms := make(map[string]bool)
@@ -226,9 +207,12 @@ func writeNewDoc(oldDoc *TestDocumentIdxV1, newDoc *TestDocumentIdxV1) error {
 // make sure addTerms, deleteTerms < the number of all terms
 func (doc *TestDocumentIdxV1) CreateModifiedDoc(addTerms, deleteTerms int) (*TestDocumentIdxV1, error) {
 	// Open old file, get all terms
-	terms, err := doc.getTermsFromRawData()
+	terms, err := doc.getPureTerms()
 	if err != nil {
 		return nil, err
+	}
+	if addTerms > len(terms) || deleteTerms > len(terms) {
+		return nil, fmt.Errorf("invalid addTerms or deleteTerms")
 	}
 
 	// If you want to enable more randomization of the added
@@ -295,6 +279,8 @@ func (doc *TestDocumentIdxV1) CreateDoi(sdc client.StrongDocClient, key *sscrypt
 	if err != nil {
 		return err
 	}
+	defer tokenizer.Close()
+
 	doi, err := CreateDocOffsetIdx(sdc, doc.DocID, doc.DocVer, key, 0)
 
 	if err != nil {
@@ -302,13 +288,17 @@ func (doc *TestDocumentIdxV1) CreateDoi(sdc client.StrongDocClient, key *sscrypt
 	}
 	defer doi.Close()
 
-	for token, _, wordCounter, err := tokenizer.NextToken(); err != io.EOF; token, _, wordCounter, err = tokenizer.NextToken() {
+	var wordCounter uint64 = 0
+	for token, _, err := tokenizer.NextRawToken(); err != io.EOF; token, _, err = tokenizer.NextRawToken() {
 		if err != nil && err != io.EOF {
 			return err
 		}
-		addErr := doi.AddTermOffset(token, wordCounter)
-		if addErr != nil {
-			return addErr
+		for _, term := range tokenizer.Analyze(token) {
+			addErr := doi.AddTermOffset(term, wordCounter)
+			if addErr != nil {
+				return addErr
+			}
+			wordCounter++
 		}
 	}
 	return nil
