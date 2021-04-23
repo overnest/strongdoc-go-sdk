@@ -165,8 +165,17 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	searchPositiveDocIDs := make([]string, searches)
 	searchMixDocs := make([]*DocIDVer, searches)
 	searchMixDocIDs := make([]string, searches)
+	indexMap := make(map[int]bool)
 	for i := 0; i < searches; i++ {
-		idx := rand.Intn(len(docIDVers))
+		var idx int
+		for {
+			idx = rand.Intn(len(docIDVers))
+			_, ok := indexMap[idx]
+			if !ok {
+				indexMap[idx] = true
+				break
+			}
+		}
 		docID, docVer := docIDVers[idx].DocID, docIDVers[idx].DocVer
 
 		searchPositiveDocs[i] = docIDVers[idx]
