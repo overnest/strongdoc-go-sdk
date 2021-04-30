@@ -343,9 +343,26 @@ func (batch *SearchTermBatchV1) processStiAll(event *utils.TimeEvent) (map[*Sear
 	utils.EndEvent(e2)
 
 	e3 := utils.AddSubEvent(event, "closeStiw")
+
+	stiwToChan := make(map[*SearchTermIdxWriterV1](chan error))
 	for _, stiw := range batch.TermToWriter {
-		// TODO: Do this in parallel
-		stiw.Close()
+		stiwChan := make(chan error)
+		stiwToChan[stiw] = stiwChan
+		go func(stiw *SearchTermIdxWriterV1, stiwChan chan error) {
+			defer close(stiwChan)
+			_, err := stiw.Close()
+			stiwChan <- err
+		}(stiw, stiwChan)
+	}
+
+	for stiw, stiwChan := range stiwToChan {
+		err := <-stiwChan
+		if err != nil {
+			_, ok := respMap[stiw]
+			if !ok {
+				respMap[stiw] = err
+			}
+		}
 	}
 	utils.EndEvent(e3)
 	return respMap, nil
