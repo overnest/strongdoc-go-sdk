@@ -179,14 +179,35 @@ func CreateSearchTermBatchV1(sdc client.StrongDocClient, owner common.SearchIdxO
 		termList:        nil,
 	}
 
-	for _, source := range sources {
-		stiw, err := CreateSearchTermIdxWriterV1(
-			sdc, owner, source.Term, source.AddSources, source.DelSources,
-			source.TermKey, source.IndexKey, source.delDocs)
-		if err != nil {
-			return nil, err
+	type stiwResult struct {
+		writer *SearchTermIdxWriterV1
+		error  error
+	}
+
+	stiwChans := make([]chan stiwResult, len(sources))
+	for i, source := range sources {
+		stiwChan := make(chan stiwResult)
+		stiwChans[i] = stiwChan
+		go func(sdc client.StrongDocClient,
+			owner common.SearchIdxOwner, source *SearchTermBatchSources, batch *SearchTermBatchV1,
+			stiwChan chan<- stiwResult) {
+			defer close(stiwChan)
+			stiw, err := CreateSearchTermIdxWriterV1(
+				sdc, owner, source.Term, source.AddSources, source.DelSources,
+				source.TermKey, source.IndexKey, source.delDocs)
+			stiwChan <- stiwResult{
+				stiw,
+				err,
+			}
+		}(sdc, owner, source, batch, stiwChan)
+	}
+
+	for _, stiwChan := range stiwChans {
+		res := <-stiwChan
+		if res.error != nil {
+			return nil, res.error
 		}
-		batch.TermToWriter[source.Term] = stiw
+		batch.TermToWriter[res.writer.Term] = res.writer
 	}
 
 	sourceMap := make(map[SearchTermIdxSourceV1]map[*SearchTermIdxWriterV1]bool)
