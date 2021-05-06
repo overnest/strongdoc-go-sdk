@@ -219,7 +219,6 @@ func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner
 		breader:     nil,
 		storeSize:   size,
 	}
-
 	return openSearchTermIdxV1(sti, plainHdrBody, sti.InitOffset+uint64(parsed), size)
 }
 

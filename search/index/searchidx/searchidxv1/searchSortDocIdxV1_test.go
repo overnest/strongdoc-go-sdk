@@ -110,7 +110,7 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	assert.NilError(t, err)
 
 	// ================================ Generate Search Sorted Doc Index ================================
-	ssdi, err := CreateSearchSortDocIdxV1(sdc, owner, term, updateIDs[0], termKey, indexKey)
+	ssdi, err := CreateSearchSortDocIdxV1(sdc, owner, term, updateIDs[0], termKey, indexKey, nil)
 	assert.NilError(t, err)
 
 	err = nil

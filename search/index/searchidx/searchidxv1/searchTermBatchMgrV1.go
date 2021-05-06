@@ -248,7 +248,7 @@ func (batch *SearchTermBatchV1) ProcessTermBatch(sdc client.StrongDocClient, eve
 	respMap := make(map[string]error)
 
 	e1 := utils.AddSubEvent(event, "processStiAll")
-	stiResp, err := batch.processStiAll(e1)
+	processDocs, stiResp, err := batch.processStiAll(e1)
 	if err != nil {
 		return respMap, err
 	}
@@ -263,7 +263,7 @@ func (batch *SearchTermBatchV1) ProcessTermBatch(sdc client.StrongDocClient, eve
 	}
 
 	e2 := utils.AddSubEvent(event, "processSsdiAll")
-	ssdiResp, err := batch.processSsdiAll(sdc, stiSuccess)
+	ssdiResp, err := batch.processSsdiAll(sdc, stiSuccess, processDocs)
 	if err != nil {
 		return respMap, err
 	}
@@ -308,8 +308,8 @@ func (batch *SearchTermBatchV1) processStiBatch() (map[*SearchTermIdxWriterV1]*S
 				stiwChan chan<- *SearchTermIdxWriterRespV1) {
 				defer close(stiwChan)
 
-				stibs, err := stiw.ProcessSourceBlocks(blkList)
-				stiwChan <- &SearchTermIdxWriterRespV1{stibs, err}
+				stibs, processedDocs, err := stiw.ProcessSourceBlocks(blkList)
+				stiwChan <- &SearchTermIdxWriterRespV1{stibs, processedDocs, err}
 			}(stiw, blkList, stiwChan)
 		}
 	}
@@ -327,9 +327,12 @@ func (batch *SearchTermBatchV1) processStiBatch() (map[*SearchTermIdxWriterV1]*S
 	return respMap, nil
 }
 
-func (batch *SearchTermBatchV1) processStiAll(event *utils.TimeEvent) (map[*SearchTermIdxWriterV1]error, error) {
+func (batch *SearchTermBatchV1) processStiAll(event *utils.TimeEvent) (
+	map[string](map[string]uint64),
+	map[*SearchTermIdxWriterV1]error, error) {
 	e1 := utils.AddSubEvent(event, "resetSources")
 	respMap := make(map[*SearchTermIdxWriterV1]error)
+	processedDocs := make(map[string](map[string]uint64))
 	for _, source := range batch.SourceList {
 		source.Reset()
 	}
@@ -340,7 +343,7 @@ func (batch *SearchTermBatchV1) processStiAll(event *utils.TimeEvent) (map[*Sear
 	for {
 		stiBlocksResp, err := batch.processStiBatch()
 		if err != nil && err != io.EOF {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if len(stiBlocksResp) > 0 {
@@ -349,6 +352,17 @@ func (batch *SearchTermBatchV1) processStiAll(event *utils.TimeEvent) (map[*Sear
 					// If there is already an error for this STIW, do not overwrite
 					if respMap[stiw] == nil {
 						respMap[stiw] = resp.Error
+					}
+
+					// update processed docs
+					if resp.ProcessedDocs != nil && len(resp.ProcessedDocs) > 0 {
+						if processedDocs[stiw.Term] == nil {
+							processedDocs[stiw.Term] = resp.ProcessedDocs
+						} else {
+							for id, ver := range resp.ProcessedDocs {
+								processedDocs[stiw.Term][id] = ver
+							}
+						}
 					}
 				} else {
 					respMap[stiw] = nil
@@ -365,31 +379,47 @@ func (batch *SearchTermBatchV1) processStiAll(event *utils.TimeEvent) (map[*Sear
 
 	e3 := utils.AddSubEvent(event, "closeStiw")
 
-	stiwToChan := make(map[*SearchTermIdxWriterV1](chan error))
+	type closeStiwResp struct {
+		processedDocs map[string]uint64
+		err           error
+	}
+	stiwToChan := make(map[*SearchTermIdxWriterV1](chan closeStiwResp))
 	for _, stiw := range batch.TermToWriter {
-		stiwChan := make(chan error)
+		stiwChan := make(chan closeStiwResp)
 		stiwToChan[stiw] = stiwChan
-		go func(stiw *SearchTermIdxWriterV1, stiwChan chan error) {
+		go func(stiw *SearchTermIdxWriterV1, stiwChan chan closeStiwResp) {
 			defer close(stiwChan)
-			_, err := stiw.Close()
-			stiwChan <- err
+			_, docs, err := stiw.Close()
+			stiwChan <- closeStiwResp{docs, err}
 		}(stiw, stiwChan)
 	}
 
 	for stiw, stiwChan := range stiwToChan {
-		err := <-stiwChan
+		resp := <-stiwChan
+		err := resp.err
 		if err != nil {
 			_, ok := respMap[stiw]
 			if !ok {
 				respMap[stiw] = err
 			}
+		} else {
+			// update processed docs
+			if processedDocs != nil && len(processedDocs) > 0 {
+				if processedDocs[stiw.Term] == nil {
+					processedDocs[stiw.Term] = resp.processedDocs
+				} else {
+					for id, ver := range resp.processedDocs {
+						processedDocs[stiw.Term][id] = ver
+					}
+				}
+			}
 		}
 	}
 	utils.EndEvent(e3)
-	return respMap, nil
+	return processedDocs, respMap, nil
 }
 
-func (batch *SearchTermBatchV1) processSsdiAll(sdc client.StrongDocClient, stiwList []*SearchTermIdxWriterV1) (map[*SearchTermIdxWriterV1]error, error) {
+func (batch *SearchTermBatchV1) processSsdiAll(sdc client.StrongDocClient, stiwList []*SearchTermIdxWriterV1, processedDocs map[string](map[string]uint64)) (map[*SearchTermIdxWriterV1]error, error) {
 	ssdiToChan := make(map[*SearchTermIdxWriterV1](chan error))
 
 	for _, stiw := range stiwList {
@@ -397,11 +427,10 @@ func (batch *SearchTermBatchV1) processSsdiAll(sdc client.StrongDocClient, stiwL
 		ssdiToChan[stiw] = ssdiChan
 
 		// This executes in a separate thread
-		go func(stiw *SearchTermIdxWriterV1, ssdiChan chan<- error) {
+		go func(stiw *SearchTermIdxWriterV1, docs map[string]uint64, ssdiChan chan<- error) {
 			defer close(ssdiChan)
-
 			ssdi, err := CreateSearchSortDocIdxV1(sdc, batch.Owner, stiw.Term,
-				stiw.GetUpdateID(), stiw.TermKey, stiw.IndexKey)
+				stiw.GetUpdateID(), stiw.TermKey, stiw.IndexKey, docs)
 			if err != nil {
 				ssdiChan <- err
 				return
@@ -423,7 +452,7 @@ func (batch *SearchTermBatchV1) processSsdiAll(sdc client.StrongDocClient, stiwL
 
 			ssdi.Close()
 			ssdiChan <- nil
-		}(stiw, ssdiChan)
+		}(stiw, processedDocs[stiw.Term], ssdiChan)
 	}
 
 	respMap := make(map[*SearchTermIdxWriterV1]error)
@@ -450,8 +479,9 @@ func (batch *SearchTermBatchV1) Close() error {
 //////////////////////////////////////////////////////////////////
 
 type SearchTermIdxWriterRespV1 struct {
-	Blocks []*SearchTermIdxBlkV1
-	Error  error
+	Blocks        []*SearchTermIdxBlkV1
+	ProcessedDocs map[string]uint64
+	Error         error
 }
 
 type SearchTermIdxWriterV1 struct {
@@ -594,12 +624,13 @@ func (stiw *SearchTermIdxWriterV1) updateHighDocVersion(sdc client.StrongDocClie
 	return nil
 }
 
-func (stiw *SearchTermIdxWriterV1) ProcessSourceBlocks(sourceBlocks []*SearchTermIdxSourceBlockV1) ([]*SearchTermIdxBlkV1, error) {
+func (stiw *SearchTermIdxWriterV1) ProcessSourceBlocks(sourceBlocks []*SearchTermIdxSourceBlockV1) (
+	[]*SearchTermIdxBlkV1, map[string]uint64, error) {
 
 	var err error
 	returnBlocks := make([]*SearchTermIdxBlkV1, 0, len(sourceBlocks)*2)
 	cloneSourceBlocks := make([]*SearchTermIdxSourceBlockV1, 0, len(sourceBlocks))
-
+	processedDocs := make(map[string]uint64)
 	// Remove all sources with lower version than highest document version
 	for _, blk := range sourceBlocks {
 		highVer, exist := stiw.highDocVerMap[blk.DocID]
@@ -612,7 +643,7 @@ func (stiw *SearchTermIdxWriterV1) ProcessSourceBlocks(sourceBlocks []*SearchTer
 	if stiw.oldStiBlk == nil {
 		err = stiw.getOldSearchTermIndexBlock()
 		if err != nil && err != io.EOF {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -632,33 +663,39 @@ func (stiw *SearchTermIdxWriterV1) ProcessSourceBlocks(sourceBlocks []*SearchTer
 	// Process incoming source blocks until all are empty
 	for sourceNotEmpty := true; sourceNotEmpty; {
 		var blks []*SearchTermIdxBlkV1 = nil
-
-		sourceNotEmpty, blks, err = stiw.processSourceBlocks(cloneSourceBlocks, srcOffsetMap, copyLen)
+		var processed map[string]uint64
+		sourceNotEmpty, processed, blks, err = stiw.processSourceBlocks(cloneSourceBlocks, srcOffsetMap, copyLen)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+		for id, ver := range processed {
+			processedDocs[id] = ver
 		}
 
 		returnBlocks = append(returnBlocks, blks...)
 
-		blks, err = stiw.processOldStiBlock(copyLen, false)
+		blks, processed, err = stiw.processOldStiBlock(copyLen, false)
 		if err != nil && err != io.EOF {
-			return nil, err
+			return nil, nil, err
 		}
-
+		for id, ver := range processed {
+			processedDocs[id] = ver
+		}
 		returnBlocks = append(returnBlocks, blks...)
 	} // for sourceNotEmpty := true; sourceNotEmpty;
 
-	return returnBlocks, nil
+	return returnBlocks, processedDocs, nil
 }
 
 func (stiw *SearchTermIdxWriterV1) processSourceBlocks(
 	sourceBlocks []*SearchTermIdxSourceBlockV1,
 	srcOffsetMap map[*SearchTermIdxSourceBlockV1][]uint64,
-	copyLen int) (bool, []*SearchTermIdxBlkV1, error) {
+	copyLen int) (bool, map[string]uint64, []*SearchTermIdxBlkV1, error) {
 
 	sourceNotEmpty := false
 	var err error = nil
 	returnBlocks := make([]*SearchTermIdxBlkV1, 0, 10)
+	processedDocs := make(map[string]uint64)
 
 	// Process the source blocks
 	for _, srcBlk := range sourceBlocks {
@@ -676,7 +713,7 @@ func (stiw *SearchTermIdxWriterV1) processSourceBlocks(
 		if err != nil {
 			err = stiw.newSti.WriteNextBlock(stiw.newStiBlk)
 			if err != nil {
-				return sourceNotEmpty, returnBlocks, err
+				return sourceNotEmpty, processedDocs, returnBlocks, err
 			}
 
 			returnBlocks = append(returnBlocks, stiw.newStiBlk)
@@ -684,23 +721,23 @@ func (stiw *SearchTermIdxWriterV1) processSourceBlocks(
 			stiw.newStiBlk = CreateSearchTermIdxBlkV1(stiw.newSti.GetMaxBlockDataSize())
 			err = stiw.newStiBlk.AddDocOffsets(srcBlk.DocID, srcBlk.DocVer, offsets)
 			if err != nil {
-				return sourceNotEmpty, returnBlocks, err
+				return sourceNotEmpty, processedDocs, returnBlocks, err
 			}
 		}
-
+		processedDocs[srcBlk.DocID] = srcBlk.DocVer
 		srcOffsetMap[srcBlk] = srcOffsets[count:]
 	} // for _, srcBlk := range sourceBlocks
 
-	return sourceNotEmpty, returnBlocks, nil
+	return sourceNotEmpty, processedDocs, returnBlocks, nil
 }
 
-func (stiw *SearchTermIdxWriterV1) processOldStiBlock(copyLen int, writeFull bool) ([]*SearchTermIdxBlkV1, error) {
+func (stiw *SearchTermIdxWriterV1) processOldStiBlock(copyLen int, writeFull bool) ([]*SearchTermIdxBlkV1, map[string]uint64, error) {
 	var err error = nil
 	returnBlocks := make([]*SearchTermIdxBlkV1, 0, 10)
-
+	processedDocs := make(map[string]uint64)
 	if stiw.oldStiBlk == nil {
 		// No more old STI blocks to process
-		return returnBlocks, io.EOF
+		return returnBlocks, processedDocs, io.EOF
 	}
 
 	// Process the old STI block
@@ -720,7 +757,7 @@ func (stiw *SearchTermIdxWriterV1) processOldStiBlock(copyLen int, writeFull boo
 			if writeFull {
 				err = stiw.newSti.WriteNextBlock(stiw.newStiBlk)
 				if err != nil {
-					return returnBlocks, err
+					return returnBlocks, processedDocs, err
 				}
 
 				returnBlocks = append(returnBlocks, stiw.newStiBlk)
@@ -728,13 +765,14 @@ func (stiw *SearchTermIdxWriterV1) processOldStiBlock(copyLen int, writeFull boo
 				stiw.newStiBlk = CreateSearchTermIdxBlkV1(stiw.newSti.GetMaxBlockDataSize())
 				err = stiw.newStiBlk.AddDocOffsets(docID, verOffset.Version, offsets)
 				if err != nil {
-					return returnBlocks, err
+					return returnBlocks, processedDocs, err
 				}
 			} else {
 				// The new block is full. Don't bother processing anymore old STI block
 				break
 			}
 		}
+		processedDocs[docID] = verOffset.Version
 
 		// Remove the successfully processed offsets from the old STI block
 		verOffset.Offsets = verOffset.Offsets[count:]
@@ -747,11 +785,11 @@ func (stiw *SearchTermIdxWriterV1) processOldStiBlock(copyLen int, writeFull boo
 	if len(stiw.oldStiBlkDocIDs) == 0 {
 		err = stiw.getOldSearchTermIndexBlock()
 		if err != nil && err != io.EOF {
-			return returnBlocks, err
+			return returnBlocks, processedDocs, err
 		}
 	}
 
-	return returnBlocks, err
+	return returnBlocks, processedDocs, err
 }
 
 func (stiw *SearchTermIdxWriterV1) getOldSearchTermIndexBlock() error {
@@ -794,14 +832,15 @@ func (stiw *SearchTermIdxWriterV1) GetUpdateID() string {
 	return stiw.updateID
 }
 
-func (stiw *SearchTermIdxWriterV1) Close() ([]*SearchTermIdxBlkV1, error) {
+func (stiw *SearchTermIdxWriterV1) Close() ([]*SearchTermIdxBlkV1, map[string]uint64, error) {
 	returnBlocks := make([]*SearchTermIdxBlkV1, 0, 10)
 	var blks []*SearchTermIdxBlkV1 = nil
 	var err, finalErr error = nil, nil
+	var processedDocs map[string]uint64
 
 	if stiw.oldStiBlk != nil {
 		for err != nil {
-			blks, err = stiw.processOldStiBlock(copyLen, true)
+			blks, processedDocs, err = stiw.processOldStiBlock(copyLen, true)
 			if err != nil && err != io.EOF {
 				finalErr = err
 			}
@@ -836,7 +875,7 @@ func (stiw *SearchTermIdxWriterV1) Close() ([]*SearchTermIdxBlkV1, error) {
 		}
 	}
 
-	return returnBlocks, finalErr
+	return returnBlocks, processedDocs, finalErr
 }
 
 func removeSourceBlock(blocks []*SearchTermIdxSourceBlockV1, i int) []*SearchTermIdxSourceBlockV1 {
