@@ -16,7 +16,7 @@ import (
 func TestTools(t *testing.T) {
 	// ================================ Prev Test ================================
 	sdc := prevTest(t)
-	defer CleanAllTmpFiles()
+	defer CleanupTemporaryDocumentIndex()
 	// ================================ Generate Doc Indexes ================================
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
@@ -62,7 +62,7 @@ func validateDocDoi(t *testing.T, sdc client.StrongDocClient, key *sscrypto.Stro
 		}
 	}
 
-	sourceData, err := utils.OpenLocalFile(doc.docFilePath)
+	sourceData, err := utils.OpenLocalFile(doc.DocFilePath)
 	assert.NilError(t, err)
 	tokenizer, err := utils.OpenRawFileTokenizer(sourceData)
 	assert.NilError(t, err)
@@ -134,7 +134,7 @@ func TestCreateModifiedDoc(t *testing.T) {
 
 	// ================================ Prev Test ================================
 	sdc := prevTest(t)
-	defer CleanAllTmpFiles()
+	defer CleanupTemporaryDocumentIndex()
 	// ================================ Test Doc Modified Indexes ================================
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)

@@ -22,8 +22,8 @@ import (
 )
 
 const (
-	docIdxBaseDir = "/tmp/document"
-	docDocPathFmt = docIdxBaseDir + "/%v/%v/doc/%v"
+	docBasePath   = common.TEMP_DOC_IDX_BASE + "/doc"
+	docDocPathFmt = docBasePath + "/%v/%v/doc/%v"
 )
 
 var booksDir string
@@ -36,16 +36,20 @@ func init() {
 }
 
 type TestDocumentIdxV1 struct {
-	docFileName  string
-	docFilePath  string
+	DocFileName  string
+	DocFilePath  string
 	DocID        string
 	DocVer       uint64
 	AddedTerms   map[string]bool
 	DeletedTerms map[string]bool
 }
 
+func GetInitialTestDocumentDir() string {
+	return booksDir
+}
+
 func InitTestDocuments(numDocs int, random bool) ([]*TestDocumentIdxV1, error) {
-	files, err := ioutil.ReadDir(booksDir)
+	files, err := ioutil.ReadDir(GetInitialTestDocumentDir())
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -87,10 +91,10 @@ func InitTestDocuments(numDocs int, random bool) ([]*TestDocumentIdxV1, error) {
 }
 
 func createDocumentIdx(name, id string, ver uint64) (*TestDocumentIdxV1, error) {
-	filePath := path.Join(booksDir, name)
+	filePath := path.Join(GetInitialTestDocumentDir(), name)
 	doc := &TestDocumentIdxV1{
-		docFileName:  name,
-		docFilePath:  filePath,
+		DocFileName:  name,
+		DocFilePath:  filePath,
 		DocID:        id,
 		DocVer:       ver,
 		AddedTerms:   make(map[string]bool),
@@ -101,14 +105,14 @@ func createDocumentIdx(name, id string, ver uint64) (*TestDocumentIdxV1, error) 
 }
 
 func createNewDocumentIdx(oldDoc *TestDocumentIdxV1, addTerms map[string]bool, deleteTerms map[string]bool) (newDoc *TestDocumentIdxV1, err error) {
-	newDoc, err = createDocumentIdx(oldDoc.docFileName, oldDoc.DocID, oldDoc.DocVer+1)
+	newDoc, err = createDocumentIdx(oldDoc.DocFileName, oldDoc.DocID, oldDoc.DocVer+1)
 	if err != nil {
 		return
 	}
-	newDoc.docFilePath = fmt.Sprintf(docDocPathFmt, newDoc.DocID, newDoc.DocVer, newDoc.docFileName)
+	newDoc.DocFilePath = fmt.Sprintf(docDocPathFmt, newDoc.DocID, newDoc.DocVer, newDoc.DocFileName)
 	newDoc.AddedTerms = addTerms
 	newDoc.DeletedTerms = deleteTerms
-	docFile, err := utils.MakeDirAndCreateFile(newDoc.docFilePath)
+	docFile, err := utils.MakeDirAndCreateFile(newDoc.DocFilePath)
 	if err != nil {
 		return
 	}
@@ -118,7 +122,7 @@ func createNewDocumentIdx(oldDoc *TestDocumentIdxV1, addTerms map[string]bool, d
 
 // get tokenized term (standardized in lower case)
 func (doc *TestDocumentIdxV1) getTermsFromRawData() ([]string, error) {
-	file, err := utils.OpenLocalFile(doc.docFilePath)
+	file, err := utils.OpenLocalFile(doc.DocFilePath)
 	defer file.Close()
 	tokenizer, err := utils.OpenRawFileTokenizer(file)
 	if err != nil {
@@ -145,7 +149,7 @@ func (doc *TestDocumentIdxV1) getTermsFromRawData() ([]string, error) {
 // write modified doc
 func writeNewDoc(oldDoc *TestDocumentIdxV1, newDoc *TestDocumentIdxV1) error {
 	// Open old file for reading
-	oldDocFile, err := utils.OpenLocalFile(oldDoc.docFilePath)
+	oldDocFile, err := utils.OpenLocalFile(oldDoc.DocFilePath)
 	if err != nil {
 		return err
 	}
@@ -155,7 +159,7 @@ func writeNewDoc(oldDoc *TestDocumentIdxV1, newDoc *TestDocumentIdxV1) error {
 		return err
 	}
 	// Create the new file
-	newDocFile, err := utils.OpenLocalFile(newDoc.docFilePath)
+	newDocFile, err := utils.OpenLocalFile(newDoc.DocFilePath)
 	if err != nil {
 		return err
 	}
@@ -286,7 +290,7 @@ func (doc *TestDocumentIdxV1) CreateDoiAndDti(sdc client.StrongDocClient, key *s
 }
 
 func (doc *TestDocumentIdxV1) CreateDoi(sdc client.StrongDocClient, key *sscrypto.StrongSaltKey) error {
-	file, err := utils.OpenLocalFile(doc.docFilePath)
+	file, err := utils.OpenLocalFile(doc.DocFilePath)
 	if err != nil {
 		return err
 	}
@@ -341,6 +345,6 @@ func (doc *TestDocumentIdxV1) RemoveAllVersionsIndexes(sdc client.StrongDocClien
 }
 
 // clean all tmp files
-func CleanAllTmpFiles() error {
-	return os.RemoveAll(docIdxBaseDir)
+func CleanupTemporaryDocumentIndex() error {
+	return os.RemoveAll(common.TEMP_DOC_IDX_BASE)
 }

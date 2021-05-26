@@ -3,7 +3,6 @@ package searchidxv1
 import (
 	"fmt"
 	"io"
-	"sync"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -11,7 +10,6 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
-	"github.com/shengdoushi/base58"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -24,34 +22,10 @@ func newUpdateIDV1() string {
 	return fmt.Sprintf("%x", time.Now().UnixNano())
 }
 
-var termHmacMutex sync.Mutex
-
-func createTermHmac(term string, termKey *sscrypto.StrongSaltKey) (string, error) {
-	termHmacMutex.Lock()
-	defer termHmacMutex.Unlock()
-
-	err := termKey.MACReset()
-	if err != nil {
-		return "", errors.New(err)
-	}
-
-	_, err = termKey.MACWrite([]byte(term))
-	if err != nil {
-		return "", errors.New(err)
-	}
-
-	hmac, err := termKey.MACSum(nil)
-	if err != nil {
-		return "", errors.New(err)
-	}
-
-	return base58.Encode(hmac, base58.BitcoinAlphabet), nil
-}
-
 // GetUpdateIdsV1 returns the list of available update IDs for a specific owner + term in
 // reverse chronological order. The most recent update ID will come first
 func GetUpdateIdsV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) ([]string, error) {
-	termHmac, err := createTermHmac(term, termKey)
+	termHmac, err := common.CreateTermHmac(term, termKey)
 	if err != nil {
 		return nil, err
 	}

@@ -14,35 +14,41 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
-func newUpdateIDV1() string {
+func NewUpdateIDV1() string {
 	return fmt.Sprintf("%x", time.Now().UnixNano())
 }
 
+//////////////////////////////////////////////////////////////////
+//
+//                     Local Testing Path
+//
+//////////////////////////////////////////////////////////////////
+
 // getSearchIdxPathPrefix gets the search index path prefix
-// return /tmp/search/<owner>/sidx/<term>
-func getSearchIdxPathPrefix(owner SearchIdxOwner, term string) string {
-	return fmt.Sprintf("/tmp/search/%v/sidx/%v", owner, term)
+// return /tmp/search/<owner>/sidx/<termID>
+func getSearchIdxPathPrefix(owner SearchIdxOwner, termID string) string {
+	return fmt.Sprintf("/tmp/search/%v/sidx/%v", owner, termID)
 }
 
 // getSearchIdxPath gets the base path of the search index
-// return /tmp/search/<owner>/sidx/<term>/updateID
-func getSearchIdxPath(owner SearchIdxOwner, term, updateID string) string {
-	return fmt.Sprintf("%v/%v", getSearchIdxPathPrefix(owner, term), updateID)
+// return /tmp/search/<owner>/sidx/<termID>/updateID
+func getSearchIdxPath(owner SearchIdxOwner, termID, updateID string) string {
+	return fmt.Sprintf("%v/%v", getSearchIdxPathPrefix(owner, termID), updateID)
 }
 
-//  return /tmp/search/<owner>/sidx/<term>/updateID/searchterm
-func getSearchTermIdxPath(owner SearchIdxOwner, term, updateID string) string {
-	return fmt.Sprintf("%v/searchterm", getSearchIdxPath(owner, term, updateID))
+//  return /tmp/search/<owner>/sidx/<termID>/updateID/searchterm
+func getSearchTermIdxPath(owner SearchIdxOwner, termID, updateID string) string {
+	return fmt.Sprintf("%v/searchterm", getSearchIdxPath(owner, termID, updateID))
 }
 
-//  return /tmp/search/<owner>/sidx/<term>/updateID/sortdoc
-func getSearchSortDocIdxPath(owner SearchIdxOwner, term, updateID string) string {
-	return fmt.Sprintf("%v/sortdoc", getSearchIdxPath(owner, term, updateID))
+//  return /tmp/search/<owner>/sidx/<termID>/updateID/sortdoc
+func getSearchSortDocIdxPath(owner SearchIdxOwner, termID, updateID string) string {
+	return fmt.Sprintf("%v/sortdoc", getSearchIdxPath(owner, termID, updateID))
 }
 
-func OpenSearchTermIndexReader(sdc client.StrongDocClient, owner SearchIdxOwner, termHmac string, updateID string) (io.ReadCloser, uint64, error) {
+func OpenSearchTermIndexReader(sdc client.StrongDocClient, owner SearchIdxOwner, termID string, updateID string) (io.ReadCloser, uint64, error) {
 	if utils.TestLocal {
-		path := getSearchTermIdxPath(owner, termHmac, updateID)
+		path := getSearchTermIdxPath(owner, termID, updateID)
 		reader, err := os.Open(path)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -59,21 +65,21 @@ func OpenSearchTermIndexReader(sdc client.StrongDocClient, owner SearchIdxOwner,
 		return reader, uint64(stat.Size()), nil
 
 	}
-	reader, err := api.NewSearchTermIdxReader(sdc, owner.GetOwnerType(), termHmac, updateID)
+	reader, err := api.NewSearchTermIdxReader(sdc, owner.GetOwnerType(), termID, updateID)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	size, err := api.GetSearchTermIndexSize(sdc, owner.GetOwnerType(), termHmac, updateID)
+	size, err := api.GetSearchTermIndexSize(sdc, owner.GetOwnerType(), termID, updateID)
 	if err != nil {
 		return nil, 0, err
 	}
 	return reader, size, nil
 }
 
-func OpenSearchSortDocIndexReader(sdc client.StrongDocClient, owner SearchIdxOwner, termHmac string, updateID string) (io.ReadCloser, uint64, error) {
+func OpenSearchSortDocIndexReader(sdc client.StrongDocClient, owner SearchIdxOwner, termID string, updateID string) (io.ReadCloser, uint64, error) {
 	if utils.TestLocal {
-		path := getSearchSortDocIdxPath(owner, termHmac, updateID)
+		path := getSearchSortDocIdxPath(owner, termID, updateID)
 		reader, err := os.Open(path)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -90,12 +96,12 @@ func OpenSearchSortDocIndexReader(sdc client.StrongDocClient, owner SearchIdxOwn
 		return reader, uint64(stat.Size()), nil
 
 	}
-	reader, err := api.NewSearchSortedDocIdxReader(sdc, owner.GetOwnerType(), termHmac, updateID)
+	reader, err := api.NewSearchSortedDocIdxReader(sdc, owner.GetOwnerType(), termID, updateID)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	size, err := api.GetSearchSortedDocIdxSize(sdc, owner.GetOwnerType(), termHmac, updateID)
+	size, err := api.GetSearchSortedDocIdxSize(sdc, owner.GetOwnerType(), termID, updateID)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -112,7 +118,7 @@ func OpenSearchSortDocIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwn
 
 func OpenSearchTermIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwner, termHmac string) (writer io.WriteCloser, updateID string, err error) {
 	if utils.TestLocal {
-		updateID = newUpdateIDV1()
+		updateID = NewUpdateIDV1()
 		path := getSearchTermIdxPath(owner, termHmac, updateID)
 		writer, err = utils.MakeDirAndCreateFile(path)
 		return
@@ -120,12 +126,21 @@ func OpenSearchTermIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwner,
 	return api.NewSearchTermIdxWriter(sdc, owner.GetOwnerType(), termHmac)
 }
 
-func GetUpdateIDs(sdc client.StrongDocClient, owner SearchIdxOwner, termHmac string) ([]string, error) {
+//////////////////////////////////////////////////////////////////
+//
+//                         Update ID
+//
+//////////////////////////////////////////////////////////////////
+
+func GetUpdateIDs(sdc client.StrongDocClient, owner SearchIdxOwner, termID string) ([]string, error) {
 	if utils.TestLocal {
-		path := getSearchIdxPath(owner, termHmac, "")
+		path := getSearchIdxPath(owner, termID, "")
 
 		files, err := ioutil.ReadDir(path)
 		if err != nil {
+			if _, ok := err.(*os.PathError); ok { // The term does not exist
+				return nil, os.ErrNotExist
+			}
 			return nil, err
 		}
 
@@ -151,8 +166,21 @@ func GetUpdateIDs(sdc client.StrongDocClient, owner SearchIdxOwner, termHmac str
 
 		return updateIDs, nil
 	} else {
-		return api.GetUpdateIDs(sdc, owner.GetOwnerType(), termHmac) //todo get sorted doc updateID
+		return api.GetUpdateIDs(sdc, owner.GetOwnerType(), termID) //todo get sorted doc updateID
 	}
+}
+
+func GetLatestUpdateID(sdc client.StrongDocClient, owner SearchIdxOwner, termID string) (string, error) {
+	updateIDs, err := GetUpdateIDs(sdc, owner, termID)
+	if err != nil {
+		return "", err
+	}
+
+	if updateIDs != nil {
+		return updateIDs[0], nil
+	}
+
+	return "", nil
 }
 
 // remove search indexes(term + sortedDoc)

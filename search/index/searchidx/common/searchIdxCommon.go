@@ -4,17 +4,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path"
+	"sync"
 
 	"github.com/overnest/strongdoc-go-sdk/utils"
+	"github.com/shengdoushi/base58"
+
+	sscrypto "github.com/overnest/strongsalt-crypto-go"
 
 	"github.com/go-errors/errors"
 )
 
 const (
-	// SI_V1  = uint32(1)
-	// SI_VER = SI_V1
-
 	STI_BLOCK_V1  = uint32(1)
 	STI_BLOCK_VER = STI_BLOCK_V1
 
@@ -35,6 +37,10 @@ const (
 // GetSearchIdxPathPrefix gets the search index path prefix
 func GetSearchIdxPathPrefix() string {
 	return path.Clean("/tmp/search")
+}
+
+func CleanupTemporarySearchIndex() error {
+	return os.RemoveAll(GetSearchIdxPathPrefix())
 }
 
 //////////////////////////////////////////////////////////////////
@@ -183,4 +189,34 @@ func (h *BlockVersionS) Deserialize(data []byte) (*BlockVersionS, error) {
 func DeserializeBlockVersion(data []byte) (*BlockVersionS, error) {
 	h := &BlockVersionS{}
 	return h.Deserialize(data)
+}
+
+//////////////////////////////////////////////////////////////////
+//
+//                       Search Term HMAC
+//
+//////////////////////////////////////////////////////////////////
+
+var termHmacMutex sync.Mutex
+
+func CreateTermHmac(term string, termKey *sscrypto.StrongSaltKey) (string, error) {
+	termHmacMutex.Lock()
+	defer termHmacMutex.Unlock()
+
+	err := termKey.MACReset()
+	if err != nil {
+		return "", errors.New(err)
+	}
+
+	_, err = termKey.MACWrite([]byte(term))
+	if err != nil {
+		return "", errors.New(err)
+	}
+
+	hmac, err := termKey.MACSum(nil)
+	if err != nil {
+		return "", errors.New(err)
+	}
+
+	return base58.Encode(hmac, base58.BitcoinAlphabet), nil
 }

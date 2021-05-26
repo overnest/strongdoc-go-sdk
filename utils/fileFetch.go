@@ -3,6 +3,7 @@ package utils
 import (
 	"path"
 	"runtime"
+	"strings"
 
 	"github.com/go-errors/errors"
 )
@@ -14,6 +15,11 @@ func FetchFileLoc(relativeFilePath string) (string, error) {
 	if !ok {
 		return "", errors.Errorf("cannot get runtime caller")
 	}
-	absFilepath := path.Join(path.Dir(filename), "..", relativeFilePath)
+	rootFilePath := path.Join(path.Dir(filename), "..")
+	if strings.HasPrefix(relativeFilePath, rootFilePath) {
+		// The relative file path already starts with the absolute root file path
+		return relativeFilePath, nil
+	}
+	absFilepath := path.Join(rootFilePath, relativeFilePath)
 	return absFilepath, nil
 }

@@ -12,7 +12,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/overnest/strongsalt-common-go v0.0.6-0.20210129205722-812015cdd5c4
 	github.com/overnest/strongsalt-crypto-go v0.0.0-20210111191944-23542459b77c
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/shengdoushi/base58 v1.0.0
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect

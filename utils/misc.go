@@ -2,10 +2,15 @@ package utils
 
 import (
 	"fmt"
-	"github.com/go-errors/errors"
+	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strings"
+
+	"github.com/go-errors/errors"
 )
 
 func OpenLocalFile(filepath string) (*os.File, error) {
@@ -135,4 +140,104 @@ func DiffSliceString(slice1 []string, slice2 []string) []string {
 	}
 
 	return diffStr
+}
+
+func Grep(dir string, terms []string, removeNewline bool) (map[string][]uint64, error) { // Document -> TermOffsets in bytes
+	regex := regexp.MustCompilePOSIX(strings.Join(terms, "[^a-zA-Z0-9]+"))
+	removeNewlineRegex := regexp.MustCompilePOSIX("[\n\r]")
+
+	dirPath, err := FetchFileLoc(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	files, err := ioutil.ReadDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	type chanResult struct {
+		offsets []uint64
+		err     error
+	}
+
+	docMap := make(map[string][]uint64) // Document -> TermOffsets
+	fileNameToChan := make(map[string](chan *chanResult))
+
+	for _, file := range files {
+		fileName := path.Join(dirPath, file.Name())
+
+		if file.IsDir() {
+			childDocMap, err := Grep(fileName, terms, removeNewline)
+			if err != nil {
+				return nil, err
+			}
+			for doc, offsets := range childDocMap {
+				docMap[doc] = offsets
+			}
+		} else {
+			channel := make(chan *chanResult)
+			fileNameToChan[fileName] = channel
+
+			// This executes in a separate thread
+			go func(fileName string, channel chan<- *chanResult) {
+				defer close(channel)
+				result := &chanResult{
+					offsets: []uint64{},
+					err:     nil,
+				}
+
+				f, err := os.Open(fileName)
+				if err != nil {
+					result.err = err
+					channel <- result
+					return
+				}
+				defer f.Close()
+
+				_, reader, err := GetFileTypeAndReader(f)
+				if err != nil {
+					result.err = err
+					channel <- result
+					return
+				}
+
+				c, err := ioutil.ReadAll(reader)
+				if err != nil {
+					result.err = err
+					channel <- result
+					return
+				}
+
+				content := string(c)
+				if removeNewline {
+					content = removeNewlineRegex.ReplaceAllString(content, " ")
+				}
+
+				offsets := regex.FindAllStringIndex(content, -1)
+				if len(offsets) > 0 {
+					docOffsets := make([]uint64, len(offsets))
+					result.offsets = docOffsets
+					for i, offset := range offsets {
+						docOffsets[i] = uint64(offset[0])
+					}
+				}
+
+				channel <- result
+			}(fileName, channel)
+		}
+	} // for _, file := range files
+
+	for fileName, channel := range fileNameToChan {
+		result := <-channel
+		if result.err != nil {
+			return nil, result.err
+		}
+
+		if len(result.offsets) > 0 {
+			docMap[fileName] = result.offsets
+		}
+	}
+
+	return docMap, nil
 }

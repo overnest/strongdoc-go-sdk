@@ -2,29 +2,34 @@ package common
 
 import (
 	"fmt"
+	"io"
+	"os"
+
 	"github.com/overnest/strongdoc-go-sdk/api"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/utils"
-	"io"
-	"os"
 )
 
-// return /tmp/index/<docID>
-func buildDocBasePath(docID string) string {
-	return fmt.Sprintf("/tmp/index/%v", docID)
+const (
+	TEMP_DOC_IDX_BASE = "/tmp/document"
+)
+
+// return /tmp/document/index/<docID>
+func buildDocIdxBasePath(docID string) string {
+	return fmt.Sprintf("/%v/index/%v", TEMP_DOC_IDX_BASE, docID)
 }
 
-// return /tmp/index/<docID>/<docVer>
+// return /tmp/document/index/<docID>/<docVer>
 func buildDocIdxPath(docID string, docVer uint64) string {
-	return fmt.Sprintf("%v/%v", buildDocBasePath(docID), docVer)
+	return fmt.Sprintf("%v/%v", buildDocIdxBasePath(docID), docVer)
 }
 
-// return /tmp/index/<docID>/<docVer>/offsetIdx
+// return /tmp/document/index/<docID>/<docVer>/offsetIdx
 func buildDocOffsetIdxPath(docID string, docVer uint64) string {
 	return fmt.Sprintf("%v/offsetIdx", buildDocIdxPath(docID, docVer))
 }
 
-// return /tmp/index/<docID>/<docVer>/termIdx
+// return /tmp/document/index/<docID>/<docVer>/termIdx
 func buildDocTermIdxPath(docID string, docVer uint64) string {
 	return fmt.Sprintf("%v/termIdx", buildDocIdxPath(docID, docVer))
 }
@@ -68,7 +73,7 @@ func OpenDocTermIdxReader(sdc client.StrongDocClient, docID string, docVer uint6
 // remove all version of doc indexes
 func RemoveDocIndexes(sdc client.StrongDocClient, docID string) error {
 	if utils.TestLocal {
-		return os.RemoveAll(buildDocBasePath(docID))
+		return os.RemoveAll(buildDocIdxBasePath(docID))
 	} else {
 		return api.RemoveDocIndexesAllVersions(sdc, docID)
 	}
