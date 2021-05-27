@@ -25,15 +25,15 @@ func NewUpdateIDV1() string {
 //////////////////////////////////////////////////////////////////
 
 // getSearchIdxPathPrefix gets the search index path prefix
-// return /tmp/search/<owner>/sidx/<termID>
-func getSearchIdxPathPrefix(owner SearchIdxOwner, termID string) string {
-	return fmt.Sprintf("/tmp/search/%v/sidx/%v", owner, termID)
+// return /tmp/search/<owner>/sidx
+func getSearchIdxPathPrefix(owner SearchIdxOwner) string {
+	return fmt.Sprintf("/tmp/search/%v/sidx", owner)
 }
 
 // getSearchIdxPath gets the base path of the search index
 // return /tmp/search/<owner>/sidx/<termID>/updateID
 func getSearchIdxPath(owner SearchIdxOwner, termID, updateID string) string {
-	return fmt.Sprintf("%v/%v", getSearchIdxPathPrefix(owner, termID), updateID)
+	return fmt.Sprintf("%v/%v/%v", getSearchIdxPathPrefix(owner), termID, updateID)
 }
 
 //  return /tmp/search/<owner>/sidx/<termID>/updateID/searchterm
@@ -183,11 +183,11 @@ func GetLatestUpdateID(sdc client.StrongDocClient, owner SearchIdxOwner, termID 
 	return "", nil
 }
 
-// remove search indexes(term + sortedDoc)
-func RemoveSearchIndex(sdc client.StrongDocClient, owner SearchIdxOwner, termHmac string) error {
+// remove owner's all search indexes(term + sortedDoc)
+func RemoveSearchIndex(sdc client.StrongDocClient, owner SearchIdxOwner) error {
 	if utils.TestLocal {
-		return os.RemoveAll(getSearchIdxPathPrefix(owner, termHmac))
+		return os.RemoveAll(getSearchIdxPathPrefix(owner))
 	} else {
-		return api.RemoveSearchIndexes(sdc, termHmac, owner.GetOwnerType())
+		return api.RemoveSearchIndexes(sdc, owner.GetOwnerType())
 	}
 }

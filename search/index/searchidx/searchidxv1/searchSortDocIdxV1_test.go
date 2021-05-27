@@ -74,14 +74,13 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	term := "term1"
 	maxDocID := 2000
 	maxOffsetCount := 30
+	defer common.RemoveSearchIndex(sdc, owner)
 
 	// ================================ Generate Search Term Index ================================
 	termKey, err := sscrypto.GenerateKey(sscrypto.Type_HMACSha512)
 	assert.NilError(t, err)
 	indexKey, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
-
-	defer generateTermHmacAndRemoveSearchIndex(sdc, owner, term, termKey)
 
 	//
 	// Create STI
@@ -103,8 +102,6 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	sort.Slice(docIDVers, func(i, j int) bool {
 		return (strings.Compare(docIDVers[i].DocID, docIDVers[j].DocID) < 0)
 	})
-
-	time.Sleep(10 * time.Second)
 
 	// ================================ Get UpdateID ================================
 	//
@@ -141,8 +138,6 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	//
 	validateSsdiBlocks(t, docIDVers, ssdiBlocks)
 
-	time.Sleep(10 * time.Second)
-
 	// ================================ Open Search Sorted Doc Index ================================
 	//
 	// Open SSDI for reading
@@ -171,8 +166,17 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	searchPositiveDocIDs := make([]string, searches)
 	searchMixDocs := make([]*DocIDVerV1, searches)
 	searchMixDocIDs := make([]string, searches)
+	indexMap := make(map[int]bool)
 	for i := 0; i < searches; i++ {
-		idx := rand.Intn(len(docIDVers))
+		var idx int
+		for {
+			idx = rand.Intn(len(docIDVers))
+			_, ok := indexMap[idx]
+			if !ok {
+				indexMap[idx] = true
+				break
+			}
+		}
 		docID, docVer := docIDVers[idx].DocID, docIDVers[idx].DocVer
 
 		searchPositiveDocs[i] = docIDVers[idx]

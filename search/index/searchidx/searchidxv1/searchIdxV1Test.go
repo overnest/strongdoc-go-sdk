@@ -63,7 +63,7 @@ func TestCreateSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
 	siw, err := CreateSearchIdxWriterV1(owner, termKey, indexKey, sources)
 	assert.NilError(t, err)
 
-	termErr, err := siw.ProcessAllTerms(sdc)
+	termErr, err := siw.ProcessAllTerms(sdc, nil)
 	if err != nil {
 		fmt.Println(err.(*errors.Error).ErrorStack())
 	}
@@ -281,7 +281,7 @@ func TestDeleteSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
 	siw, err := CreateSearchIdxWriterV1(owner, termKey, indexKey, sources)
 	assert.NilError(t, err)
 
-	termErr, err := siw.ProcessAllTerms(sdc)
+	termErr, err := siw.ProcessAllTerms(sdc, nil)
 	if err != nil {
 		fmt.Println(err.(*errors.Error).ErrorStack())
 	}
@@ -468,10 +468,10 @@ func prevTest(t *testing.T) client.StrongDocClient {
 	return sdc
 }
 
-func generateTermHmacAndRemoveSearchIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) error {
-	hamcTerm, err := common.CreateTermHmac(term, termKey)
-	if err != nil {
-		return err
-	}
-	return common.RemoveSearchIndex(sdc, owner, hamcTerm)
-}
+// func generateTermHmacAndRemoveSearchIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) error {
+// 	hamcTerm, err := common.CreateTermHmac(term, termKey)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return common.RemoveSearchIndex(sdc, owner, hamcTerm)
+// }

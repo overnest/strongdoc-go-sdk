@@ -28,23 +28,24 @@ func CreateDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer uint64,
 
 // Create document offset index and writes output
 func CreateAndSaveDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	sourceData utils.Storage) error {
+	sourceData utils.Source) error {
 	return CreateAndSaveDocOffsetIdxWithOffset(sdc, docID, docVer, key, sourceData, 0)
 }
 
 func CreateAndSaveDocOffsetIdxWithOffset(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	sourceData utils.Storage, initOffset int64) error {
-	tokenizer, err := utils.OpenFileTokenizer(sourceData)
+	sourceData utils.Source, initOffset int64) error {
+	tokenizer, err := utils.OpenBleveTokenizer(sourceData)
 	if err != err {
 		return err
 	}
+	defer tokenizer.Close()
 
 	doi, err := CreateDocOffsetIdx(sdc, docID, docVer, key, initOffset)
 	if err != nil {
 		return err
 	}
 
-	for token, _, wordCounter, err := tokenizer.NextToken(); err != io.EOF; token, _, wordCounter, err = tokenizer.NextToken() {
+	for token, wordCounter, err := tokenizer.NextToken(); err != io.EOF; token, wordCounter, err = tokenizer.NextToken() {
 		if err != nil && err != io.EOF {
 			return err
 		}

@@ -129,7 +129,8 @@ func PrevTest(t *testing.T, numOfOrgs int, numOfUsersPerOrg int) (sdc client.Str
 	sdc, err := client.InitStrongDocClient(client.LOCAL, false)
 	assert.NilError(t, err)
 	orgs, orgUsers = initData(numOfOrgs, numOfUsersPerOrg)
-	hardRemoveOrgs(orgs)
+	err = hardRemoveOrgs(orgs)
+	assert.NilError(t, err)
 	return
 }
 

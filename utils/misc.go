@@ -13,10 +13,17 @@ import (
 	"github.com/go-errors/errors"
 )
 
+// open local file with read-write mode (overwrite existing file)
 func OpenLocalFile(filepath string) (*os.File, error) {
 	return os.OpenFile(filepath, os.O_RDWR, 0755)
 }
 
+// create local file or open local file to append (make sure filepath directory is valid)
+func createOrOpenLocalFile(filepath string) (*os.File, error) {
+	return os.OpenFile(filepath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0755)
+}
+
+// create filepath directory when necessary and create file
 func MakeDirAndCreateFile(path string) (*os.File, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0770); err != nil {
 		return nil, err
@@ -195,7 +202,7 @@ func Grep(dir string, terms []string, removeNewline bool) (map[string][]uint64, 
 				}
 				defer f.Close()
 
-				_, reader, err := GetFileTypeAndReader(f)
+				_, reader, _, err := getFileTypeAndReaderCloser(f)
 				if err != nil {
 					result.err = err
 					channel <- result

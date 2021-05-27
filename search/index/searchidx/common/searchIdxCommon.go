@@ -8,12 +8,10 @@ import (
 	"path"
 	"sync"
 
-	"github.com/overnest/strongdoc-go-sdk/utils"
-	"github.com/shengdoushi/base58"
-
-	sscrypto "github.com/overnest/strongsalt-crypto-go"
-
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/utils"
+	sscrypto "github.com/overnest/strongsalt-crypto-go"
+	"github.com/shengdoushi/base58"
 )
 
 const (
@@ -23,9 +21,9 @@ const (
 	STI_BLOCK_SIZE_MAX = uint64(1024 * 1024 * 5) // 5MB
 	// STI_BLOCK_MARGIN_PERCENT = uint64(10)              // 10% margin
 
-	STI_V1              = uint32(1)
-	STI_VER             = STI_V1
-	STI_TERM_BATCH_SIZE = 1000 // Process terms in batches of 1000
+	STI_V1  = uint32(1)
+	STI_VER = STI_V1
+	//STI_TERM_BATCH_SIZE = 1000 // Process terms in batches of 1000
 
 	SSDI_BLOCK_SIZE_MAX       = uint64(1024 * 1) //1024 * 5) // 5MB
 	SSDI_BLOCK_MARGIN_PERCENT = uint64(10)       // 10% margin
@@ -33,6 +31,8 @@ const (
 	SSDI_V1  = uint32(1)
 	SSDI_VER = SSDI_V1
 )
+
+var STI_TERM_BATCH_SIZE = 200 // Process terms in batches of 1000
 
 // GetSearchIdxPathPrefix gets the search index path prefix
 func GetSearchIdxPathPrefix() string {

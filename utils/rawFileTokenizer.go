@@ -1,88 +1,104 @@
 package utils
 
 import (
-	"bufio"
-	"bytes"
+	"github.com/blevesearch/bleve/analysis"
 	"io"
 	"strings"
-	"unicode"
 )
 
 // RawFileTokenizer tokenizes a file
 type RawFileTokenizer interface {
-	NextToken() (term string, space rune, wordCounter uint64, err error) // return lower-case alphaNumeric token
-	NextRawToken() (term string, space rune, err error)                  // return raw token
+	NextRawToken() (rawToken string, space rune, err error)
+	Analyze(rawToken string) (terms []string)
+	IsPureTerm(rawToken string) (isPure bool, pureTerm string)
+	GetAllPureTerms() ([]string, error)
+	Close() (err error)
 }
 
 type rawFileTokenizer struct {
-	wordCounter uint64
-	reader      *bufio.Reader
+	storage  Storage
+	analyzer *analysis.Analyzer
 }
 
 // OpenRawFileTokenizer opens a reader for tokenization
-func OpenRawFileTokenizer(storage Storage) (RawFileTokenizer, error) {
-	_, freader, err := GetFileTypeAndReader(storage)
+func OpenRawFileTokenizer(source Source) (RawFileTokenizer, error) {
+	storage, err := openStorage(source)
 	if err != nil {
 		return nil, err
 	}
 
-	tokenizer := &rawFileTokenizer{
-		reader:      bufio.NewReader(freader),
-		wordCounter: 0,
-	}
+	analyzer, err := openAnalyzer()
 
-	return tokenizer, nil
+	return &rawFileTokenizer{
+		storage:  storage,
+		analyzer: analyzer,
+	}, nil
 }
 
-func (token *rawFileTokenizer) NextToken() (term string, space rune, wordCounter uint64, err error) {
-	for {
-		term, space, err = token.NextRawToken()
-		if err != nil {
-			return
-		}
-		if IsAlphaNumeric(term) {
-			term = strings.ToLower(term)
-			wordCounter = token.wordCounter
-			token.wordCounter++
-			return
-		}
-	}
+func (token *rawFileTokenizer) Close() (err error) {
+	return token.storage.close()
 }
 
-func (token *rawFileTokenizer) NextRawToken() (term string, space rune, err error) {
-	err = nil
-	term = ""
-	space = unicode.ReplacementChar
+func (tokenizer *rawFileTokenizer) NextRawToken() (rawToken string, space rune, err error) {
+	var rawTokenBytes []byte
+	rawTokenBytes, space, err = tokenizer.storage.nextRawToken()
+	if err != nil {
+		return
+	}
+	rawToken = string(rawTokenBytes)
+	return
+}
 
-	var buffer bytes.Buffer
-	bufWriter := bufio.NewWriter(&buffer)
+// analyze rawToken
+func (tokenizer *rawFileTokenizer) Analyze(rawToken string) (terms []string) {
+	_, terms = tokenizer.getWords(rawToken)
+	return
+}
 
-	for err == nil {
-		var r rune
-		r, _, err = token.reader.ReadRune()
+func (tokenizer *rawFileTokenizer) IsPureTerm(rawToken string) (isPure bool, pureWord string) {
+	var words []string
+	isPure, words = tokenizer.getWords(rawToken)
+	if isPure {
+		pureWord = words[0]
+	}
+	return
+}
+
+func (tokenizer *rawFileTokenizer) getWords(rawToken string) (isPure bool, terms []string) {
+	isPure = false
+	tokens := tokenizer.analyzer.Analyze([]byte(rawToken))
+	for _, token := range tokens {
+		terms = append(terms, (string)(token.Term))
+	}
+	if len(terms) == 1 && terms[0] == strings.ToLower(rawToken) {
+		isPure = true
+	}
+	return
+}
+
+// get pure words from source
+func (tokenizer *rawFileTokenizer) GetAllPureTerms() ([]string, error) {
+	// term map
+	pureTermsMap := make(map[string]bool)
+	unpureTermsMap := make(map[string]bool)
+	for rawToken, _, err := tokenizer.NextRawToken(); err != io.EOF; rawToken, _, err = tokenizer.NextRawToken() {
 		if err != nil && err != io.EOF {
-			return
+			return nil, err
 		}
-
-		if err == io.EOF || unicode.IsSpace(r) {
-			space = r
-			break
+		isPure, words := tokenizer.getWords(rawToken)
+		if isPure {
+			pureTermsMap[words[0]] = true
 		} else {
-			_, err = bufWriter.WriteRune(r)
-			if err != nil {
-				return
+			for _, word := range words {
+				unpureTermsMap[word] = true
 			}
 		}
 	}
-
-	bufWriter.Flush()
-	if buffer.Len() > 0 {
-		var berr error
-		term, berr = buffer.ReadString(' ')
-		if berr != nil && berr != io.EOF {
-			return
+	var terms []string
+	for term, _ := range pureTermsMap {
+		if !unpureTermsMap[term] {
+			terms = append(terms, term)
 		}
 	}
-
-	return
+	return terms, nil
 }

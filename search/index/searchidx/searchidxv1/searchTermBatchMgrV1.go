@@ -1,18 +1,14 @@
 package searchidxv1
 
 import (
-	"fmt"
 	"io"
 	"sort"
 	"strings"
-	"time"
-
-	"github.com/overnest/strongdoc-go-sdk/client"
 
 	"github.com/emirpasic/gods/trees/binaryheap"
+	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"github.com/overnest/strongdoc-go-sdk/utils"
-
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 )
 
@@ -133,7 +129,7 @@ func (mgr *SearchTermBatchMgrV1) ProcessNextTermBatch(sdc client.StrongDocClient
 		return batchResult, io.EOF
 	}
 
-	return termBatch.ProcessTermBatch(sdc)
+	return termBatch.ProcessTermBatch(sdc, nil)
 }
 
 func (mgr *SearchTermBatchMgrV1) ProcessAllTermBatches(sdc client.StrongDocClient, batchSize int) (map[string]error, error) {
@@ -227,16 +223,16 @@ func CreateSearchTermBatchV1(sdc client.StrongDocClient, owner common.SearchIdxO
 	return batch, nil
 }
 
-func (batch *SearchTermBatchV1) ProcessTermBatch(sdc client.StrongDocClient) (map[string]error, error) {
+func (batch *SearchTermBatchV1) ProcessTermBatch(sdc client.StrongDocClient, event *utils.TimeEvent) (map[string]error, error) {
 	respMap := make(map[string]error)
 
-	t1 := time.Now()
-	stiResp, err := batch.processStiAll()
+	e1 := utils.AddSubEvent(event, "processStiAll")
+	stiResp, err := batch.processStiAll(e1)
 	if err != nil {
 		return respMap, err
 	}
+	utils.EndEvent(e1)
 
-	t2 := time.Now()
 	stiSuccess := make([]*SearchTermIdxWriterV1, 0, len(stiResp))
 	for stiw, err := range stiResp {
 		respMap[stiw.Term] = utils.FirstError(respMap[stiw.Term], err)
@@ -245,7 +241,7 @@ func (batch *SearchTermBatchV1) ProcessTermBatch(sdc client.StrongDocClient) (ma
 		}
 	}
 
-	t3 := time.Now()
+	e2 := utils.AddSubEvent(event, "processSsdiAll")
 	ssdiResp, err := batch.processSsdiAll(sdc, stiSuccess)
 	if err != nil {
 		return respMap, err
@@ -254,15 +250,7 @@ func (batch *SearchTermBatchV1) ProcessTermBatch(sdc client.StrongDocClient) (ma
 	for stiw, err := range ssdiResp {
 		respMap[stiw.Term] = utils.FirstError(respMap[stiw.Term], err)
 	}
-
-	t4 := time.Now()
-
-	// PSL DEBUG
-	if true {
-		fmt.Println("Process STI", t2.Sub(t1).Milliseconds(), "ms")
-		fmt.Println("Process SSDI", t4.Sub(t3).Milliseconds(), "ms")
-		fmt.Println("--------------------------")
-	}
+	utils.EndEvent(e2)
 
 	return respMap, nil
 }
@@ -318,11 +306,15 @@ func (batch *SearchTermBatchV1) processStiBatch() (map[*SearchTermIdxWriterV1]*S
 	return respMap, nil
 }
 
-func (batch *SearchTermBatchV1) processStiAll() (map[*SearchTermIdxWriterV1]error, error) {
+func (batch *SearchTermBatchV1) processStiAll(event *utils.TimeEvent) (map[*SearchTermIdxWriterV1]error, error) {
+	e1 := utils.AddSubEvent(event, "resetSources")
 	respMap := make(map[*SearchTermIdxWriterV1]error)
 	for _, source := range batch.SourceList {
 		source.Reset()
 	}
+	utils.EndEvent(e1)
+
+	e2 := utils.AddSubEvent(event, "processStiBatches")
 
 	for {
 		stiBlocksResp, err := batch.processStiBatch()
@@ -348,12 +340,14 @@ func (batch *SearchTermBatchV1) processStiAll() (map[*SearchTermIdxWriterV1]erro
 			break
 		}
 	}
+	utils.EndEvent(e2)
 
+	e3 := utils.AddSubEvent(event, "closeStiw")
 	for _, stiw := range batch.TermToWriter {
 		// TODO: Do this in parallel
 		stiw.Close()
 	}
-
+	utils.EndEvent(e3)
 	return respMap, nil
 }
 

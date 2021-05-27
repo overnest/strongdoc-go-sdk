@@ -30,12 +30,11 @@ func TestTermIdxBlockV1(t *testing.T) {
 		sourceFile.Seek(0, utils.SeekSet)
 		dtib := CreateDockTermIdxBlkV1(prevHighTerm, prevHighTermCount)
 
-		tokenizer, err := utils.OpenFileTokenizer(sourceFile)
+		tokenizer, err := utils.OpenBleveTokenizer(sourceFile)
 		assert.NilError(t, err)
 
-		for token, pos, _, err := tokenizer.NextToken(); err != io.EOF; token, pos, _, err = tokenizer.NextToken() {
+		for token, _, err := tokenizer.NextToken(); err != io.EOF; token, _, err = tokenizer.NextToken() {
 			dtib.AddTerm(token)
-			_ = pos
 		}
 
 		s, err := dtib.Serialize()
@@ -59,6 +58,9 @@ func TestTermIdxBlockV1(t *testing.T) {
 
 		prevHighTerm = dtib.highTerm
 		prevHighTermCount, err = dtib.GetHighTermCount()
+		assert.NilError(t, err)
+
+		err = tokenizer.Close()
 		assert.NilError(t, err)
 
 	}

@@ -3,7 +3,7 @@ module github.com/overnest/strongdoc-go-sdk
 go 1.13
 
 require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/blevesearch/bleve v1.0.14
 	github.com/emirpasic/gods v1.12.0
 	github.com/go-errors/errors v1.1.1
 	github.com/golang/protobuf v1.3.3

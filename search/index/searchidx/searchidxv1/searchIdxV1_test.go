@@ -3,7 +3,6 @@ package searchidxv1
 import (
 	"math/rand"
 	"testing"
-	"time"
 
 	docidx "github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
@@ -20,6 +19,7 @@ func TestSearchTermUpdateIDsV1(t *testing.T) {
 	updateIDs := make([]string, idCount)
 	term := "myTerm"
 	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
+	defer common.RemoveSearchIndex(sdc, owner)
 
 	// ================================ Generate updateID ================================
 	termKey, err := sscrypto.GenerateKey(sscrypto.Type_HMACSha512)
@@ -35,18 +35,14 @@ func TestSearchTermUpdateIDsV1(t *testing.T) {
 		assert.NilError(t, err)
 	}
 
-	time.Sleep(time.Second * 10)
-
-	defer common.RemoveSearchIndex(sdc, owner, termHmac)
-
 	resultIDs, err := GetUpdateIdsHmacV1(sdc, owner, termHmac)
 	assert.NilError(t, err)
 
 	assert.DeepEqual(t, updateIDs, resultIDs)
 }
 
-//  TODO only available for localTest
 func TestSearchIdxWriterV1(t *testing.T) {
+	// ================================ Prev Test ================================
 	versions := 3
 	numDocs := 10
 	delDocs := 4
@@ -75,6 +71,7 @@ func TestSearchIdxWriterV1(t *testing.T) {
 	// err = TestCleanupSearchIndexes(owner, 1)
 	// assert.NilError(t, err)
 
+	// ================================ Update Search Index ================================
 	for v := 1; v <= versions; v++ {
 		oldDocs := make([]*docidx.TestDocumentIdxV1, 0, numDocs)
 		newDocs := make([]*docidx.TestDocumentIdxV1, 0, numDocs)

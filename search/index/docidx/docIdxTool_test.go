@@ -34,9 +34,7 @@ func TestTools(t *testing.T) {
 		validateDocDti(t, sdc, key, doc, terms)
 	}
 	// ================================ Remove Doc Indexes ================================
-	for _, doc := range docs {
-		assert.NilError(t, doc.RemoveAllVersionsIndexes(sdc))
-	}
+	RemoveTestDocumentsDocIdx(sdc, docs)
 }
 
 // validate doi, return sorted term list
@@ -61,30 +59,33 @@ func validateDocDoi(t *testing.T, sdc client.StrongDocClient, key *sscrypto.Stro
 			}
 		}
 	}
+	err = doiVersion.Close()
+	assert.NilError(t, err)
 
 	sourceData, err := utils.OpenLocalFile(doc.DocFilePath)
 	assert.NilError(t, err)
 	tokenizer, err := utils.OpenRawFileTokenizer(sourceData)
 	assert.NilError(t, err)
-	err = doiVersion.Close()
-	assert.NilError(t, err)
 
 	// Validate the DOI
-	i := uint64(0)
-	for token, _, wordCounter, err := tokenizer.NextToken(); err != io.EOF; token, _, wordCounter, err = tokenizer.NextToken() {
+	var wordCounter uint64 = 0
+	for rawToken, _, err := tokenizer.NextRawToken(); err != io.EOF; rawToken, _, err = tokenizer.NextRawToken() {
 		if err != nil {
 			assert.Equal(t, err, io.EOF)
+			break
 		}
-
-		if token != "" {
-			locs, exist := termloc[token]
+		for _, term := range tokenizer.Analyze(rawToken) {
+			locs, exist := termloc[term]
 			assert.Assert(t, exist)
 			assert.Assert(t, len(locs) > 0)
-			assert.Equal(t, i, wordCounter)
-			termloc[token] = locs[1:]
-			i++
+			assert.Equal(t, locs[0], wordCounter)
+			termloc[term] = locs[1:]
+			wordCounter++
 		}
 	}
+	err = tokenizer.Close()
+	assert.NilError(t, err)
+
 	err = sourceData.Close()
 	assert.NilError(t, err)
 
@@ -142,7 +143,8 @@ func TestCreateModifiedDoc(t *testing.T) {
 	docs, err := InitTestDocuments(documents, false)
 	assert.NilError(t, err)
 	oldDoc := docs[0]
-	defer oldDoc.RemoveAllVersionsIndexes(sdc)
+	defer RemoveTestDocumentsDocIdx(sdc, docs)
+
 	err = oldDoc.CreateDoiAndDti(sdc, key)
 	assert.NilError(t, err)
 
@@ -163,7 +165,6 @@ func TestCreateModifiedDoc(t *testing.T) {
 
 func testCreateModifiedDoc(t *testing.T, sdc client.StrongDocClient, oldDoc *TestDocumentIdxV1, key *sscrypto.StrongSaltKey, createOldIdx bool) *TestDocumentIdxV1 {
 	addedTerms, deletedTerms := rand.Intn(99)+1, rand.Intn(99)+1
-
 	// create modified doc
 	newDoc, err := oldDoc.CreateModifiedDoc(addedTerms, deletedTerms)
 	assert.NilError(t, err)

@@ -8,6 +8,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
 )
@@ -51,7 +52,6 @@ func GetLatestUpdateIDV1(sdc client.StrongDocClient, owner common.SearchIdxOwner
 // reverse chronological order. The most recent update ID will come first
 func GetUpdateIdsHmacV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, termHmac string) ([]string, error) {
 	return common.GetUpdateIDs(sdc, owner, termHmac)
-
 }
 
 // GetLatestUpdateIdsHmacV1 returns the latest update IDs for a specific owner + term
@@ -121,7 +121,7 @@ func CreateSearchIdxWriterV1(owner common.SearchIdxOwner, termKey, indexKey *ssc
 	return searchIdx, nil
 }
 
-func (idx *SearchIdxV1) ProcessBatchTerms(sdc client.StrongDocClient) (map[string]error, error) {
+func (idx *SearchIdxV1) ProcessBatchTerms(sdc client.StrongDocClient, event *utils.TimeEvent) (map[string]error, error) {
 	emptyResult := make(map[string]error)
 
 	termBatch, err := idx.batchMgr.GetNextTermBatch(sdc, common.STI_TERM_BATCH_SIZE)
@@ -133,20 +133,22 @@ func (idx *SearchIdxV1) ProcessBatchTerms(sdc client.StrongDocClient) (map[strin
 		return emptyResult, io.EOF
 	}
 
-	// PSL DEBUG
 	fmt.Println("batch: ", termBatch.termList[0], "->", termBatch.termList[len(termBatch.termList)-1])
 
-	return termBatch.ProcessTermBatch(sdc)
+	e := utils.AddSubEvent(event, "ProcessTermBatch")
+	termErrs, err := termBatch.ProcessTermBatch(sdc, e)
+	utils.EndEvent(e)
+	return termErrs, err
 }
 
-func (idx *SearchIdxV1) ProcessAllTerms(sdc client.StrongDocClient) (map[string]error, error) {
+func (idx *SearchIdxV1) ProcessAllTerms(sdc client.StrongDocClient, event *utils.TimeEvent) (map[string]error, error) {
 	finalResult := make(map[string]error)
 
 	var err error = nil
 	for err == nil {
 		var batchResult map[string]error
 
-		batchResult, err = idx.ProcessBatchTerms(sdc)
+		batchResult, err = idx.ProcessBatchTerms(sdc, event)
 		if err != nil && err != io.EOF {
 			return finalResult, err
 		}
