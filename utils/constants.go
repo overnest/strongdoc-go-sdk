@@ -12,7 +12,7 @@ const (
 
 	// max receive msg limit
 	onegb          = 1024 * 1024 * 1024
-	MaxRecvMsgSize = onegb*2 + 1000 // 9223372036854775807 max int (int64)  value
+	MaxRecvMsgSize = onegb*2 + 1000
 
 	// Owner type
 	OwnerOrg  OwnerType = "OWNER_ORG"

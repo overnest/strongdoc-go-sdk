@@ -24,7 +24,7 @@ type SearchTermIdxV1 struct {
 	IndexKey   *sscrypto.StrongSaltKey
 	IndexNonce []byte
 	InitOffset uint64
-	termHmac   string
+	termID     string
 	updateID   string
 	writer     io.WriteCloser
 	reader     io.ReadCloser
@@ -49,7 +49,7 @@ func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwn
 		IndexKey:    indexKey,
 		IndexNonce:  nil,
 		InitOffset:  0,
-		termHmac:    "",
+		termID:      "",
 		updateID:    "",
 		writer:      nil,
 		reader:      nil,
@@ -71,7 +71,7 @@ func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwn
 		return nil, errors.Errorf("The key type %v is not a midstream key", indexKey.Type.Name)
 	}
 
-	sti.termHmac, err = sti.createTermHmac()
+	sti.termID, err = sti.createTermHmac()
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwn
 		StiVersionS: common.StiVersionS{StiVer: common.STI_V1},
 		KeyType:     sti.IndexKey.Type.Name,
 		Nonce:       sti.IndexNonce,
-		TermHmac:    sti.termHmac,
+		TermHmac:    sti.termID,
 		UpdateID:    sti.updateID,
 	}
 
@@ -94,7 +94,7 @@ func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwn
 		BlockVersionS: common.BlockVersionS{BlockVer: common.STI_BLOCK_V1},
 	}
 
-	plainHdrBodySerial, err := plainHdrBody.serialize()
+	plainHdrBodySerial, err := plainHdrBody.Serialize()
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -105,7 +105,7 @@ func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwn
 		return nil, errors.New(err)
 	}
 
-	cipherHdrBodySerial, err := cipherHdrBody.serialize()
+	cipherHdrBodySerial, err := cipherHdrBody.Serialize()
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -164,20 +164,28 @@ func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner
 			indexKey.Type.Name, sscrypto.Type_XChaCha20.Name)
 	}
 
-	termHmac, err := createTermHmac(term, termKey)
+	termID, err := common.CreateTermHmac(term, termKey)
 	if err != nil {
 		return nil, err
 	}
 
-	reader, size, err := createStiReader(sdc, owner, termHmac, updateID)
+	reader, size, err := createStiReader(sdc, owner, termID, updateID)
 	if err != nil {
 		return nil, err
 	}
 
-	plainHdr, parsed, err := ssheaders.DeserializePlainHdrStream(reader)
+	plainHdr, plainHdrSize, err := ssheaders.DeserializePlainHdrStream(reader)
 	if err != nil {
 		return nil, err
 	}
+
+	return OpenSearchTermIdxPrivV1(owner, term, termID, updateID, termKey, indexKey,
+		reader, plainHdr, 0, uint64(plainHdrSize), size)
+}
+
+func OpenSearchTermIdxPrivV1(owner common.SearchIdxOwner, term, termID, updateID string,
+	termKey, indexKey *sscrypto.StrongSaltKey, reader io.ReadCloser, plainHdr ssheaders.Header,
+	initOffset, plainHdrSize, endOffset uint64) (*SearchTermIdxV1, error) {
 
 	plainHdrBodyData, err := plainHdr.GetBody()
 	if err != nil {
@@ -196,7 +204,7 @@ func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner
 
 	// Parse plaintext header body
 	plainHdrBody := &StiPlainHdrBodyV1{}
-	plainHdrBody, err = plainHdrBody.deserialize(plainHdrBodyData)
+	plainHdrBody, err = plainHdrBody.Deserialize(plainHdrBodyData)
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -211,19 +219,17 @@ func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner
 		IndexKey:    indexKey,
 		IndexNonce:  plainHdrBody.Nonce,
 		InitOffset:  0,
-		termHmac:    termHmac,
+		termID:      termID,
 		updateID:    updateID,
 		writer:      nil,
 		reader:      reader,
 		bwriter:     nil,
 		breader:     nil,
-		storeSize:   size,
+		storeSize:   endOffset,
 	}
 
-	return openSearchTermIdxV1(sti, plainHdrBody, sti.InitOffset+uint64(parsed), size)
-}
+	plainHdrOffset := initOffset + plainHdrSize
 
-func openSearchTermIdxV1(sti *SearchTermIdxV1, plainHdrBody *StiPlainHdrBodyV1, plainHdrOffset, endOffset uint64) (*SearchTermIdxV1, error) {
 	// Initialize the streaming crypto to decrypt ciphertext header and the blocks after that
 	streamCrypto, err := crypto.OpenStreamCrypto(sti.IndexKey, sti.IndexNonce, sti.reader, int64(plainHdrOffset))
 	if err != nil {
@@ -231,7 +237,7 @@ func openSearchTermIdxV1(sti *SearchTermIdxV1, plainHdrBody *StiPlainHdrBodyV1, 
 	}
 
 	// Read the ciphertext header from storage
-	cipherHdr, parsed, err := ssheaders.DeserializeCipherHdrStream(streamCrypto)
+	cipherHdr, cipherHdrSize, err := ssheaders.DeserializeCipherHdrStream(streamCrypto)
 	if err != nil {
 		return nil, err
 	}
@@ -242,18 +248,18 @@ func openSearchTermIdxV1(sti *SearchTermIdxV1, plainHdrBody *StiPlainHdrBodyV1, 
 	}
 
 	cipherHdrBody := &StiCipherHdrBodyV1{}
-	cipherHdrBody, err = cipherHdrBody.deserialize(cipherHdrBodyData)
+	cipherHdrBody, err = cipherHdrBody.Deserialize(cipherHdrBodyData)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create a block list reader using the streaming crypto so the blocks will be
 	// decrypted.
-	reader, err := ssblocks.NewBlockListReader(streamCrypto, plainHdrOffset+uint64(parsed), endOffset)
+	bReader, err := ssblocks.NewBlockListReader(streamCrypto, plainHdrOffset+uint64(cipherHdrSize), endOffset)
 	if err != nil {
 		return nil, err
 	}
-	blockReader, ok := reader.(ssblocks.BlockListReaderV1)
+	blockReader, ok := bReader.(ssblocks.BlockListReaderV1)
 	if !ok {
 		return nil, errors.Errorf("Block list reader is not BlockListReaderV1")
 	}
@@ -262,7 +268,7 @@ func openSearchTermIdxV1(sti *SearchTermIdxV1, plainHdrBody *StiPlainHdrBodyV1, 
 }
 
 func (sti *SearchTermIdxV1) createTermHmac() (string, error) {
-	return createTermHmac(sti.Term, sti.TermKey)
+	return common.CreateTermHmac(sti.Term, sti.TermKey)
 }
 
 func (sti *SearchTermIdxV1) createWriter(sdc client.StrongDocClient) error {
@@ -270,7 +276,7 @@ func (sti *SearchTermIdxV1) createWriter(sdc client.StrongDocClient) error {
 		return nil
 	}
 
-	writer, updateID, err := common.OpenSearchTermIndexWriter(sdc, sti.Owner, sti.termHmac)
+	writer, updateID, err := common.OpenSearchTermIndexWriter(sdc, sti.Owner, sti.termID)
 	if err != nil {
 		return err
 	}
@@ -284,7 +290,7 @@ func (sti *SearchTermIdxV1) createReader(sdc client.StrongDocClient) (io.ReadClo
 		return sti.reader, sti.storeSize, nil
 	}
 
-	return createStiReader(sdc, sti.Owner, sti.termHmac, sti.updateID)
+	return createStiReader(sdc, sti.Owner, sti.termID, sti.updateID)
 }
 
 func createStiReader(sdc client.StrongDocClient, owner common.SearchIdxOwner, termHmac, updateID string) (io.ReadCloser, uint64, error) {

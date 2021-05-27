@@ -1,6 +1,10 @@
 package utils
 
 import (
+	"fmt"
+	"os/exec"
+	"strconv"
+	"strings"
 	"testing"
 
 	"gotest.tools/assert"
@@ -42,5 +46,41 @@ func TestBinarySearchU64(t *testing.T) {
 func testBinarySearchU64Positive(t *testing.T, list []uint64) {
 	for i := uint64(1); i <= uint64(len(list)); i++ {
 		assert.Equal(t, BinarySearchU64(list, i), int(i-1))
+	}
+}
+
+func TestGrep(t *testing.T) {
+	booksdir := "testDocuments/books"
+	grepTerms := [][]string{
+		{"almost", "no", "restrictions", "whatsoever"},
+		{"almost", "no", "restrictions", "whatsoever", "doesnotexist"},
+	}
+
+	dirPath, err := FetchFileLoc(booksdir)
+	assert.NilError(t, err)
+
+	for _, terms := range grepTerms {
+		docMap, err := Grep(booksdir, terms, false)
+		assert.NilError(t, err)
+
+		// Use shell command to verify
+		cmd := fmt.Sprintf("zgrep -b -R \"%v\" %v | cut -d':' -f1-2", strings.Join(terms, " "), dirPath)
+		out, err := exec.Command("bash", "-c", cmd).Output()
+		assert.NilError(t, err)
+
+		grepDocMap := make(map[string][]uint64)
+		lines := strings.Split(string(out), "\n")
+		for _, line := range lines {
+			docOffset := strings.Split(line, ":")
+			if len(docOffset) != 2 {
+				continue
+			}
+
+			offset, err := strconv.ParseUint(docOffset[1], 10, 64)
+			assert.NilError(t, err)
+			grepDocMap[docOffset[0]] = append(grepDocMap[docOffset[0]], offset)
+		}
+
+		assert.DeepEqual(t, docMap, grepDocMap)
 	}
 }

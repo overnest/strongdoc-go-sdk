@@ -178,6 +178,7 @@ func (blk *DocTermIdxBlkV1) removeHighTerm() {
 func (blk *DocTermIdxBlkV1) Serialize() ([]byte, error) {
 	for blk.predictedJSONSize > blk.maxDataSize {
 		blk.removeHighTerm()
+		blk.isFull = true
 	}
 
 	terms := blk.termTree.Keys()

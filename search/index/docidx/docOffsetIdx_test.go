@@ -11,7 +11,6 @@ import (
 	"gotest.tools/assert"
 	"io"
 	"testing"
-	"time"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -21,8 +20,7 @@ import (
 //
 //  step1: tokenize data using FileTokenizer
 //	step2: generate Document Offset Index(doi) from tokenized data
-//	step3: generate Document Term Index(dti) from tokenized data or doi
-//  step4: generate Org/User Search Index(si) from  doi and dti(optional)
+//	step3: generate Document Term Index(dti) from tokenized source data or doi(preferred)
 //
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,6 +31,8 @@ func TestDocOffsetIdx(t *testing.T) {
 
 	docID := "docID100"
 	docVer := uint64(100)
+	defer common.RemoveDocIndexes(testClient, docID)
+
 	sourceFileName := "./testDocuments/enwik8.txt.gz"
 	sourceFilepath, err := utils.FetchFileLoc(sourceFileName)
 	assert.NilError(t, err)
@@ -54,8 +54,6 @@ func TestDocOffsetIdx(t *testing.T) {
 	err = sourceFile.Close()
 	assert.NilError(t, err)
 
-	time.Sleep(5 * time.Second)
-
 	// ================================ Open doc offset index ================================
 	doiVersion, err := OpenDocOffsetIdx(testClient, docID, docVer, key)
 	assert.NilError(t, err)
@@ -72,8 +70,8 @@ func TestDocOffsetIdx(t *testing.T) {
 	}
 }
 
-func testDocOffsetIdxV1(t *testing.T, doiVersion common.DocOffsetIdx, sourceFile utils.Storage) {
-	tokenizer, err := utils.OpenFileTokenizer(sourceFile)
+func testDocOffsetIdxV1(t *testing.T, doiVersion common.DocOffsetIdx, sourceFile utils.Source) {
+	tokenizer, err := utils.OpenBleveTokenizer(sourceFile)
 	assert.NilError(t, err)
 
 	doi, ok := doiVersion.(*docidxv1.DocOffsetIdxV1)
@@ -83,7 +81,7 @@ func testDocOffsetIdxV1(t *testing.T, doiVersion common.DocOffsetIdx, sourceFile
 	block, err := doi.ReadNextBlock()
 	assert.NilError(t, err)
 
-	for token, _, wordCounter, err := tokenizer.NextToken(); err != io.EOF; token, _, wordCounter, err = tokenizer.NextToken() {
+	for token, wordCounter, err := tokenizer.NextToken(); err != io.EOF; token, wordCounter, err = tokenizer.NextToken() {
 		// If we can't find the term/loc in this block, we should be
 		// able to find it in the next block
 		if !findTermLocationV1(block, token, wordCounter) {
@@ -92,6 +90,9 @@ func testDocOffsetIdxV1(t *testing.T, doiVersion common.DocOffsetIdx, sourceFile
 			assert.Assert(t, findTermLocationV1(block, token, wordCounter))
 		}
 	}
+
+	err = tokenizer.Close()
+	assert.NilError(t, err)
 }
 
 func findTermLocationV1(block *docidxv1.DocOffsetIdxBlkV1, term string, loc uint64) bool {

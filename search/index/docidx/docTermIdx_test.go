@@ -12,7 +12,6 @@ import (
 	"os"
 	"sort"
 	"testing"
-	"time"
 )
 
 func TestTermIdxBlockV1(t *testing.T) {
@@ -36,12 +35,11 @@ func TestTermIdxBlockV1(t *testing.T) {
 
 		dtib := docidxv1.CreateDocTermIdxBlkV1(prevHighTerm, common.DTI_BLOCK_SIZE_MAX)
 
-		tokenizer, err := utils.OpenFileTokenizer(sourceFile)
+		tokenizer, err := utils.OpenBleveTokenizer(sourceFile)
 		assert.NilError(t, err)
 
-		for token, pos, _, err := tokenizer.NextToken(); err != io.EOF; token, pos, _, err = tokenizer.NextToken() {
+		for token, _, err := tokenizer.NextToken(); err != io.EOF; token, _, err = tokenizer.NextToken() {
 			dtib.AddTerm(token)
-			_ = pos
 		}
 
 		_, err = dtib.Serialize()
@@ -60,6 +58,9 @@ func TestTermIdxBlockV1(t *testing.T) {
 		}
 
 		prevHighTerm = dtib.GetHighTerm()
+		assert.NilError(t, err)
+
+		err = tokenizer.Close()
 		assert.NilError(t, err)
 	}
 }
@@ -93,8 +94,6 @@ func TestTermIdxSourcesV1(t *testing.T) {
 	err = sourceFile.Close()
 	assert.NilError(t, err)
 
-	time.Sleep(100 * time.Second)
-
 	// ================================ Open doc offset index ================================
 	doiv, err := OpenDocOffsetIdx(testClient, docID, docVer, key)
 	assert.NilError(t, err)
@@ -110,6 +109,7 @@ func TestTermIdxSourcesV1(t *testing.T) {
 	assert.NilError(t, err)
 	sourceTxt, err := docidxv1.OpenDocTermSourceTextFileV1(sourceFile)
 	assert.NilError(t, err)
+	defer sourceTxt.Close()
 	defer sourceFile.Close()
 	txtTerms := gatherTermsFromSource(t, sourceTxt)
 	assert.DeepEqual(t, doiTerms, txtTerms)
@@ -150,11 +150,11 @@ func TestTermIdxV1(t *testing.T) {
 
 	docID := "DocID1"
 	docVer := uint64(1)
+	defer common.RemoveDocIndexes(testClient, docID)
+
 	sourceFileName := "./testDocuments/enwik8.txt.gz"
 	sourceFilepath, err := utils.FetchFileLoc(sourceFileName)
 	assert.NilError(t, err)
-
-	defer common.RemoveDocIndexes(testClient, docID)
 
 	// ================================ Generate doc term index ================================
 	// Open source file
@@ -170,8 +170,6 @@ func TestTermIdxV1(t *testing.T) {
 
 	err = sourceFile.Close()
 	assert.NilError(t, err)
-
-	time.Sleep(30 * time.Second)
 
 	// ================================ Open doc term index ================================
 	// Open the previously written document term index
@@ -225,19 +223,15 @@ func TestTermIdxV1(t *testing.T) {
 }
 
 func createTermIndexAndGetTerms(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	sourcefile utils.Storage) ([]string, error) {
+	sourcefile utils.Source) ([]string, error) {
 	source, err := docidxv1.OpenDocTermSourceTextFileV1(sourcefile)
 	if err != nil {
 		return nil, err
 	}
-
-	dtiWriter, err := common.OpenDocTermIdxWriter(sdc, docID, docVer)
-	if err != nil {
-		return nil, err
-	}
+	defer source.Close()
 
 	// Create a document term index
-	dti, err := docidxv1.CreateDocTermIdxV1(docID, docVer, key, source, dtiWriter, 0)
+	dti, err := docidxv1.CreateDocTermIdxV1(sdc, docID, docVer, key, source, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -269,6 +263,7 @@ func TestTermIdxDiffV1(t *testing.T) {
 	docID := "DocIDsomething"
 	docVer1 := uint64(1)
 	docVer2 := uint64(2)
+	defer common.RemoveDocIndexes(testClient, docID)
 
 	sourcefilepath1, err := utils.FetchFileLoc("./testDocuments/enwik8.uniq.txt.gz")
 	assert.NilError(t, err)
@@ -298,8 +293,6 @@ func TestTermIdxDiffV1(t *testing.T) {
 
 	err = source2.Close()
 	assert.NilError(t, err)
-
-	time.Sleep(20 * time.Second)
 
 	// ================================ Open doc term index ================================
 	// Open the previously written document term index

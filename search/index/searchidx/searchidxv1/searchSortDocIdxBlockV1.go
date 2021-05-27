@@ -19,7 +19,7 @@ import (
 
 // SearchSortDocIdxBlkV1 is the Search Sorted Document Index Block V1
 type SearchSortDocIdxBlkV1 struct {
-	DocIDVers         []*DocIDVer
+	DocIDVers         []*DocIDVerV1
 	docIDVerMap       map[string]uint64 `json:"-"`
 	docIDTree         *rbt.Tree         `json:"-"`
 	totalDocIDs       uint64            `json:"-"`
@@ -31,13 +31,13 @@ type SearchSortDocIdxBlkV1 struct {
 	maxDataSize       uint64            `json:"-"`
 }
 
-// DocIDVer stores the DocID and DocVer
-type DocIDVer struct {
+// DocIDVerV1 stores the DocID and DocVer
+type DocIDVerV1 struct {
 	DocID  string
 	DocVer uint64
 }
 
-func (idver *DocIDVer) String() string {
+func (idver *DocIDVerV1) String() string {
 	return fmt.Sprintf("%v:%v", idver.DocID, idver.DocVer)
 }
 
@@ -48,7 +48,7 @@ func init() {
 	base, _ := CreateSearchSortDocIdxBlkV1("", 0).Serialize()
 	baseSsdiBlockJSONSize = uint64(len(base))
 
-	docIDVer := &DocIDVer{"", 0}
+	docIDVer := &DocIDVerV1{"", 0}
 	if b, err := json.Marshal(docIDVer); err == nil {
 		baseSsdiDocIDVerJSONSize = uint64(len(b)) - 1 // Remove the 0 version
 	}
@@ -87,7 +87,7 @@ func DocIDVerComparatorV1(value interface{}, block blocks.Block) (int, error) {
 // CreateSearchSortDocIdxBlkV1 creates a new Search Index Block V1
 func CreateSearchSortDocIdxBlkV1(prevHighDocID string, maxDataSize uint64) *SearchSortDocIdxBlkV1 {
 	return &SearchSortDocIdxBlkV1{
-		DocIDVers:         make([]*DocIDVer, 0, 100),
+		DocIDVers:         make([]*DocIDVerV1, 0, 100),
 		docIDVerMap:       make(map[string]uint64),
 		docIDTree:         rbt.NewWithStringComparator(),
 		totalDocIDs:       0,
@@ -205,13 +205,14 @@ func (blk *SearchSortDocIdxBlkV1) removeHighTerm() {
 func (blk *SearchSortDocIdxBlkV1) Serialize() ([]byte, error) {
 	for blk.predictedJSONSize > blk.maxDataSize {
 		blk.removeHighTerm()
+		blk.isFull = true
 	}
 
 	docIDs := blk.docIDTree.Keys()
-	blk.DocIDVers = make([]*DocIDVer, len(docIDs))
+	blk.DocIDVers = make([]*DocIDVerV1, len(docIDs))
 	for i, id := range docIDs {
 		docID := id.(string)
-		blk.DocIDVers[i] = &DocIDVer{docID, blk.docIDVerMap[docID]}
+		blk.DocIDVers[i] = &DocIDVerV1{docID, blk.docIDVerMap[docID]}
 	}
 
 	b, err := json.Marshal(blk)
@@ -263,7 +264,7 @@ func (blk *SearchSortDocIdxBlkV1) deserialize(data []byte) (*SearchSortDocIdxBlk
 }
 
 // Serialize the struct
-func (vo *DocIDVer) Serialize() ([]byte, error) {
+func (vo *DocIDVerV1) Serialize() ([]byte, error) {
 	b, err := json.Marshal(vo)
 	if err != nil {
 		return nil, errors.New(err)
@@ -272,7 +273,7 @@ func (vo *DocIDVer) Serialize() ([]byte, error) {
 }
 
 // Deserialize the struct
-func (vo *DocIDVer) Deserialize(data []byte) (*DocIDVer, error) {
+func (vo *DocIDVerV1) Deserialize(data []byte) (*DocIDVerV1, error) {
 	err := json.Unmarshal(data, vo)
 	if err != nil {
 		return nil, errors.New(err)

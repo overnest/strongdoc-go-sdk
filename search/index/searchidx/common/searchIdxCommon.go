@@ -4,26 +4,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path"
-
-	"github.com/overnest/strongdoc-go-sdk/utils"
+	"sync"
 
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/utils"
+	sscrypto "github.com/overnest/strongsalt-crypto-go"
+	"github.com/shengdoushi/base58"
 )
 
 const (
-	// SI_V1  = uint32(1)
-	// SI_VER = SI_V1
-
 	STI_BLOCK_V1  = uint32(1)
 	STI_BLOCK_VER = STI_BLOCK_V1
 
 	STI_BLOCK_SIZE_MAX = uint64(1024 * 1024 * 5) // 5MB
 	// STI_BLOCK_MARGIN_PERCENT = uint64(10)              // 10% margin
 
-	STI_V1              = uint32(1)
-	STI_VER             = STI_V1
-	STI_TERM_BATCH_SIZE = 1000 // Process terms in batches of 1000
+	STI_V1  = uint32(1)
+	STI_VER = STI_V1
+	//STI_TERM_BATCH_SIZE = 1000 // Process terms in batches of 1000
 
 	SSDI_BLOCK_SIZE_MAX       = uint64(1024 * 1) //1024 * 5) // 5MB
 	SSDI_BLOCK_MARGIN_PERCENT = uint64(10)       // 10% margin
@@ -32,9 +32,15 @@ const (
 	SSDI_VER = SSDI_V1
 )
 
+var STI_TERM_BATCH_SIZE = 200 // Process terms in batches of 1000
+
 // GetSearchIdxPathPrefix gets the search index path prefix
 func GetSearchIdxPathPrefix() string {
 	return path.Clean("/tmp/search")
+}
+
+func CleanupTemporarySearchIndex() error {
+	return os.RemoveAll(GetSearchIdxPathPrefix())
 }
 
 //////////////////////////////////////////////////////////////////
@@ -183,4 +189,34 @@ func (h *BlockVersionS) Deserialize(data []byte) (*BlockVersionS, error) {
 func DeserializeBlockVersion(data []byte) (*BlockVersionS, error) {
 	h := &BlockVersionS{}
 	return h.Deserialize(data)
+}
+
+//////////////////////////////////////////////////////////////////
+//
+//                       Search Term HMAC
+//
+//////////////////////////////////////////////////////////////////
+
+var termHmacMutex sync.Mutex
+
+func CreateTermHmac(term string, termKey *sscrypto.StrongSaltKey) (string, error) {
+	termHmacMutex.Lock()
+	defer termHmacMutex.Unlock()
+
+	err := termKey.MACReset()
+	if err != nil {
+		return "", errors.New(err)
+	}
+
+	_, err = termKey.MACWrite([]byte(term))
+	if err != nil {
+		return "", errors.New(err)
+	}
+
+	hmac, err := termKey.MACSum(nil)
+	if err != nil {
+		return "", errors.New(err)
+	}
+
+	return base58.Encode(hmac, base58.BitcoinAlphabet), nil
 }

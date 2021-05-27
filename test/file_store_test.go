@@ -2,13 +2,13 @@ package test
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/overnest/strongdoc-go-sdk/api"
 	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	"gotest.tools/assert"
 	"io"
 	"testing"
-	"time"
 )
 
 func TestFileReader(t *testing.T) {
@@ -31,8 +31,6 @@ func TestFileReader(t *testing.T) {
 		assert.NilError(t, err, "write file")
 		err = writer.Close()
 		assert.NilError(t, err)
-
-		time.Sleep(5 * time.Second)
 
 		// read [0, 30]
 		reader, err := api.NewFileReader(sdc, filename)
@@ -131,18 +129,13 @@ func TestFileWriter(t *testing.T) {
 		err = writer.Close()
 		assert.NilError(t, err)
 
-		// overwrite file 90 bytes
-		data = testUtils.GenerateRandomData(90)
+		// overwrite file, fail to create existing file
 		writer, err = api.NewFileWriter(sdc, filename)
-		assert.NilError(t, err)
-		err = writer.WriteFile(data, 10)
-		assert.NilError(t, err, "overwrite file")
-		err = writer.Close()
-		assert.NilError(t, err)
-
-		time.Sleep(5 * time.Second)
+		fmt.Println(err)
+		assert.ErrorContains(t, err, "fail to create file")
 
 		reader, err := api.NewFileReader(sdc, filename)
+		assert.NilError(t, err)
 		res, err := reader.ReadFile(90)
 		assert.NilError(t, err)
 		assert.Check(t, bytes.Equal(res, data))
@@ -175,8 +168,6 @@ func TestDocIndex(t *testing.T) {
 
 		err = writer.Close()
 		assert.NilError(t, err)
-
-		time.Sleep(5 * time.Second)
 
 		reader, err := api.NewDocOffsetIdxReader(sdc, docID, docVer)
 		assert.NilError(t, err)
@@ -214,8 +205,6 @@ func TestSearchIndex(t *testing.T) {
 		err = writer.Close()
 		assert.NilError(t, err)
 
-		time.Sleep(5 * time.Second)
-
 		writer, updateID2, err := api.NewSearchTermIdxWriter(sdc, ownerType, term)
 		assert.NilError(t, err)
 		err = writer.WriteFile(data, 10)
@@ -224,12 +213,8 @@ func TestSearchIndex(t *testing.T) {
 		err = writer.Close()
 		assert.NilError(t, err)
 
-		time.Sleep(5 * time.Second)
-
 		updateIDs, err := api.GetUpdateIDs(sdc, ownerType, term)
 
-		assert.Equal(t, len(updateIDs), 2)
-		assert.Equal(t, updateIDs[0], updateID1)
-		assert.Equal(t, updateIDs[1], updateID2)
+		assert.DeepEqual(t, updateIDs, []string{updateID2, updateID1})
 	})
 }

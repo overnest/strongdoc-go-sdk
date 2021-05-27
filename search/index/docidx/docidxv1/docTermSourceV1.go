@@ -13,19 +13,18 @@ type DocTermSourceV1 interface {
 	// Returns io.EOF error if there are no more terms
 	GetNextTerm() (string, uint64, error)
 	Reset() error
-	//Close() error
 }
 
 //
 // Text File Source
 //
 type docTermSourceTextFileV1 struct {
-	tokenizer utils.FileTokenizer
+	tokenizer utils.BleveTokenizer
 }
 
 // OpenDocTermSourceTextFileV1 opens the text file Document Term Source V1
-func OpenDocTermSourceTextFileV1(storeage utils.Storage) (DocTermSourceV1, error) {
-	tokenizer, err := utils.OpenFileTokenizer(storeage)
+func OpenDocTermSourceTextFileV1(source utils.Source) (*docTermSourceTextFileV1, error) {
+	tokenizer, err := utils.OpenBleveTokenizer(source)
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -34,26 +33,16 @@ func OpenDocTermSourceTextFileV1(storeage utils.Storage) (DocTermSourceV1, error
 }
 
 func (dts *docTermSourceTextFileV1) GetNextTerm() (string, uint64, error) {
-	token, pos, _, err := dts.tokenizer.NextToken()
-	if err == io.EOF {
-		if pos != nil {
-			return token, uint64(pos.Offset), err
-		}
-		return "", 0, err
-	}
-	if err != nil {
-		return "", 0, errors.New(err)
-	}
-	return token, uint64(pos.Offset), nil
+	return dts.tokenizer.NextToken()
 }
 
 func (dts *docTermSourceTextFileV1) Reset() error {
 	return dts.tokenizer.Reset()
 }
 
-//func (dts *docTermSourceTextFileV1) Close() error {
-//	return dts.tokenizer.Close()
-//}
+func (dts *docTermSourceTextFileV1) Close() error {
+	return dts.tokenizer.Close()
+}
 
 //
 // Document Offset Index Source
@@ -147,21 +136,6 @@ func (dts *docTermSourceDocOffsetV1) Reset() error {
 				dts.doi.GetDoiVersion())
 		}
 		return doiv1.Reset()
-	default:
-		return errors.Errorf("Document offset index version %v is not supported",
-			dts.doi.GetDoiVersion())
-	}
-}
-
-func (dts *docTermSourceDocOffsetV1) Close() error {
-	switch dts.doi.GetDoiVersion() {
-	case common.DOI_V1:
-		doiv1, ok := dts.doi.(*DocOffsetIdxV1)
-		if !ok {
-			return errors.Errorf("Document offset index is not version %v",
-				dts.doi.GetDoiVersion())
-		}
-		return doiv1.Close()
 	default:
 		return errors.Errorf("Document offset index version %v is not supported",
 			dts.doi.GetDoiVersion())

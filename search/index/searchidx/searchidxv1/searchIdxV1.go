@@ -3,15 +3,14 @@ package searchidxv1
 import (
 	"fmt"
 	"io"
-	"sync"
 	"time"
 
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
-	"github.com/shengdoushi/base58"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -24,34 +23,10 @@ func newUpdateIDV1() string {
 	return fmt.Sprintf("%x", time.Now().UnixNano())
 }
 
-var termHmacMutex sync.Mutex
-
-func createTermHmac(term string, termKey *sscrypto.StrongSaltKey) (string, error) {
-	termHmacMutex.Lock()
-	defer termHmacMutex.Unlock()
-
-	err := termKey.MACReset()
-	if err != nil {
-		return "", errors.New(err)
-	}
-
-	_, err = termKey.MACWrite([]byte(term))
-	if err != nil {
-		return "", errors.New(err)
-	}
-
-	hmac, err := termKey.MACSum(nil)
-	if err != nil {
-		return "", errors.New(err)
-	}
-
-	return base58.Encode(hmac, base58.BitcoinAlphabet), nil
-}
-
 // GetUpdateIdsV1 returns the list of available update IDs for a specific owner + term in
 // reverse chronological order. The most recent update ID will come first
 func GetUpdateIdsV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) ([]string, error) {
-	termHmac, err := createTermHmac(term, termKey)
+	termHmac, err := common.CreateTermHmac(term, termKey)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +52,6 @@ func GetLatestUpdateIDV1(sdc client.StrongDocClient, owner common.SearchIdxOwner
 // reverse chronological order. The most recent update ID will come first
 func GetUpdateIdsHmacV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, termHmac string) ([]string, error) {
 	return common.GetUpdateIDs(sdc, owner, termHmac)
-
 }
 
 // GetLatestUpdateIdsHmacV1 returns the latest update IDs for a specific owner + term
@@ -147,7 +121,7 @@ func CreateSearchIdxWriterV1(owner common.SearchIdxOwner, termKey, indexKey *ssc
 	return searchIdx, nil
 }
 
-func (idx *SearchIdxV1) ProcessBatchTerms(sdc client.StrongDocClient) (map[string]error, error) {
+func (idx *SearchIdxV1) ProcessBatchTerms(sdc client.StrongDocClient, event *utils.TimeEvent) (map[string]error, error) {
 	emptyResult := make(map[string]error)
 
 	termBatch, err := idx.batchMgr.GetNextTermBatch(sdc, common.STI_TERM_BATCH_SIZE)
@@ -159,20 +133,22 @@ func (idx *SearchIdxV1) ProcessBatchTerms(sdc client.StrongDocClient) (map[strin
 		return emptyResult, io.EOF
 	}
 
-	// PSL DEBUG
 	fmt.Println("batch: ", termBatch.termList[0], "->", termBatch.termList[len(termBatch.termList)-1])
 
-	return termBatch.ProcessTermBatch(sdc)
+	e := utils.AddSubEvent(event, "ProcessTermBatch")
+	termErrs, err := termBatch.ProcessTermBatch(sdc, e)
+	utils.EndEvent(e)
+	return termErrs, err
 }
 
-func (idx *SearchIdxV1) ProcessAllTerms(sdc client.StrongDocClient) (map[string]error, error) {
+func (idx *SearchIdxV1) ProcessAllTerms(sdc client.StrongDocClient, event *utils.TimeEvent) (map[string]error, error) {
 	finalResult := make(map[string]error)
 
 	var err error = nil
 	for err == nil {
 		var batchResult map[string]error
 
-		batchResult, err = idx.ProcessBatchTerms(sdc)
+		batchResult, err = idx.ProcessBatchTerms(sdc, event)
 		if err != nil && err != io.EOF {
 			return finalResult, err
 		}
