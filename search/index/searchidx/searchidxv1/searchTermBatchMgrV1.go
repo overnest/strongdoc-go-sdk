@@ -276,12 +276,37 @@ func (batch *SearchTermBatchV1) ProcessTermBatch(sdc client.StrongDocClient, eve
 	return respMap, nil
 }
 
-func (batch *SearchTermBatchV1) processStiBatch() (map[*SearchTermIdxWriterV1]*SearchTermIdxWriterRespV1, error) {
+type SearchTermBlockRespV1 struct {
 
+	Block *SearchTermIdxSourceBlockV1
+	Error error
+}
+
+func (batch *SearchTermBatchV1) processStiBatch(event *utils.TimeEvent) (map[*SearchTermIdxWriterV1]*SearchTermIdxWriterRespV1, error) {
+
+	e1 := utils.AddSubEvent(event, "GetNextSourceBlock [Read/Para]")
 	stiwToBlks := make(map[*SearchTermIdxWriterV1][]*SearchTermIdxSourceBlockV1)
+	blkToChan := make(map[SearchTermIdxSourceV1](chan *SearchTermBlockRespV1))
 
 	for _, source := range batch.SourceList {
-		blk, err := source.GetNextSourceBlock(batch.termList)
+
+		blkChan := make(chan *SearchTermBlockRespV1)
+		blkToChan[source] = blkChan
+
+		go func(source SearchTermIdxSourceV1, batch *SearchTermBatchV1, blkChan chan<- *SearchTermBlockRespV1) {
+			defer close(blkChan)
+			blk, err := source.GetNextSourceBlock(batch.termList)
+			blkChan <- &SearchTermBlockRespV1{blk, err}
+		}(source, batch, blkChan)
+	}
+	utils.EndEvent(e1)
+
+	e2 := utils.AddSubEvent(event, "Receive Next Source Block Chan [Read/Para]")
+	for source, blkChan := range blkToChan {
+		blkResp := <- blkChan
+		err := blkResp.Error
+		blk := blkResp.Block
+
 		if err != nil && err != io.EOF {
 			return nil, err
 		}
@@ -296,7 +321,10 @@ func (batch *SearchTermBatchV1) processStiBatch() (map[*SearchTermIdxWriterV1]*S
 			}
 		}
 	}
+	utils.EndEvent(e2)
 
+	// Process Source Block in Parallel
+	e3 := utils.AddSubEvent(event, "stiwChan-ProcessSourceBlocks")
 	stiwToChan := make(map[*SearchTermIdxWriterV1](chan *SearchTermIdxWriterRespV1))
 	for stiw, blkList := range stiwToBlks {
 		if len(blkList) > 0 {
@@ -313,16 +341,20 @@ func (batch *SearchTermBatchV1) processStiBatch() (map[*SearchTermIdxWriterV1]*S
 			}(stiw, blkList, stiwChan)
 		}
 	}
+	utils.EndEvent(e3)
 
+	e4 := utils.AddSubEvent(event, "writeStiwChan")
 	respMap := make(map[*SearchTermIdxWriterV1]*SearchTermIdxWriterRespV1)
 	for stiw, stiwChan := range stiwToChan {
 		respMap[stiw] = <-stiwChan
 	}
+	utils.EndEvent(e4)
 
 	// Nothing left to process
 	if len(respMap) == 0 {
 		return respMap, io.EOF
 	}
+
 
 	return respMap, nil
 }
@@ -341,7 +373,7 @@ func (batch *SearchTermBatchV1) processStiAll(event *utils.TimeEvent) (
 	e2 := utils.AddSubEvent(event, "processStiBatches")
 
 	for {
-		stiBlocksResp, err := batch.processStiBatch()
+		stiBlocksResp, err := batch.processStiBatch(e2)
 		if err != nil && err != io.EOF {
 			return nil, nil, err
 		}
