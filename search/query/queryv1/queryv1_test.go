@@ -256,7 +256,7 @@ func performSearchOp(t *testing.T, sdc client.StrongDocClient, owner common.Sear
 }
 
 func filterGrep(t *testing.T, terms []string, docs []*docidx.TestDocumentIdxV1) map[string][]uint64 { // Document -> TermOffsets in bytes
-	grepResult, err := utils.Grep(docidx.GetInitialTestDocumentDir(), terms, true)
+	grepResult, err := utils.Grep(utils.GetInitialTestDocumentDir(), terms, true)
 	assert.NilError(t, err)
 
 	result := make(map[string][]uint64)

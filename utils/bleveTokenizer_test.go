@@ -1,8 +1,13 @@
 package utils
 
 import (
+	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
+	"path"
 	"regexp"
+	"sort"
 	"testing"
 
 	"gotest.tools/assert"
@@ -183,4 +188,63 @@ func TestBleveTokenizer(t *testing.T) {
 
 	err = file.Close()
 	assert.NilError(t, err)
+}
+
+func TestBlevePaulTokenizer(t *testing.T) {
+	files, err := ioutil.ReadDir(GetInitialTestDocumentDir())
+	assert.NilError(t, err)
+
+	chans := make([]chan map[string]bool, len(files))
+	for i, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		chans[i] = make(chan map[string]bool)
+		go func(f os.FileInfo, c chan map[string]bool) {
+			defer close(c)
+			path := path.Join(GetInitialTestDocumentDir(), f.Name())
+
+			file, err := OpenLocalFile(path)
+			assert.NilError(t, err)
+
+			tokenizer, err := OpenBleveTokenizer(file)
+			assert.NilError(t, err)
+
+			unique := make(map[string]bool)
+			for {
+				token, _, err := tokenizer.NextToken()
+				if err != nil {
+					assert.Equal(t, err, io.EOF)
+					break
+				}
+				unique[token] = true
+			}
+
+			err = tokenizer.Close()
+			assert.NilError(t, err)
+
+			err = file.Close()
+			assert.NilError(t, err)
+
+			c <- unique
+		}(file, chans[i])
+	}
+
+	termmap := make(map[string]bool)
+	for _, c := range chans {
+		unique := <-c
+		for k, v := range unique {
+			termmap[k] = v
+		}
+	}
+
+	terms := make([]string, 0, len(termmap))
+	for k := range termmap {
+		terms = append(terms, k)
+	}
+
+	sort.Strings(terms)
+	fmt.Println("Term count:", len(terms))
+	// fmt.Println(terms)
 }

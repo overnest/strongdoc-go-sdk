@@ -25,15 +25,6 @@ const (
 	docDocPathFmt = docBasePath + "/%v/%v/doc/%v"
 )
 
-var booksDir string
-
-func init() {
-	dir, err := utils.FetchFileLoc("./testDocuments/books")
-	if err == nil {
-		booksDir = dir
-	}
-}
-
 type TestDocumentIdxV1 struct {
 	DocFileName  string
 	DocFilePath  string
@@ -43,12 +34,8 @@ type TestDocumentIdxV1 struct {
 	DeletedTerms map[string]bool
 }
 
-func GetInitialTestDocumentDir() string {
-	return booksDir
-}
-
 func InitTestDocuments(numDocs int, random bool) ([]*TestDocumentIdxV1, error) {
-	files, err := ioutil.ReadDir(GetInitialTestDocumentDir())
+	files, err := ioutil.ReadDir(utils.GetInitialTestDocumentDir())
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -90,7 +77,7 @@ func InitTestDocuments(numDocs int, random bool) ([]*TestDocumentIdxV1, error) {
 }
 
 func createDocumentIdx(name, id string, ver uint64) (*TestDocumentIdxV1, error) {
-	filePath := path.Join(GetInitialTestDocumentDir(), name)
+	filePath := path.Join(utils.GetInitialTestDocumentDir(), name)
 	doc := &TestDocumentIdxV1{
 		DocFileName:  name,
 		DocFilePath:  filePath,
