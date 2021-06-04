@@ -20,6 +20,8 @@ import (
 var clientInit uint32 = 0
 var clientMutex sync.Mutex
 
+const MAX_CONCURRENT_CONNECTIONS = 10 // max number of current connections
+
 type locationConfig struct {
 	HostPort string
 	Cert     string
@@ -48,10 +50,55 @@ var serviceLocations = map[ServiceLocation]locationConfig{
 	LOCAL:   {"localhost:9090", "./certs/localhost.crt"},
 }
 
+type connPool struct {
+	lock  sync.Mutex
+	conns []*grpc.ClientConn // all connections
+	idx   int                // index
+}
+
+// initialize connection pool
+func initConnPool(capacity int, authToken, hostPort, cert string) (*connPool, error) {
+	conns := make([]*grpc.ClientConn, capacity)
+	for i := 0; i < len(conns); i++ {
+		conn, err := getAuthConn(authToken, hostPort, cert)
+		if err != nil {
+			return nil, err
+		}
+		conns[i] = conn
+	}
+
+	return &connPool{
+		conns: conns,
+		idx:   0,
+	}, nil
+}
+
+// get usable connection
+func (q *connPool) getConn() *grpc.ClientConn {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	conn := q.conns[q.idx]
+	q.idx = (q.idx + 1) % len(q.conns)
+	return conn
+}
+
+// close all connections
+func (q *connPool) closeAll() error {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	for _, conn := range q.conns {
+		err := conn.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type strongDocClientObj struct {
 	location      ServiceLocation
 	noAuthConn    *grpc.ClientConn
-	authConn      *grpc.ClientConn
+	authConnPool  *connPool
 	userID        string
 	authToken     string
 	passwordKey   *ssc.StrongSaltKey // TODO: This should eventually be hidden from user
@@ -68,7 +115,7 @@ type StrongDocClient interface {
 	Logout() (string, error)
 	NewAuthSession(password string) (*AuthSession, error)
 	GetNoAuthConn() *grpc.ClientConn
-	GetAuthConn() *grpc.ClientConn
+	GetAuthConnPool() *connPool
 	GetGrpcClient() proto.StrongDocServiceClient
 	Close()
 	UserEncrypt([]byte) ([]byte, error)
@@ -293,18 +340,20 @@ func (c *strongDocClientObj) Login(userID, password, orgID string) (err error) {
 
 	token = loginRes.GetToken()
 	config := serviceLocations[c.location]
-	authConn, err := getAuthConn(token, config.HostPort, config.Cert)
+
+	// Close existing authenticated connection pool
+	if c.authConnPool != nil {
+		c.authConnPool.closeAll()
+	}
+	// Initialize connection pool
+	connPool, err := initConnPool(MAX_CONCURRENT_CONNECTIONS,
+		token, config.HostPort, config.Cert)
 	if err != nil {
 		return
 	}
 
-	// Close existing authenticated connection
-	if c.authConn != nil {
-		c.authConn.Close()
-	}
-
-	c.authConn = authConn
-	c.authToken = loginRes.GetToken()
+	c.authConnPool = connPool
+	c.authToken = token
 	c.userID = prepareRes.UserID
 
 	encodedSerialKdfMeta := loginRes.GetKdfMeta()
@@ -532,26 +581,32 @@ func (c *strongDocClientObj) GetNoAuthConn() *grpc.ClientConn {
 	return c.noAuthConn
 }
 
-// GetAuthConn gets an authenticated GRPC connection. This is available after a successful login.
-func (c *strongDocClientObj) GetAuthConn() *grpc.ClientConn {
-	return c.authConn
+// GetAuthConn gets authenticated GRPC connection pool. This is available after a successful login.
+func (c *strongDocClientObj) GetAuthConnPool() *connPool {
+	return c.authConnPool
 }
 
 // GetProtoClient returns a gRPC StrongDocServiceClient used to call GRPC functions
 func (c *strongDocClientObj) GetGrpcClient() proto.StrongDocServiceClient {
-	if c.GetAuthConn() != nil {
-		return proto.NewStrongDocServiceClient(c.authConn)
+	authConnPool := c.GetAuthConnPool()
+	if authConnPool != nil {
+		return proto.NewStrongDocServiceClient(authConnPool.getConn())
 	}
 	return proto.NewStrongDocServiceClient(c.GetNoAuthConn())
 }
 
+type GrpcClient struct {
+	Client proto.StrongDocServiceClient
+	Error  error
+}
+
 // Close closes all the connections.
 func (c *strongDocClientObj) Close() {
-	if c.GetAuthConn() != nil {
-		c.GetAuthConn().Close()
-	}
 	if c.GetNoAuthConn() != nil {
 		c.GetNoAuthConn().Close()
+	}
+	if c.GetAuthConnPool() != nil {
+		c.GetAuthConnPool().closeAll()
 	}
 }
 
