@@ -130,7 +130,7 @@ func testUpdateDownloadAgain(t *testing.T, sdc client.StrongDocClient, docID, ne
 	assert.Equal(t, len(docs), 0)
 }
 
-func testE2EEUploadDownload(t *testing.T, sdc client.StrongDocClient, uploader, downloader *testUtils.TestUser, filename string) {
+/*func testE2EEUploadDownload(t *testing.T, sdc client.StrongDocClient, uploader, downloader *testUtils.TestUser, filename string) {
 	txtBytes, err := ioutil.ReadFile(filename)
 	assert.NilError(t, err)
 
@@ -173,13 +173,13 @@ func testE2EEUploadDownload(t *testing.T, sdc client.StrongDocClient, uploader, 
 	docs, err = api.ListDocuments(sdc)
 	assert.NilError(t, err)
 	assert.Equal(t, len(docs), 0)
-}
+}*/
 
 func testE2EEAdminDownload(t *testing.T, sdc client.StrongDocClient, docID string) {
 
 }
 
-func TestE2EEUploadDownload(t *testing.T) {
+/*func TestE2EEUploadDownload(t *testing.T) {
 	sdc, orgs, registeredOrgUsers := testUtils.PrevTest(t, 1, 2)
 	testUtils.DoRegistration(t, sdc, orgs, registeredOrgUsers)
 
@@ -192,7 +192,7 @@ func TestE2EEUploadDownload(t *testing.T) {
 		//testE2EEUploadDownload(t, sdc, notAdmin, admin, "../testDocuments/smallpicture.bmp")
 	})
 
-}
+}*/
 
 func TestCreateUpdateDownloadOnce(t *testing.T) {
 	sdc, orgs, registeredOrgUsers := testUtils.PrevTest(t, 1, 2)

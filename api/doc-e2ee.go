@@ -135,7 +135,8 @@ func UpdateDocument(sdc client.StrongDocClient, docID string, skipIndexing bool,
 	preReq := &proto.UpdateDocReq{
 		UpdateDocReqStage: &proto.UpdateDocReq_PreMetaData{
 			PreMetaData: &proto.UpdateDocReq_PreMetaDataType{
-				DocID: docID,
+				DocID:        docID,
+				SkipIndexing: skipIndexing,
 			},
 		},
 	}
@@ -268,7 +269,6 @@ func UpdateDocument(sdc client.StrongDocClient, docID string, skipIndexing bool,
 		UpdateDocReqStage: &proto.UpdateDocReq_PostMetaData{
 			PostMetaData: &proto.UpdateDocReq_PostMetaDataType{
 				MacOfCipherText: base64.URLEncoding.EncodeToString(docMAC),
-				SkipIndexing:    skipIndexing,
 			},
 		},
 	}
@@ -302,7 +302,7 @@ func UpdateDocument(sdc client.StrongDocClient, docID string, skipIndexing bool,
 
 // UploadDocument uploads a document to Strongdoc-provided storage.
 // It then returns a docId that uniquely identifies the document.
-func E2EEUploadDocument(sdc client.StrongDocClient, docName string, plainStream io.Reader) (docID string, err error) {
+/*func E2EEUploadDocument(sdc client.StrongDocClient, docName string, plainStream io.Reader) (docID string, err error) {
 	docKey, err := ssc.GenerateKey(ssc.Type_XChaCha20HMAC)
 	if err != nil {
 		return "", fmt.Errorf("UploadDocument cannot generate document key")
@@ -510,6 +510,6 @@ func E2EEUploadDocument(sdc client.StrongDocClient, docName string, plainStream 
 	}
 
 	return
-}
+}*/
 
 //func e2eeDownloadDocumentStream(sdc client.StrongDocClient, docID string, prepareResp *proto.E2EEPrepareDownloadDocResp) (io.Reader, error)
