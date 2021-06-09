@@ -2,10 +2,11 @@ package test
 
 import (
 	"fmt"
-	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
 	"log"
 	"os"
 	"testing"
+
+	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
 
 	"github.com/overnest/strongdoc-go-sdk/api"
 	"github.com/overnest/strongdoc-go-sdk/client"
@@ -118,7 +119,8 @@ func uploadDocument(sdc client.StrongDocClient, uploader *testUtils.TestUser, E2
 	file, err := os.Open(TestDoc1)
 	defer file.Close()
 	if E2E {
-		uploadDocID, err = api.E2EEUploadDocument(sdc, TestDocName, file)
+		uploadDocID, err = api.CreateDocument(sdc, TestDocName)
+		_, err = api.UpdateDocument(sdc, uploadDocID, true, file)
 		log.Println("upload client-encrypted document DocID = ", uploadDocID)
 
 	} else {
