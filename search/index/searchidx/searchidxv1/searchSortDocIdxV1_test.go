@@ -3,6 +3,7 @@ package searchidxv1
 import (
 	"fmt"
 	"github.com/overnest/strongdoc-go-sdk/utils"
+	"github.com/overnest/strongsalt-common-go/blocks"
 	"io"
 	"math/rand"
 	"sort"
@@ -59,10 +60,11 @@ func TestSearchSortDocIdxBlockV1(t *testing.T) {
 }
 
 func validateSsdibSize(t *testing.T, stib *SearchSortDocIdxBlkV1) {
-	b, err := stib.Serialize()
+	stib = stib.formatToBlockData()
+	predictSize, err := blocks.GetPredictedJSONSize(stib)
 	assert.NilError(t, err)
-	// fmt.Println("len", len(b), "pred", stib.predictedJSONSize, "max", stib.maxDataSize, string(b))
-	assert.Equal(t, uint64(len(b)), stib.predictedJSONSize)
+	// fmt.Println("predictSize", predictSize, "pred", stib.predictedJSONSize, "max", stib.maxDataSize, string(b))
+	assert.Equal(t, uint64(predictSize), stib.predictedJSONSize)
 	assert.Assert(t, stib.predictedJSONSize <= stib.maxDataSize)
 }
 

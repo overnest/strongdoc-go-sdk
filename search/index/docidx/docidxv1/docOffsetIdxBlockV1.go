@@ -1,10 +1,9 @@
 package docidxv1
 
 import (
-	"encoding/json"
 	"fmt"
-
-	"github.com/go-errors/errors"
+	"github.com/overnest/strongsalt-common-go/blocks"
+	"log"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -22,8 +21,12 @@ type DocOffsetIdxBlkV1 struct {
 var baseDoiBlockJSONSize uint64
 
 func init() {
-	base, _ := (&DocOffsetIdxBlkV1{TermLoc: make(map[string][]uint64)}).Serialize()
-	baseDoiBlockJSONSize = uint64(len(base))
+	blk := &DocOffsetIdxBlkV1{TermLoc: make(map[string][]uint64)}
+	predictSize, err := blocks.GetPredictedJSONSize(blk)
+	if err != nil {
+		log.Fatal(err)
+	}
+	baseDoiBlockJSONSize = uint64(predictSize)
 }
 
 // AddTermOffset adds a term + offset pair to the block
@@ -42,22 +45,4 @@ func (blk *DocOffsetIdxBlkV1) AddTermOffset(term string, offset uint64) {
 		blk.predictedJSONSize += uint64(1 + len(fmt.Sprintf("%v", offset)))
 		blk.TermLoc[term] = append(blk.TermLoc[term], offset)
 	}
-}
-
-// Serialize the block
-func (blk *DocOffsetIdxBlkV1) Serialize() ([]byte, error) {
-	b, err := json.Marshal(blk)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	return b, nil
-}
-
-// Deserialize the block
-func (blk *DocOffsetIdxBlkV1) Deserialize(data []byte) (*DocOffsetIdxBlkV1, error) {
-	err := json.Unmarshal(data, blk)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	return blk, nil
 }

@@ -2,9 +2,8 @@ package docidx
 
 import (
 	"github.com/overnest/strongdoc-go-sdk/client"
-	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
-
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"gotest.tools/assert"
@@ -41,9 +40,6 @@ func TestTermIdxBlockV1(t *testing.T) {
 		for token, _, err := tokenizer.NextToken(); err != io.EOF; token, _, err = tokenizer.NextToken() {
 			dtib.AddTerm(token)
 		}
-
-		_, err = dtib.Serialize()
-		assert.NilError(t, err)
 
 		// fmt.Println(dtib.lowTerm, dtib.highTerm, len(dtib.Terms), dtib.IsFull())
 		// fmt.Println(len(s), dtib.predictedJSONSize, DTI_BLOCK_SIZE_MAX)

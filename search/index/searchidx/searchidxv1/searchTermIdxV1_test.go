@@ -5,6 +5,7 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"github.com/overnest/strongdoc-go-sdk/utils"
+	"github.com/overnest/strongsalt-common-go/blocks"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"io"
 	"math/rand"
@@ -80,10 +81,10 @@ func TestSearchTermIdxBlockV1(t *testing.T) {
 func validateStibSize(t *testing.T, stib *SearchTermIdxBlkV1, err error) {
 	assert.NilError(t, err)
 
-	b, err := stib.Serialize()
+	predictSize, err := blocks.GetPredictedJSONSize(stib)
 	assert.NilError(t, err)
-	//fmt.Println("len", len(b), "pred", stib.predictedJSONSize, "max", stib.maxDataSize)
-	assert.Equal(t, uint64(len(b)), stib.predictedJSONSize)
+	//fmt.Println("predictSize", predictSize, "pred", stib.predictedJSONSize, "max", stib.maxDataSize)
+	assert.Equal(t, uint64(predictSize), stib.predictedJSONSize)
 	assert.Assert(t, stib.predictedJSONSize <= stib.maxDataSize)
 }
 

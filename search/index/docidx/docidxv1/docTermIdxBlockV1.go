@@ -1,13 +1,13 @@
 package docidxv1
 
 import (
-	"encoding/json"
+	"fmt"
+	"github.com/overnest/strongsalt-common-go/blocks"
+	"log"
 	"strings"
 
 	rbt "github.com/emirpasic/gods/trees/redblacktree"
-	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
-	"github.com/overnest/strongsalt-common-go/blocks"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -32,9 +32,18 @@ type DocTermIdxBlkV1 struct {
 
 var baseDtiBlockJSONSize uint64
 
+var initEmptyDocTermIdxBlkV1 = func() interface{} {
+	return CreateDocTermIdxBlkV1("", 0)
+}
+
 func init() {
-	base, _ := CreateDocTermIdxBlkV1("", 0).Serialize()
-	baseDtiBlockJSONSize = uint64(len(base))
+	blk, _ := initEmptyDocTermIdxBlkV1().(*DocTermIdxBlkV1)
+	blk = blk.formatToBlockData()
+	predictSize, err := blocks.GetPredictedJSONSize(blk)
+	if err != nil {
+		log.Fatal(err)
+	}
+	baseDtiBlockJSONSize = uint64(predictSize)
 }
 
 // DocTermComparatorV1 is a comparator function definition.
@@ -43,16 +52,20 @@ func init() {
 //   1        , if value is in block
 //   0        , if value not in block
 //   > 1      , if value > block
-func DocTermComparatorV1(value interface{}, block blocks.Block) (int, error) {
-	term, _ := value.(string)
-
-	blk := CreateDocTermIdxBlkV1("", 0)
-	blk, err := blk.Deserialize(block.GetData())
-	if err != nil {
-		return 0, errors.New(err)
+func DocTermComparatorV1(value interface{}, blockData interface{}) (int, error) {
+	term, ok := value.(string)
+	if !ok {
+		return 0, fmt.Errorf("cannot convert value to string")
 	}
 
+	blk, ok := blockData.(*DocTermIdxBlkV1)
+	if !ok {
+		return 0, fmt.Errorf("cannot convert blockData to DocTermIdxBlkV1")
+	}
+	blk = blk.formatFromBlockData()
+
 	if blk.termMap[term] {
+
 		return 1, nil
 	}
 
@@ -174,8 +187,7 @@ func (blk *DocTermIdxBlkV1) removeHighTerm() {
 	}
 }
 
-// Serialize the block
-func (blk *DocTermIdxBlkV1) Serialize() ([]byte, error) {
+func (blk *DocTermIdxBlkV1) formatToBlockData() *DocTermIdxBlkV1 {
 	for blk.predictedJSONSize > blk.maxDataSize {
 		blk.removeHighTerm()
 	}
@@ -185,21 +197,10 @@ func (blk *DocTermIdxBlkV1) Serialize() ([]byte, error) {
 	for i, t := range terms {
 		blk.Terms[i] = t.(string)
 	}
-
-	b, err := json.Marshal(blk)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	return b, nil
+	return blk
 }
 
-// Deserialize the block
-func (blk *DocTermIdxBlkV1) Deserialize(data []byte) (*DocTermIdxBlkV1, error) {
-	err := json.Unmarshal(data, blk)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
+func (blk *DocTermIdxBlkV1) formatFromBlockData() *DocTermIdxBlkV1 {
 	if blk.termMap == nil {
 		blk.termMap = make(map[string]bool)
 	}
@@ -218,7 +219,7 @@ func (blk *DocTermIdxBlkV1) Deserialize(data []byte) (*DocTermIdxBlkV1, error) {
 		blk.termTree.Put(term, true)
 	}
 
-	return blk, nil
+	return blk
 }
 
 // IsFull shows whether the block is full

@@ -3,6 +3,7 @@ module github.com/overnest/strongdoc-go-sdk
 go 1.13
 
 require (
+	github.com/blevesearch/bleve v1.0.14
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emirpasic/gods v1.12.0
 	github.com/go-errors/errors v1.1.1
@@ -10,7 +11,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.15.0
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/overnest/strongsalt-common-go v0.0.6-0.20210129205722-812015cdd5c4
+	github.com/overnest/strongsalt-common-go v0.0.6-0.20210614174042-4ccbb40a1dbe
 	github.com/overnest/strongsalt-crypto-go v0.0.0-20210111191944-23542459b77c
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/shengdoushi/base58 v1.0.0

@@ -366,7 +366,7 @@ func openSearchSortDocIdxV1(ssdi *SearchSortDocIdxV1, plainHdrBody *SsdiPlainHdr
 
 	// Create a block list reader using the streaming crypto so the blocks will be
 	// decrypted.
-	reader, err := ssblocks.NewBlockListReader(streamCrypto, plainHdrOffset+uint64(parsed), endOffset)
+	reader, err := ssblocks.NewBlockListReader(streamCrypto, plainHdrOffset+uint64(parsed), endOffset, initEmptySortDocIdxBlkV1)
 	if err != nil {
 		return nil, err
 	}
@@ -440,12 +440,12 @@ func (ssdi *SearchSortDocIdxV1) WriteNextBlock() (*SearchSortDocIdxBlkV1, error)
 		return nil, err
 	}
 
-	block := ssdi.block
-	err = ssdi.flush(block)
+	err = ssdi.flush()
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
+	block := ssdi.block
 	if block.IsFull() {
 		ssdi.block = CreateSearchSortDocIdxBlkV1(block.highDocID,
 			uint64(ssdi.bwriter.GetMaxDataSize()))
@@ -461,17 +461,22 @@ func (ssdi *SearchSortDocIdxV1) ReadNextBlock() (*SearchSortDocIdxBlkV1, error) 
 		return nil, errors.Errorf("No reader available")
 	}
 
-	b, err := ssdi.breader.ReadNextBlock()
-	if err != nil && err != io.EOF {
+	blockData, predictedSize, err := ssdi.breader.ReadNextBlockData()
+	if err != nil {
 		return nil, err
 	}
 
-	if b != nil && len(b.GetData()) > 0 {
-		ssdib := CreateSearchSortDocIdxBlkV1("", 0)
-		return ssdib.Deserialize(b.GetData())
+	blk, ok := blockData.(*SearchSortDocIdxBlkV1)
+	if !ok {
+		return nil, errors.Errorf("Cannot convert to DocOffsetIdxBlkV1")
 	}
 
-	return nil, err
+	blk.predictedJSONSize = uint64(predictedSize)
+	blk, err = blk.formatFromBlockData()
+	if err != nil {
+		return nil, err
+	}
+	return blk, nil
 }
 
 func (ssdi *SearchSortDocIdxV1) ExistDocID(docID string) (bool, error) {
@@ -479,7 +484,7 @@ func (ssdi *SearchSortDocIdxV1) ExistDocID(docID string) (bool, error) {
 		return false, errors.Errorf("The search sorted document index is not open for reading")
 	}
 
-	blk, err := ssdi.breader.SearchBinary(docID, DocIDVerComparatorV1)
+	blk, _, err := ssdi.breader.SearchBinary(docID, DocIDVerComparatorV1)
 	if err != nil {
 		return false, errors.New(err)
 	}
@@ -492,22 +497,18 @@ func (ssdi *SearchSortDocIdxV1) FindDocID(docID string) (*DocIDVer, error) {
 		return nil, errors.Errorf("The search sorted document index is not open for reading")
 	}
 
-	b, err := ssdi.breader.SearchBinary(docID, DocIDVerComparatorV1)
+	b, _, err := ssdi.breader.SearchBinary(docID, DocIDVerComparatorV1)
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
 	if b != nil {
-		blk := CreateSearchSortDocIdxBlkV1("", 0)
-		blk, err = blk.Deserialize(b.GetData())
-		if err != nil {
-			return nil, err
+		blk, ok := b.(*SearchSortDocIdxBlkV1)
+		if !ok {
+			return nil, errors.Errorf("Cannot convert to SearchSortDocIdxBlkV1")
 		}
-
-		if blk != nil {
-			if docVer, exist := blk.docIDVerMap[docID]; exist {
-				return &DocIDVer{docID, docVer}, nil
-			}
+		if docVer, exist := blk.docIDVerMap[docID]; exist {
+			return &DocIDVer{docID, docVer}, nil
 		}
 	}
 
@@ -571,7 +572,7 @@ func (ssdi *SearchSortDocIdxV1) Close() error {
 
 	if ssdi.writer != nil {
 		if ssdi.block != nil && ssdi.block.totalDocIDs > 0 {
-			ferr = utils.FirstError(ferr, ssdi.flush(ssdi.block))
+			ferr = utils.FirstError(ferr, ssdi.flush())
 		}
 		ssdi.block = nil
 
@@ -588,21 +589,17 @@ func (ssdi *SearchSortDocIdxV1) Close() error {
 	return ferr
 }
 
-func (ssdi *SearchSortDocIdxV1) flush(block *SearchSortDocIdxBlkV1) error {
+func (ssdi *SearchSortDocIdxV1) flush() error {
 	if ssdi.bwriter == nil {
 		return errors.Errorf("The search sorted document index is not open for writing")
 	}
 
-	serial, err := ssdi.block.Serialize()
+	block := ssdi.block.formatToBlockData()
+	err := ssdi.bwriter.WriteBlockData(block)
 	if err != nil {
 		return err
 	}
-
-	_, err = ssdi.bwriter.WriteBlockData(serial)
-	if err != nil {
-		return err
-	}
-
+	ssdi.block = block
 	ssdi.totalDocIDs += block.totalDocIDs
 	return nil
 }

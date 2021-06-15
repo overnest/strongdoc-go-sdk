@@ -45,9 +45,12 @@ type DocOffsetIdxV1 struct {
 	Store         interface{}
 }
 
+var initDocOffsetIdxV1 = func() interface{} {
+	return &DocOffsetIdxBlkV1{}
+}
+
 // CreateDocOffsetIdxV1 creates a document offset index writer V1
 func CreateDocOffsetIdxV1(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey, initOffset int64) (*DocOffsetIdxV1, error) {
-
 	var err error
 	writer, err := common.OpenDocOffsetIdxWriter(sdc, docID, docVer)
 	if err != nil {
@@ -217,7 +220,7 @@ func OpenDocOffsetIdxPrivV1(key *sscrypto.StrongSaltKey, plainHdrBody *DoiPlainH
 	// Create a block list reader using the streaming crypto so the blocks will be
 	// decrypted.
 	reader, err := ssblocks.NewBlockListReader(streamCrypto,
-		uint64(initOffset+int64(parsed)), 0)
+		uint64(initOffset+int64(parsed)), 0, initDocOffsetIdxV1)
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -247,11 +250,7 @@ func (idx *DocOffsetIdxV1) AddTermOffset(term string, offset uint64) error {
 
 	idx.Block.AddTermOffset(term, offset)
 	if idx.Block.predictedJSONSize > uint64(common.DOI_BLOCK_SIZE_MAX) {
-		serial, err := idx.Block.Serialize()
-		if err != nil {
-			return errors.New(err)
-		}
-		return idx.flush(serial)
+		return idx.flush()
 	}
 
 	return nil
@@ -263,17 +262,18 @@ func (idx *DocOffsetIdxV1) ReadNextBlock() (*DocOffsetIdxBlkV1, error) {
 		return nil, errors.Errorf("The document offset index is not open for reading")
 	}
 
-	b, err := idx.Reader.ReadNextBlock()
-	if err != nil && err != io.EOF {
-		return nil, errors.New(err)
+	blockData, jsonSize, err := idx.Reader.ReadNextBlockData()
+	if err != nil {
+		return nil, err
 	}
 
-	if b != nil && len(b.GetData()) > 0 {
-		block := &DocOffsetIdxBlkV1{}
-		return block.Deserialize(b.GetData())
+	blk, ok := blockData.(*DocOffsetIdxBlkV1)
+	if !ok {
+		return nil, errors.Errorf("Cannot convert to DocOffsetIdxBlkV1")
 	}
 
-	return nil, io.EOF
+	blk.predictedJSONSize = uint64(jsonSize)
+	return blk, nil
 }
 
 // ReadAllTermLoc returns all the term location index
@@ -326,11 +326,7 @@ func (idx *DocOffsetIdxV1) Reset() error {
 // Close writes any residual block data to output stream
 func (idx *DocOffsetIdxV1) Close() error {
 	if idx.Block != nil {
-		serial, err := idx.Block.Serialize()
-		if err != nil {
-			return errors.New(err)
-		}
-		err = idx.flush(serial)
+		err := idx.flush()
 		if err != nil {
 			return err
 		}
@@ -349,10 +345,12 @@ func (idx *DocOffsetIdxV1) Close() error {
 	return nil
 }
 
-func (idx *DocOffsetIdxV1) flush(data []byte) error {
-	_, err := idx.Writer.WriteBlockData(data)
-	if err != nil {
-		return errors.New(err)
+func (idx *DocOffsetIdxV1) flush() error {
+	if idx.Block != nil {
+		err := idx.Writer.WriteBlockData(idx.Block)
+		if err != nil {
+			return err
+		}
 	}
 	idx.Block = nil
 	return nil
