@@ -4,6 +4,7 @@ import (
 	"github.com/blevesearch/bleve/analysis"
 	"github.com/blevesearch/bleve/analysis/analyzer/web"
 	"github.com/blevesearch/bleve/analysis/token/lowercase"
+	"github.com/blevesearch/bleve/analysis/token/porter"
 	"github.com/blevesearch/bleve/analysis/tokenizer/letter"
 	bleveRegex "github.com/blevesearch/bleve/analysis/tokenizer/regexp"
 	"github.com/blevesearch/bleve/analysis/tokenizer/single"
@@ -27,7 +28,7 @@ var SINGLE = Tokenizer_Type{single.Name, nil}
 var REGEX = Tokenizer_Type{bleveRegex.Name,
 	map[string]interface{}{
 		"type":   bleveRegex.Name,
-		"regexp": `[0-9a-zA-Z_]*`,
+		"regexp": `[0-9a-zA-Z]*`,
 	}}
 var LETTER = Tokenizer_Type{letter.Name, nil}
 var WHITESPACE = Tokenizer_Type{whitespace.Name, nil}
@@ -40,9 +41,10 @@ type Token_Filter_Type struct {
 }
 
 var LOWERCASE = Token_Filter_Type{lowercase.Name}
+var STEMMER = Token_Filter_Type{porter.Name}
 
-func openAnalyzer() (*analysis.Analyzer, error) {
-	return openBleveAnalyzer(REGEX, LOWERCASE)
+func OpenBleveAnalyzer() (*analysis.Analyzer, error) {
+	return openBleveAnalyzer(REGEX, LOWERCASE, STEMMER)
 }
 
 func openBleveAnalyzer(tokenizerType Tokenizer_Type, filterTypes ...Token_Filter_Type) (*analysis.Analyzer, error) {
@@ -101,7 +103,7 @@ func OpenBleveTokenizer(source Source) (BleveTokenizer, error) {
 	}
 
 	// init analyzer
-	analyzer, err := openAnalyzer()
+	analyzer, err := OpenBleveAnalyzer()
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +138,6 @@ func (token *bleveTokenizer) NextToken() (string, uint64, error) {
 			return "", 0, err
 		}
 		newTokens := token.analyzer.Analyze(input)
-
 		token.savedTokens = append(token.savedTokens, newTokens...)
 	}
 	first := string(token.savedTokens[0].Term)

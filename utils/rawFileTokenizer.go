@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"github.com/blevesearch/bleve/analysis"
 	"io"
 	"strings"
+
+	"github.com/blevesearch/bleve/analysis"
 )
 
 // RawFileTokenizer tokenizes a file
@@ -27,7 +28,7 @@ func OpenRawFileTokenizer(source Source) (RawFileTokenizer, error) {
 		return nil, err
 	}
 
-	analyzer, err := openAnalyzer()
+	analyzer, err := OpenBleveAnalyzer()
 
 	return &rawFileTokenizer{
 		storage:  storage,

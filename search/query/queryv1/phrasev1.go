@@ -3,21 +3,24 @@ package queryv1
 import (
 	"io"
 
+	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 )
 
 type PhraseSearchV1 struct {
-	sdc      client.StrongDocClient
-	owner    common.SearchIdxOwner
-	terms    []string
-	termKey  *sscrypto.StrongSaltKey
-	indexKey *sscrypto.StrongSaltKey
-	reader   searchidx.StiReader
-	termData map[string]*termDataV1 // term -> termDataV1
+	sdc       client.StrongDocClient
+	owner     common.SearchIdxOwner
+	terms     []string
+	origTerms []string
+	termKey   *sscrypto.StrongSaltKey
+	indexKey  *sscrypto.StrongSaltKey
+	reader    searchidx.StiReader
+	termData  map[string]*termDataV1 // term -> termDataV1
 }
 
 type termDataV1 struct {
@@ -47,19 +50,34 @@ type PhraseSearchDocV1 struct {
 func OpenPhraseSearchV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, terms []string,
 	termKey, indexKey *sscrypto.StrongSaltKey) (*PhraseSearchV1, error) {
 
-	reader, err := searchidx.OpenSearchTermIndex(sdc, owner, terms, termKey, indexKey)
+	analyzer, err := utils.OpenBleveAnalyzer()
+	if err != nil {
+		return nil, err
+	}
+
+	searchTerms := make([]string, len(terms))
+	for i, term := range terms {
+		tokens := analyzer.Analyze([]byte(term))
+		if len(tokens) != 1 {
+			return nil, errors.Errorf("The search term %v fails analysis:%v", term, tokens)
+		}
+		searchTerms[i] = string(tokens[0].Term)
+	}
+
+	reader, err := searchidx.OpenSearchTermIndex(sdc, owner, searchTerms, termKey, indexKey)
 	if err != nil {
 		return nil, err
 	}
 
 	phraseSearch := &PhraseSearchV1{
-		sdc:      sdc,
-		owner:    owner,
-		terms:    terms,
-		termKey:  termKey,
-		indexKey: indexKey,
-		reader:   reader,
-		termData: make(map[string]*termDataV1), // term -> termDataV1
+		sdc:       sdc,
+		owner:     owner,
+		terms:     searchTerms,
+		origTerms: terms,
+		termKey:   termKey,
+		indexKey:  indexKey,
+		reader:    reader,
+		termData:  make(map[string]*termDataV1), // term -> termDataV1
 	}
 
 	return phraseSearch, nil
@@ -83,7 +101,7 @@ func (search *PhraseSearchV1) GetNextResult() (*PhraseSearchResultV1, error) {
 	}
 
 	result := &PhraseSearchResultV1{
-		Terms:  search.terms,
+		Terms:  search.origTerms,
 		Docs:   make([]*PhraseSearchDocV1, 0, 100),
 		DocMap: make(map[string]*PhraseSearchDocV1), // docID -> PhraseSearchDocV1
 	}
