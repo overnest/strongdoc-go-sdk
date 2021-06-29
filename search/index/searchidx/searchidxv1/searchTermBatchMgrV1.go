@@ -276,105 +276,217 @@ func (batch *SearchTermBatchV1) ProcessTermBatch(sdc client.StrongDocClient, eve
 	return respMap, nil
 }
 
-func (batch *SearchTermBatchV1) processStiBatch() (map[*SearchTermIdxWriterV1]*SearchTermIdxWriterRespV1, error) {
+type SearchTermBlockRespV1 struct {
 
-	stiwToBlks := make(map[*SearchTermIdxWriterV1][]*SearchTermIdxSourceBlockV1)
+	Block *SearchTermIdxSourceBlockV1
+	Error error
+}
 
-	for _, source := range batch.SourceList {
-		blk, err := source.GetNextSourceBlock(batch.termList)
-		if err != nil && err != io.EOF {
-			return nil, err
+type SearchTermReadingRespV1 struct {
+	stiwToBlks map[*SearchTermIdxWriterV1][]*SearchTermIdxSourceBlockV1
+	Error error
+}
+
+type SearchTermWritingRespV1 struct {
+	stiwToResp map[*SearchTermIdxWriterV1]*SearchTermIdxWriterRespV1
+	Error error
+}
+
+type SearchTermCollectingRespV1 struct {
+	respMap map[*SearchTermIdxWriterV1]error
+	processedDocs map[string](map[string]uint64)
+	Error error
+}
+
+func (batch *SearchTermBatchV1) processStiBatchParaReading(readToWriteChan chan<- *SearchTermReadingRespV1){
+
+	defer close(readToWriteChan)
+
+	for {
+		stiwToBlks := make(map[*SearchTermIdxWriterV1][]*SearchTermIdxSourceBlockV1)
+		blkToChan := make(map[SearchTermIdxSourceV1](chan *SearchTermBlockRespV1))
+
+		// Start parallel threads to read
+		for _, source := range batch.SourceList {
+
+			blkChan := make(chan *SearchTermBlockRespV1)
+			blkToChan[source] = blkChan
+
+			go func(source SearchTermIdxSourceV1, batch *SearchTermBatchV1, blkChan chan<- *SearchTermBlockRespV1) {
+				defer close(blkChan)
+				blk, err := source.GetNextSourceBlock(batch.termList)
+				blkChan <- &SearchTermBlockRespV1{blk, err}
+			}(source, batch, blkChan)
 		}
 
-		if blk != nil && len(blk.TermOffset) > 0 {
-			for _, stiw := range batch.sourceToWriters[source] {
-				blkList := stiwToBlks[stiw]
-				if blkList == nil {
-					blkList = make([]*SearchTermIdxSourceBlockV1, 0, len(stiw.AddSources))
+		for source, blkChan := range blkToChan {
+			blkResp := <- blkChan
+			err := blkResp.Error
+			blk := blkResp.Block
+
+			if err != nil && err != io.EOF {
+				readToWriteChan <- &SearchTermReadingRespV1{stiwToBlks, err}
+				return
+			}
+
+			if blk != nil && len(blk.TermOffset) > 0 {
+				for _, stiw := range batch.sourceToWriters[source] {
+					blkList := stiwToBlks[stiw]
+					if blkList == nil {
+						blkList = make([]*SearchTermIdxSourceBlockV1, 0, len(stiw.AddSources))
+					}
+					stiwToBlks[stiw] = append(blkList, blk)
 				}
-				stiwToBlks[stiw] = append(blkList, blk)
 			}
 		}
-	}
 
-	stiwToChan := make(map[*SearchTermIdxWriterV1](chan *SearchTermIdxWriterRespV1))
-	for stiw, blkList := range stiwToBlks {
-		if len(blkList) > 0 {
-			stiwChan := make(chan *SearchTermIdxWriterRespV1)
-			stiwToChan[stiw] = stiwChan
-
-			// This executes in a separate thread
-			go func(stiw *SearchTermIdxWriterV1, blkList []*SearchTermIdxSourceBlockV1,
-				stiwChan chan<- *SearchTermIdxWriterRespV1) {
-				defer close(stiwChan)
-
-				stibs, processedDocs, err := stiw.ProcessSourceBlocks(blkList)
-				stiwChan <- &SearchTermIdxWriterRespV1{stibs, processedDocs, err}
-			}(stiw, blkList, stiwChan)
+		// Finish reading all blocks
+		if(len(stiwToBlks) == 0) {
+			readToWriteChan <- &SearchTermReadingRespV1{stiwToBlks, nil}
+			return
 		}
+
+		// Finish reading one more batch, not finish all yet, just go on with the loop
+		readToWriteChan <- &SearchTermReadingRespV1{stiwToBlks, nil}
 	}
 
-	respMap := make(map[*SearchTermIdxWriterV1]*SearchTermIdxWriterRespV1)
-	for stiw, stiwChan := range stiwToChan {
-		respMap[stiw] = <-stiwChan
+}
+
+func (batch *SearchTermBatchV1) processStiBatchParaWriting(readToWriteChan <-chan *SearchTermReadingRespV1, writeToCollectChan chan<- *SearchTermWritingRespV1) {
+	defer close(writeToCollectChan)
+
+	for {
+		readResp, more := <- readToWriteChan
+
+		if more {
+
+			// Parse the response from reading
+			stiwToBlks := readResp.stiwToBlks
+			err := readResp.Error
+
+			// Check errors
+			if err != nil {
+				writeToCollectChan <- &SearchTermWritingRespV1{nil, err}
+				return
+			}
+
+			// Process Source Block in Parallel
+			stiwToChan := make(map[*SearchTermIdxWriterV1](chan *SearchTermIdxWriterRespV1))
+			for stiw, blkList := range stiwToBlks {
+				if len(blkList) > 0 {
+					stiwChan := make(chan *SearchTermIdxWriterRespV1)
+					stiwToChan[stiw] = stiwChan
+
+					// This executes in a separate thread
+					go func(stiw *SearchTermIdxWriterV1, blkList []*SearchTermIdxSourceBlockV1,
+						stiwChan chan<- *SearchTermIdxWriterRespV1) {
+						defer close(stiwChan)
+
+						stibs, processedDocs, err := stiw.ProcessSourceBlocks(blkList)
+						stiwChan <- &SearchTermIdxWriterRespV1{stibs, processedDocs, err}
+					}(stiw, blkList, stiwChan)
+				}
+			}
+
+			// Wait for each parallel writing to finish
+			respMap := make(map[*SearchTermIdxWriterV1]*SearchTermIdxWriterRespV1)
+			for stiw, stiwChan := range stiwToChan {
+				respMap[stiw] = <-stiwChan
+			}
+
+			writeToCollectChan <- &SearchTermWritingRespV1{respMap, nil}
+
+		} else {
+			return
+		}
+
 	}
 
-	// Nothing left to process
-	if len(respMap) == 0 {
-		return respMap, io.EOF
-	}
+}
 
-	return respMap, nil
+func (batch *SearchTermBatchV1) processStiBatchParaCollecting(writeToCollectChan <-chan *SearchTermWritingRespV1, collectToAllChan chan<- *SearchTermCollectingRespV1,) {
+	respMap := make(map[*SearchTermIdxWriterV1]error)
+	processedDocs := make(map[string](map[string]uint64))
+	defer close(collectToAllChan)
+
+	for {
+		writingResp, more := <- writeToCollectChan
+		if more {
+			stiBlocksResp := writingResp.stiwToResp
+			err := writingResp.Error
+
+			if err != nil && err != io.EOF {
+				collectToAllChan <- &SearchTermCollectingRespV1{respMap, processedDocs ,err}
+				return
+			}
+
+			if len(stiBlocksResp) > 0 {
+				for stiw, resp := range stiBlocksResp {
+					if resp != nil {
+						// If there is already an error for this STIW, do not overwrite
+						if respMap[stiw] == nil {
+							respMap[stiw] = resp.Error
+						}
+
+						// update processed docs
+						if resp.ProcessedDocs != nil && len(resp.ProcessedDocs) > 0 {
+							if processedDocs[stiw.Term] == nil {
+								processedDocs[stiw.Term] = resp.ProcessedDocs
+							} else {
+								for id, ver := range resp.ProcessedDocs {
+									processedDocs[stiw.Term][id] = ver
+								}
+							}
+						}
+					} else {
+						respMap[stiw] = nil
+					}
+				}
+			}
+		} else {
+			collectToAllChan <- &SearchTermCollectingRespV1{respMap, processedDocs ,nil}
+			return
+		}
+
+	}
 }
 
 func (batch *SearchTermBatchV1) processStiAll(event *utils.TimeEvent) (
 	map[string](map[string]uint64),
 	map[*SearchTermIdxWriterV1]error, error) {
 	e1 := utils.AddSubEvent(event, "resetSources")
-	respMap := make(map[*SearchTermIdxWriterV1]error)
-	processedDocs := make(map[string](map[string]uint64))
 	for _, source := range batch.SourceList {
 		source.Reset()
 	}
 	utils.EndEvent(e1)
 
-	e2 := utils.AddSubEvent(event, "processStiBatches")
+	e2 := utils.AddSubEvent(event, "processStiBatches in 3 threads")
 
-	for {
-		stiBlocksResp, err := batch.processStiBatch()
-		if err != nil && err != io.EOF {
-			return nil, nil, err
-		}
+	// Prepare Channels for reading -> writing -> stiAll
+	readToWriteChan := make(chan *SearchTermReadingRespV1)
+	writeToCollectChan := make(chan *SearchTermWritingRespV1)
+	collectToAllChan := make(chan *SearchTermCollectingRespV1)
 
-		if len(stiBlocksResp) > 0 {
-			for stiw, resp := range stiBlocksResp {
-				if resp != nil {
-					// If there is already an error for this STIW, do not overwrite
-					if respMap[stiw] == nil {
-						respMap[stiw] = resp.Error
-					}
+	// Start to wait for finished writing block, once received, begin to collect and merge the result
+	go batch.processStiBatchParaCollecting(writeToCollectChan, collectToAllChan)
 
-					// update processed docs
-					if resp.ProcessedDocs != nil && len(resp.ProcessedDocs) > 0 {
-						if processedDocs[stiw.Term] == nil {
-							processedDocs[stiw.Term] = resp.ProcessedDocs
-						} else {
-							for id, ver := range resp.ProcessedDocs {
-								processedDocs[stiw.Term][id] = ver
-							}
-						}
-					}
-				} else {
-					respMap[stiw] = nil
-				}
-			}
-		}
+	// Start to wait for finished reading block, once received, begin to write
+	go batch.processStiBatchParaWriting(readToWriteChan, writeToCollectChan)
 
-		// Should be io.EOF
-		if err != nil {
-			break
-		}
+	// Start parallel reading, once finished, send each block to writing
+	go batch.processStiBatchParaReading(readToWriteChan)
+
+	// wait for collecting to finish
+	collectResp := <- collectToAllChan
+	respMap := collectResp.respMap
+	err := collectResp.Error
+	processedDocs := collectResp.processedDocs
+
+
+	if err != nil && err != io.EOF {
+		return nil, nil, err
 	}
+
 	utils.EndEvent(e2)
 
 	e3 := utils.AddSubEvent(event, "closeStiw")
@@ -383,6 +495,7 @@ func (batch *SearchTermBatchV1) processStiAll(event *utils.TimeEvent) (
 		processedDocs map[string]uint64
 		err           error
 	}
+
 	stiwToChan := make(map[*SearchTermIdxWriterV1](chan closeStiwResp))
 	for _, stiw := range batch.TermToWriter {
 		stiwChan := make(chan closeStiwResp)
