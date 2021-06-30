@@ -3,12 +3,13 @@ package searchidxv1
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/overnest/strongsalt-common-go/blocks"
+	"log"
 	"strings"
 
 	rbt "github.com/emirpasic/gods/trees/redblacktree"
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
-	"github.com/overnest/strongsalt-common-go/blocks"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -44,9 +45,18 @@ func (idver *DocIDVerV1) String() string {
 var baseSsdiBlockJSONSize uint64
 var baseSsdiDocIDVerJSONSize uint64
 
+var initEmptySortDocIdxBlkV1 = func() interface{} {
+	return CreateSearchSortDocIdxBlkV1("", 0)
+}
+
 func init() {
-	base, _ := CreateSearchSortDocIdxBlkV1("", 0).Serialize()
-	baseSsdiBlockJSONSize = uint64(len(base))
+	blk, _ := initEmptySortDocIdxBlkV1().(*SearchSortDocIdxBlkV1)
+	blk = blk.formatToBlockData()
+	predictSize, err := blocks.GetPredictedJSONSize(blk)
+	if err != nil {
+		log.Fatal(err)
+	}
+	baseSsdiBlockJSONSize = uint64(predictSize)
 
 	docIDVer := &DocIDVerV1{"", 0}
 	if b, err := json.Marshal(docIDVer); err == nil {
@@ -60,13 +70,16 @@ func init() {
 //   1        , if value is in block
 //   0        , if value not in block
 //   > 1      , if value > block
-func DocIDVerComparatorV1(value interface{}, block blocks.Block) (int, error) {
+func DocIDVerComparatorV1(value interface{}, blockData interface{}) (int, error) {
 	docID, _ := value.(string)
 
-	blk := CreateSearchSortDocIdxBlkV1("", 0)
-	blk, err := blk.deserialize(block.GetData())
+	blk, ok := blockData.(*SearchSortDocIdxBlkV1)
+	if !ok {
+		return 0, errors.Errorf("Cannot convert to SearchSortDocIdxBlkV1")
+	}
+	blk, err := blk.formatFromBlockData()
 	if err != nil {
-		return 0, errors.New(err)
+		return 0, err
 	}
 
 	if _, exist := blk.docIDVerMap[docID]; exist {
@@ -201,11 +214,25 @@ func (blk *SearchSortDocIdxBlkV1) removeHighTerm() {
 	}
 }
 
+func (blk *SearchSortDocIdxBlkV1) formatToBlockData() *SearchSortDocIdxBlkV1 {
+	for blk.predictedJSONSize > blk.maxDataSize {
+		blk.removeHighTerm()
+		blk.isFull = true
+	}
+
+	docIDs := blk.docIDTree.Keys()
+	blk.DocIDVers = make([]*DocIDVerV1, len(docIDs))
+	for i, id := range docIDs {
+		docID := id.(string)
+		blk.DocIDVers[i] = &DocIDVerV1{docID, blk.docIDVerMap[docID]}
+	}
+	return blk
+}
+
 // Serialize the block
 func (blk *SearchSortDocIdxBlkV1) Serialize() ([]byte, error) {
 	for blk.predictedJSONSize > blk.maxDataSize {
 		blk.removeHighTerm()
-		blk.isFull = true
 	}
 
 	docIDs := blk.docIDTree.Keys()
@@ -222,26 +249,7 @@ func (blk *SearchSortDocIdxBlkV1) Serialize() ([]byte, error) {
 	return b, nil
 }
 
-// Deserialize the block
-func (blk *SearchSortDocIdxBlkV1) Deserialize(data []byte) (*SearchSortDocIdxBlkV1, error) {
-	blk, err := blk.deserialize(data)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, docIDVer := range blk.DocIDVers {
-		blk.docIDTree.Put(docIDVer.DocID, docIDVer.DocVer)
-	}
-
-	return blk, nil
-}
-
-func (blk *SearchSortDocIdxBlkV1) deserialize(data []byte) (*SearchSortDocIdxBlkV1, error) {
-	err := json.Unmarshal(data, blk)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
+func (blk *SearchSortDocIdxBlkV1) formatFromBlockData() (*SearchSortDocIdxBlkV1, error) {
 	if blk.docIDVerMap == nil {
 		blk.docIDVerMap = make(map[string]uint64)
 	}
@@ -259,7 +267,10 @@ func (blk *SearchSortDocIdxBlkV1) deserialize(data []byte) (*SearchSortDocIdxBlk
 		blk.docIDVerMap[docIDVer.DocID] = docIDVer.DocVer
 	}
 
-	blk.predictedJSONSize = uint64(len(data))
+	for _, docIDVer := range blk.DocIDVers {
+		blk.docIDTree.Put(docIDVer.DocID, docIDVer.DocVer)
+	}
+
 	return blk, nil
 }
 

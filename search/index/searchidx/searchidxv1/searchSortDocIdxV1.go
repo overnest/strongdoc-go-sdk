@@ -1,6 +1,7 @@
 package searchidxv1
 
 import (
+	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -17,18 +18,122 @@ import (
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
 )
 
+//////////////////////////////////////////////////////////////////
+//
+//                   Sorted Doc Index Source
+//
+//////////////////////////////////////////////////////////////////
+type ssdiSource interface {
+	Reset() error
+	Close() error
+	ReadNextDocInfos() ([]string, []uint64, error)
+}
+
+//
+// Sorted Doc Index Source from Search Term Index
+//
+type ssdiSourceSTI struct {
+	sti *SearchTermIdxV1
+}
+
+func openSsdiSourceFromSTI(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string,
+	termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*ssdiSourceSTI, error) {
+	sti, err := OpenSearchTermIdxV1(sdc, owner, term, termKey, indexKey, updateID)
+	if err != nil {
+		return nil, err
+	}
+	return &ssdiSourceSTI{sti}, nil
+}
+
+func (source *ssdiSourceSTI) Reset() error {
+	if source.sti == nil {
+		return nil
+	}
+	return source.sti.Reset()
+}
+
+func (source *ssdiSourceSTI) Close() error {
+	if source.sti == nil {
+		return nil
+	}
+	err := source.sti.Close()
+	source.sti = nil
+	return err
+}
+
+// Read Block from STI
+func (source *ssdiSourceSTI) ReadNextDocInfos() (docIDs []string, docVers []uint64, err error) {
+	sti := source.sti
+	if sti == nil {
+		err = fmt.Errorf("invalid source")
+		return
+	}
+	var stib *SearchTermIdxBlkV1 = nil
+	stib, err = sti.ReadNextBlock()
+	if err != nil {
+		return
+	}
+	if stib != nil {
+		for docID, verOff := range stib.DocVerOffset {
+			docIDs = append(docIDs, docID)
+			docVers = append(docVers, verOff.Version)
+		}
+	}
+	return
+}
+
+//
+// Sorted Doc Index Source from STI Writer
+//
+type ssdiSourceDocIdx struct {
+	stiSources map[string]uint64
+	eof        bool
+}
+
+func openSsdiSourceFromSTISource(stiSources map[string]uint64) *ssdiSourceDocIdx {
+	return &ssdiSourceDocIdx{stiSources: stiSources, eof: false}
+}
+
+func (source *ssdiSourceDocIdx) Reset() error {
+	source.eof = false
+	return nil
+}
+
+func (source *ssdiSourceDocIdx) Close() error {
+	return nil
+}
+
+func (source *ssdiSourceDocIdx) ReadNextDocInfos() (docIDs []string, docVers []uint64, err error) {
+	if source.eof {
+		err = io.EOF
+		return
+	}
+	for id, ver := range source.stiSources {
+		docIDs = append(docIDs, id)
+		docVers = append(docVers, ver)
+	}
+	source.eof = true
+	return
+}
+
+//////////////////////////////////////////////////////////////////
+//
+//                   Sorted Doc Index
+//
+//////////////////////////////////////////////////////////////////
 // SearchSortDocIdxV1 is a structure for search sorted document index V1
 type SearchSortDocIdxV1 struct {
 	common.SsdiVersionS
-	Owner       common.SearchIdxOwner
-	Term        string
-	TermKey     *sscrypto.StrongSaltKey
-	IndexKey    *sscrypto.StrongSaltKey
-	IndexNonce  []byte
-	InitOffset  uint64
-	termHmac    string
-	updateID    string
-	sti         *SearchTermIdxV1
+	Owner      common.SearchIdxOwner
+	Term       string
+	TermKey    *sscrypto.StrongSaltKey
+	IndexKey   *sscrypto.StrongSaltKey
+	IndexNonce []byte
+	InitOffset uint64
+	termHmac   string
+	updateID   string
+	//sti         *SearchTermIdxV1
+	source      ssdiSource
 	writer      io.WriteCloser
 	reader      io.ReadCloser
 	bwriter     ssblocks.BlockListWriterV1
@@ -40,7 +145,7 @@ type SearchSortDocIdxV1 struct {
 
 // CreateSearchSortDocIdxV1 creates a search sorted document index writer V1
 func CreateSearchSortDocIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term, updateID string,
-	termKey, indexKey *sscrypto.StrongSaltKey) (*SearchSortDocIdxV1, error) {
+	termKey, indexKey *sscrypto.StrongSaltKey, docs map[string]uint64) (*SearchSortDocIdxV1, error) {
 
 	var err error
 	ssdi := &SearchSortDocIdxV1{
@@ -53,7 +158,7 @@ func CreateSearchSortDocIdxV1(sdc client.StrongDocClient, owner common.SearchIdx
 		InitOffset:   0,
 		termHmac:     "",
 		updateID:     updateID,
-		sti:          nil,
+		source:       nil,
 		writer:       nil,
 		reader:       nil,
 		bwriter:      nil,
@@ -76,9 +181,13 @@ func CreateSearchSortDocIdxV1(sdc client.StrongDocClient, owner common.SearchIdx
 		return nil, errors.Errorf("The key type %v is not a midstream key", indexKey.Type.Name)
 	}
 
-	ssdi.sti, err = OpenSearchTermIdxV1(sdc, owner, term, termKey, indexKey, updateID)
-	if err != nil {
-		return nil, err
+	if docs != nil {
+		ssdi.source = openSsdiSourceFromSTISource(docs)
+	} else {
+		ssdi.source, err = openSsdiSourceFromSTI(sdc, owner, term, termKey, indexKey, updateID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	ssdi.termHmac, err = common.CreateTermHmac(term, termKey)
@@ -229,7 +338,7 @@ func OpenSearchSortDocIdxPrivV1(owner common.SearchIdxOwner, term, termID, updat
 		InitOffset:   0,
 		termHmac:     termID,
 		updateID:     updateID,
-		sti:          nil,
+		source:       nil,
 		writer:       nil,
 		reader:       reader,
 		bwriter:      nil,
@@ -266,7 +375,7 @@ func OpenSearchSortDocIdxPrivV1(owner common.SearchIdxOwner, term, termID, updat
 
 	// Create a block list reader using the streaming crypto so the blocks will be
 	// decrypted.
-	bReader, err := ssblocks.NewBlockListReader(streamCrypto, plainHdrOffset+uint64(parsed), endOffset)
+	bReader, err := ssblocks.NewBlockListReader(streamCrypto, plainHdrOffset+uint64(parsed), endOffset, initEmptySortDocIdxBlkV1)
 	if err != nil {
 		return nil, err
 	}
@@ -317,19 +426,21 @@ func (ssdi *SearchSortDocIdxV1) WriteNextBlock() (*SearchSortDocIdxBlkV1, error)
 		ssdi.block = CreateSearchSortDocIdxBlkV1("", uint64(ssdi.bwriter.GetMaxDataSize()))
 	}
 
-	err := ssdi.sti.Reset()
+	err := ssdi.source.Reset()
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
 	// Read all blocks from STI
-	for err == nil {
-		var stib *SearchTermIdxBlkV1 = nil
-		stib, err = ssdi.sti.ReadNextBlock()
-		if stib != nil {
-			for docID, verOff := range stib.DocVerOffset {
-				ssdi.block.AddDocVer(docID, verOff.Version)
-			}
+	for {
+		var docIDs []string
+		var docVers []uint64
+		docIDs, docVers, err = ssdi.source.ReadNextDocInfos()
+		if err != nil {
+			break
+		}
+		for i, docID := range docIDs {
+			ssdi.block.AddDocVer(docID, docVers[i])
 		}
 	}
 
@@ -337,12 +448,12 @@ func (ssdi *SearchSortDocIdxV1) WriteNextBlock() (*SearchSortDocIdxBlkV1, error)
 		return nil, err
 	}
 
-	block := ssdi.block
-	err = ssdi.flush(block)
+	err = ssdi.flush()
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
+	block := ssdi.block
 	if block.IsFull() {
 		ssdi.block = CreateSearchSortDocIdxBlkV1(block.highDocID,
 			uint64(ssdi.bwriter.GetMaxDataSize()))
@@ -358,17 +469,22 @@ func (ssdi *SearchSortDocIdxV1) ReadNextBlock() (*SearchSortDocIdxBlkV1, error) 
 		return nil, errors.Errorf("No reader available")
 	}
 
-	b, err := ssdi.breader.ReadNextBlock()
-	if err != nil && err != io.EOF {
+	blockData, predictedSize, err := ssdi.breader.ReadNextBlockData()
+	if err != nil {
 		return nil, err
 	}
 
-	if b != nil && len(b.GetData()) > 0 {
-		ssdib := CreateSearchSortDocIdxBlkV1("", 0)
-		return ssdib.Deserialize(b.GetData())
+	blk, ok := blockData.(*SearchSortDocIdxBlkV1)
+	if !ok {
+		return nil, errors.Errorf("Cannot convert to DocOffsetIdxBlkV1")
 	}
 
-	return nil, err
+	blk.predictedJSONSize = uint64(predictedSize)
+	blk, err = blk.formatFromBlockData()
+	if err != nil {
+		return nil, err
+	}
+	return blk, nil
 }
 
 func (ssdi *SearchSortDocIdxV1) ExistDocID(docID string) (bool, error) {
@@ -376,7 +492,7 @@ func (ssdi *SearchSortDocIdxV1) ExistDocID(docID string) (bool, error) {
 		return false, errors.Errorf("The search sorted document index is not open for reading")
 	}
 
-	blk, err := ssdi.breader.SearchBinary(docID, DocIDVerComparatorV1)
+	blk, _, err := ssdi.breader.SearchBinary(docID, DocIDVerComparatorV1)
 	if err != nil {
 		return false, errors.New(err)
 	}
@@ -389,22 +505,18 @@ func (ssdi *SearchSortDocIdxV1) FindDocID(docID string) (*DocIDVerV1, error) {
 		return nil, errors.Errorf("The search sorted document index is not open for reading")
 	}
 
-	b, err := ssdi.breader.SearchBinary(docID, DocIDVerComparatorV1)
+	b, _, err := ssdi.breader.SearchBinary(docID, DocIDVerComparatorV1)
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
 	if b != nil {
-		blk := CreateSearchSortDocIdxBlkV1("", 0)
-		blk, err = blk.Deserialize(b.GetData())
-		if err != nil {
-			return nil, err
+		blk, ok := b.(*SearchSortDocIdxBlkV1)
+		if !ok {
+			return nil, errors.Errorf("Cannot convert to SearchSortDocIdxBlkV1")
 		}
-
-		if blk != nil {
-			if docVer, exist := blk.docIDVerMap[docID]; exist {
-				return &DocIDVerV1{docID, docVer}, nil
-			}
+		if docVer, exist := blk.docIDVerMap[docID]; exist {
+			return &DocIDVerV1{docID, docVer}, nil
 		}
 	}
 
@@ -461,14 +573,14 @@ func (ssdi *SearchSortDocIdxV1) Reset() error {
 func (ssdi *SearchSortDocIdxV1) Close() error {
 	var ferr error = nil
 
-	if ssdi.sti != nil {
-		ssdi.sti.Close()
-		ssdi.sti = nil
+	if ssdi.source != nil {
+		ssdi.source.Close()
+		ssdi.source = nil
 	}
 
 	if ssdi.writer != nil {
 		if ssdi.block != nil && ssdi.block.totalDocIDs > 0 {
-			ferr = utils.FirstError(ferr, ssdi.flush(ssdi.block))
+			ferr = utils.FirstError(ferr, ssdi.flush())
 		}
 		ssdi.block = nil
 
@@ -485,21 +597,17 @@ func (ssdi *SearchSortDocIdxV1) Close() error {
 	return ferr
 }
 
-func (ssdi *SearchSortDocIdxV1) flush(block *SearchSortDocIdxBlkV1) error {
+func (ssdi *SearchSortDocIdxV1) flush() error {
 	if ssdi.bwriter == nil {
 		return errors.Errorf("The search sorted document index is not open for writing")
 	}
 
-	serial, err := ssdi.block.Serialize()
+	block := ssdi.block.formatToBlockData()
+	err := ssdi.bwriter.WriteBlockData(block)
 	if err != nil {
 		return err
 	}
-
-	_, err = ssdi.bwriter.WriteBlockData(serial)
-	if err != nil {
-		return err
-	}
-
+	ssdi.block = block
 	ssdi.totalDocIDs += block.totalDocIDs
 	return nil
 }

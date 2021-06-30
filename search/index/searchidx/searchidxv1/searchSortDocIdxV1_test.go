@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/overnest/strongdoc-go-sdk/utils"
+	"github.com/overnest/strongsalt-common-go/blocks"
 
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
@@ -60,10 +61,11 @@ func TestSearchSortDocIdxBlockV1(t *testing.T) {
 }
 
 func validateSsdibSize(t *testing.T, stib *SearchSortDocIdxBlkV1) {
-	b, err := stib.Serialize()
+	stib = stib.formatToBlockData()
+	predictSize, err := blocks.GetPredictedJSONSize(stib)
 	assert.NilError(t, err)
-	// fmt.Println("len", len(b), "pred", stib.predictedJSONSize, "max", stib.maxDataSize, string(b))
-	assert.Equal(t, uint64(len(b)), stib.predictedJSONSize)
+	// fmt.Println("predictSize", predictSize, "pred", stib.predictedJSONSize, "max", stib.maxDataSize, string(b))
+	assert.Equal(t, uint64(predictSize), stib.predictedJSONSize)
 	assert.Assert(t, stib.predictedJSONSize <= stib.maxDataSize)
 }
 
@@ -111,7 +113,7 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	assert.NilError(t, err)
 
 	// ================================ Generate Search Sorted Doc Index ================================
-	ssdi, err := CreateSearchSortDocIdxV1(sdc, owner, term, updateIDs[0], termKey, indexKey)
+	ssdi, err := CreateSearchSortDocIdxV1(sdc, owner, term, updateIDs[0], termKey, indexKey, nil)
 	assert.NilError(t, err)
 
 	err = nil

@@ -220,7 +220,7 @@ func OpenDocTermIdxPrivV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdr
 	// Create a block list reader using the streaming crypto so the blocks will be
 	// decrypted.
 	reader, err := ssblocks.NewBlockListReader(streamCrypto,
-		plainHdrOffset+uint64(parsed), endOffset)
+		plainHdrOffset+uint64(parsed), endOffset, initEmptyDocTermIdxBlkV1)
 	if err != nil {
 		return nil, err
 	}
@@ -262,13 +262,7 @@ func (idx *DocTermIdxV1) WriteNextBlock() (*DocTermIdxBlkV1, error) {
 
 	if err == io.EOF {
 		block := idx.Block
-
-		serial, err := idx.Block.Serialize()
-		if err != nil {
-			return nil, errors.New(err)
-		}
-
-		err = idx.flush(serial)
+		err = idx.flush()
 		if err != nil {
 			return nil, errors.New(err)
 		}
@@ -289,22 +283,18 @@ func (idx *DocTermIdxV1) ReadNextBlock() (*DocTermIdxBlkV1, error) {
 		return nil, errors.Errorf("The document term index is not open for reading")
 	}
 
-	b, err := idx.Reader.ReadNextBlock()
-	if err != nil && err != io.EOF {
-		return nil, errors.New(err)
+	blockData, jsonSize, err := idx.Reader.ReadNextBlockData()
+	if err != nil {
+		return nil, err
 	}
 
-	if b != nil && len(b.GetData()) > 0 {
-		block := CreateDocTermIdxBlkV1("", 0)
-		blk, derr := block.Deserialize(b.GetData())
-		if derr != nil {
-			return nil, errors.New(derr)
-		}
-
-		return blk, err
+	blk, ok := blockData.(*DocTermIdxBlkV1)
+	if !ok {
+		return nil, errors.Errorf("Cannot convert to DocOffsetIdxBlkV1")
 	}
-
-	return nil, err
+	blk.predictedJSONSize = uint64(jsonSize)
+	blk = blk.formatFromBlockData()
+	return blk, nil
 }
 
 // FindTerm attempts to find the specified term in the term index
@@ -313,7 +303,7 @@ func (idx *DocTermIdxV1) FindTerm(term string) (bool, error) {
 		return false, errors.Errorf("The document term index is not open for reading")
 	}
 
-	blk, err := idx.Reader.SearchBinary(term, DocTermComparatorV1)
+	blk, _, err := idx.Reader.SearchBinary(term, DocTermComparatorV1)
 	if err != nil {
 		return false, errors.New(err)
 	}
@@ -361,11 +351,7 @@ func (idx *DocTermIdxV1) Reset() error {
 // Close writes any residual block data to output stream
 func (idx *DocTermIdxV1) Close() error {
 	if idx.Block != nil && idx.Block.totalTerms > 0 {
-		serial, err := idx.Block.Serialize()
-		if err != nil {
-			return errors.New(err)
-		}
-		err = idx.flush(serial)
+		err := idx.flush()
 		if err != nil {
 			return err
 		}
@@ -384,17 +370,20 @@ func (idx *DocTermIdxV1) Close() error {
 	return nil
 }
 
-func (idx *DocTermIdxV1) flush(data []byte) error {
+func (idx *DocTermIdxV1) flush() error {
 	if idx.Writer == nil {
 		return errors.Errorf("The document term index is not open for writing")
 	}
 
-	_, err := idx.Writer.WriteBlockData(data)
-	if err != nil {
-		return errors.New(err)
+	if idx.Block != nil {
+		blk := idx.Block.formatToBlockData()
+		err := idx.Writer.WriteBlockData(blk)
+		if err != nil {
+			return err
+		}
 	}
-
 	idx.Block = CreateDocTermIdxBlkV1(idx.Block.highTerm, uint64(idx.Writer.GetMaxDataSize()))
+
 	return nil
 }
 

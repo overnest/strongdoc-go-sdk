@@ -3,6 +3,8 @@ package searchidxv1
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/overnest/strongsalt-common-go/blocks"
+	"log"
 
 	"github.com/go-errors/errors"
 )
@@ -29,9 +31,16 @@ type VersionOffsetV1 struct {
 var baseStiBlockJSONSize uint64
 var baseStiVersionOffsetJSONSize uint64
 
+var initSearchTermIdxBlkV1 = func() interface{} {
+	return CreateSearchTermIdxBlkV1(0)
+}
+
 func init() {
-	base, _ := CreateSearchTermIdxBlkV1(0).Serialize()
-	baseStiBlockJSONSize = uint64(len(base))
+	predictSize, err := blocks.GetPredictedJSONSize(initSearchTermIdxBlkV1())
+	if err != nil {
+		log.Fatal(err)
+	}
+	baseStiBlockJSONSize = uint64(predictSize)
 
 	verOffset := &VersionOffsetV1{0, []uint64{}}
 	if b, err := json.Marshal(verOffset); err == nil {
@@ -136,26 +145,6 @@ func (blk *SearchTermIdxBlkV1) DocRemove(docID string) {
 // IsEmpty shows whether the block is empty
 func (blk *SearchTermIdxBlkV1) IsEmpty() bool {
 	return (len(blk.DocVerOffset) == 0)
-}
-
-// Serialize the block
-func (blk *SearchTermIdxBlkV1) Serialize() ([]byte, error) {
-	b, err := json.Marshal(blk)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	return b, nil
-}
-
-// Deserialize the block
-func (blk *SearchTermIdxBlkV1) Deserialize(data []byte) (*SearchTermIdxBlkV1, error) {
-	err := json.Unmarshal(data, blk)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
-	blk.predictedJSONSize = uint64(len(data))
-	return blk, nil
 }
 
 // Serialize the version offset struct

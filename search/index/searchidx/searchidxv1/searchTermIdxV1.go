@@ -255,7 +255,9 @@ func OpenSearchTermIdxPrivV1(owner common.SearchIdxOwner, term, termID, updateID
 
 	// Create a block list reader using the streaming crypto so the blocks will be
 	// decrypted.
-	bReader, err := ssblocks.NewBlockListReader(streamCrypto, plainHdrOffset+uint64(cipherHdrSize), endOffset)
+	bReader, err := ssblocks.NewBlockListReader(streamCrypto, plainHdrOffset+uint64(cipherHdrSize), endOffset, func() interface{} {
+		return CreateSearchTermIdxBlkV1(0)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -311,14 +313,7 @@ func (sti *SearchTermIdxV1) WriteNextBlock(block *SearchTermIdxBlkV1) error {
 	}
 
 	if block != nil {
-		b, err := block.Serialize()
-		if err != nil {
-			return err
-		}
-		_, err = sti.bwriter.WriteBlockData(b)
-		if err != nil {
-			return err
-		}
+		return sti.bwriter.WriteBlockData(block)
 	}
 
 	return nil
@@ -329,17 +324,14 @@ func (sti *SearchTermIdxV1) ReadNextBlock() (*SearchTermIdxBlkV1, error) {
 		return nil, errors.Errorf("No reader available")
 	}
 
-	b, err := sti.breader.ReadNextBlock()
-	if err != nil && err != io.EOF {
+	blockData, jsonSize, err := sti.breader.ReadNextBlockData()
+	if err != nil {
 		return nil, err
 	}
+	stib, _ := blockData.(*SearchTermIdxBlkV1)
 
-	if b != nil && len(b.GetData()) > 0 {
-		stib := CreateSearchTermIdxBlkV1(0)
-		return stib.Deserialize(b.GetData())
-	}
-
-	return nil, err
+	stib.predictedJSONSize = uint64((jsonSize))
+	return stib, err
 }
 
 func (sti *SearchTermIdxV1) Reset() error {
