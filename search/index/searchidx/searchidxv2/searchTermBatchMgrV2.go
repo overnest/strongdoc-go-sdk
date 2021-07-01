@@ -24,21 +24,7 @@ func hashTerm(term string) string {
 
 //////////////////////////////////////////////////////////////////
 //
-//                    Search Term Batch V1
-//
-//////////////////////////////////////////////////////////////////
-
-type SearchTermBatchV2 struct {
-	Owner           common.SearchIdxOwner
-	SourceList      []SearchTermIdxSourceV2
-	TermToWriter    map[string]*SearchTermIdxWriterV2 // hashedTerm -> SearchTermIdxWriterV1
-	sourceToWriters map[SearchTermIdxSourceV2][]*SearchTermIdxWriterV2
-	termList        []string
-}
-
-//////////////////////////////////////////////////////////////////
-//
-//                   Search Term Batch Manager V2
+//                   Search HashedTerm Batch Manager V2
 //
 //////////////////////////////////////////////////////////////////
 
@@ -137,6 +123,21 @@ func CreateSearchTermBatchMgrV2(owner common.SearchIdxOwner, sources []SearchTer
 	return mgr, nil
 }
 
+//////////////////////////////////////////////////////////////////
+//
+//                    Search HashedTerm Batch V2
+//
+//////////////////////////////////////////////////////////////////
+
+type SearchTermBatchV2 struct {
+	Owner      common.SearchIdxOwner   // owner
+	SourceList []SearchTermIdxSourceV2 // all docs
+	termList   []string                // all terms
+
+	TermToWriter    map[string]*SearchTermIdxWriterV2 // hashedTerm -> term index writer
+	sourceToWriters map[SearchTermIdxSourceV2][]*SearchTermIdxWriterV2
+}
+
 func (mgr *SearchTermBatchMgrV2) GetNextTermBatch(sdc client.StrongDocClient, batchSize int) (*SearchTermBatchV2, error) {
 
 	// pop out batch elements
@@ -144,7 +145,7 @@ func (mgr *SearchTermBatchMgrV2) GetNextTermBatch(sdc client.StrongDocClient, ba
 	for i := 0; i < batchSize; i++ {
 		s, _ := mgr.termHeap.Pop()
 		if s == nil {
-
+			break
 		}
 		source := s.(*SearchTermBatchElement)
 		sources = append(sources, source)
@@ -154,7 +155,7 @@ func (mgr *SearchTermBatchMgrV2) GetNextTermBatch(sdc client.StrongDocClient, ba
 }
 
 func CreateSearchTermBatchV2(sdc client.StrongDocClient, owner common.SearchIdxOwner,
-	sources []*SearchTermBatchElement) (*SearchTermBatchV2, error) {
+	batchElements []*SearchTermBatchElement) (*SearchTermBatchV2, error) {
 	batch := &SearchTermBatchV2{
 		Owner:           owner,
 		SourceList:      nil,
@@ -164,12 +165,16 @@ func CreateSearchTermBatchV2(sdc client.StrongDocClient, owner common.SearchIdxO
 	}
 
 	var allTerms []string
-	for _, source := range sources {
-		// open term index writer
-		for _, term := range source.TermSources {
+	for _, batchElement := range batchElements {
+		// collect all terms
+		for _, term := range batchElement.TermSources {
 			allTerms = append(allTerms, term.Term)
-
 		}
+	}
+	batch.termList = allTerms
+
+	for _, batchElement := range batchElements {
+
 	}
 
 	return batch, nil
@@ -177,7 +182,7 @@ func CreateSearchTermBatchV2(sdc client.StrongDocClient, owner common.SearchIdxO
 
 //////////////////////////////////////////////////////////////////
 //
-//                 Search Term Batch Writer V1
+//                 Search HashedTerm Batch Writer V2
 //
 //////////////////////////////////////////////////////////////////
 
@@ -187,94 +192,50 @@ type SearchTermIdxWriterRespV2 struct {
 }
 
 type SearchTermIdxWriterV2 struct {
-	Term            string
-	Owner           common.SearchIdxOwner
-	AddSources      []SearchTermIdxSourceV2
-	DelSources      []SearchTermIdxSourceV2
-	TermKey         *sscrypto.StrongSaltKey
-	IndexKey        *sscrypto.StrongSaltKey
-	updateID        string
-	delDocMap       map[string]bool   // DocID -> boolean
-	highDocVerMap   map[string]uint64 // DocID -> DocVer
-	newSti          *SearchTermIdxV2
-	oldSti          common.SearchTermIdx
-	newStiBlk       *SearchTermIdxBlkV2
-	oldStiBlk       *SearchTermIdxBlkV2
-	oldStiBlkDocIDs []string
+	HashedTerm string
+	Owner      common.SearchIdxOwner
+	TermKey    *sscrypto.StrongSaltKey
+	IndexKey   *sscrypto.StrongSaltKey
+	newSti     *SearchTermIdxV2     // writer, all terms use this writer
+	oldSti     common.SearchTermIdx // reader
+	newStiBlk  *SearchTermIdxBlkV2
+	oldStiBlk  *SearchTermIdxBlkV2
 }
 
-func CreateSearchTermIdxWriterV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string,
-	addSource, delSource []SearchTermIdxSourceV2,
-	termKey, indexKey *sscrypto.StrongSaltKey, delDocs *DeletedDocsV1) (*SearchTermIdxWriterV2, error) {
+func CreateSearchTermIdxWriterV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, hashedTerm string,
+	termKey, indexKey *sscrypto.StrongSaltKey) (*SearchTermIdxWriterV2, error) {
 
 	var err error
 
-	if addSource == nil {
-		addSource = make([]SearchTermIdxSourceV2, 0, 10)
-	}
-	if delSource == nil {
-		delSource = make([]SearchTermIdxSourceV2, 0, 10)
-	}
-
 	stiw := &SearchTermIdxWriterV2{
-		Owner:           owner,
-		Term:            term,
-		AddSources:      addSource,
-		DelSources:      delSource,
-		TermKey:         termKey,
-		IndexKey:        indexKey,
-		updateID:        "",
-		delDocMap:       make(map[string]bool),
-		highDocVerMap:   make(map[string]uint64),
-		newSti:          nil,
-		oldSti:          nil,
-		newStiBlk:       nil,
-		oldStiBlk:       nil,
-		oldStiBlkDocIDs: make([]string, 0),
-	}
-
-	// Record the DocIDs to be deleted
-	for _, ds := range delSource {
-		stiw.delDocMap[ds.GetDocID()] = true
-	}
-
-	if delDocs != nil {
-		for _, docID := range delDocs.DelDocs {
-			stiw.delDocMap[docID] = true
-		}
-	}
-
-	// Find the highest version of each DocID. This is so we can remove
-	// any DocID with lower version
-	for _, stis := range addSource {
-		if ver, exist := stiw.highDocVerMap[stis.GetDocID()]; !exist || ver < stis.GetDocVer() {
-			stiw.highDocVerMap[stis.GetDocID()] = stis.GetDocVer()
-		}
-	}
-	for _, stis := range delSource {
-		if ver, exist := stiw.highDocVerMap[stis.GetDocID()]; !exist || ver < stis.GetDocVer() {
-			stiw.highDocVerMap[stis.GetDocID()] = stis.GetDocVer()
-		}
+		Owner:      owner,
+		HashedTerm: hashedTerm,
+		TermKey:    termKey,
+		IndexKey:   indexKey,
+		newSti:     nil,
+		oldSti:     nil,
+		newStiBlk:  nil,
+		oldStiBlk:  nil,
 	}
 
 	// Open previous STI if there is one
-	updateID, _ := GetLatestUpdateIDV2(sdc, owner, term, termKey)
+	updateID, _ := GetLatestUpdateIDV2(sdc, owner, hashedTerm, termKey)
 	if updateID != "" {
-		stiw.oldSti, err = OpenSearchTermIdxV1(sdc, owner, term, termKey, indexKey, updateID)
+		stiw.oldSti, err = OpenSearchTermIdxV2(sdc, owner, hashedTerm, termKey, indexKey, updateID)
 		if err != nil {
 			stiw.oldSti = nil
 		}
-		err = stiw.updateHighDocVersion(sdc, owner, term, termKey, indexKey, updateID)
-		if err != nil {
-			return nil, err
-		}
+		//err = stiw.updateHighDocVersion(sdc, owner, hashedTerm, termKey, indexKey, updateID)
+		//if err != nil {
+		//	return nil, err
+		//}
 	}
 
-	stiw.newSti, err = CreateSearchTermIdxV1(sdc, owner, term, termKey, indexKey, nil, nil)
+	stiw.newSti, err = CreateSearchTermIdxV2(sdc, owner, hashedTerm, termKey, indexKey, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	stiw.updateID = stiw.newSti.updateID
+	//stiw.updateID = stiw.newSti.updateID
 	return stiw, nil
 }

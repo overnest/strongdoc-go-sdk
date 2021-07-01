@@ -2,6 +2,7 @@ package searchidxv2
 
 import (
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
@@ -56,4 +57,35 @@ func CreateSearchIdxWriterV2(owner common.SearchIdxOwner, termKey, indexKey *ssc
 	}
 
 	return searchIdx, nil
+}
+
+// GetUpdateIdsV1 returns the list of available update IDs for a specific owner + term in
+// reverse chronological order. The most recent update ID will come first
+func GetUpdateIdsV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) ([]string, error) {
+	termHmac, err := common.CreateTermHmac(term, termKey)
+	if err != nil {
+		return nil, err
+	}
+	return GetUpdateIdsHmacV2(sdc, owner, termHmac)
+}
+
+// GetLatestUpdateIDV1 returns the latest update IDs for a specific owner + term
+func GetLatestUpdateIDV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) (string, error) {
+
+	ids, err := GetUpdateIdsV2(sdc, owner, term, termKey)
+	if err != nil {
+		return "", err
+	}
+
+	if len(ids) == 0 {
+		return "", nil
+	}
+
+	return ids[0], nil
+}
+
+// GetUpdateIdsHmacV1 returns the list of available update IDs for a specific owner + term in
+// reverse chronological order. The most recent update ID will come first
+func GetUpdateIdsHmacV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, termHmac string) ([]string, error) {
+	return common.GetUpdateIDs(sdc, owner, termHmac)
 }
