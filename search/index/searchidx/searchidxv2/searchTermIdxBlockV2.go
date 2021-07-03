@@ -2,6 +2,7 @@ package searchidxv2
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongsalt-common-go/blocks"
 	"log"
@@ -13,11 +14,11 @@ import (
 //
 //////////////////////////////////////////////////////////////////
 
-// SearchTermIdxBlkV1 is the Search Index Block V1
+// SearchTermIdxBlkV1 is the Search Index Block V2
 type SearchTermIdxBlkV2 struct {
-	TermDocVerOffset  map[string](map[string]VersionOffsetV2) // term -> (docID -> versionOffsets)
-	predictedJSONSize uint64                                  `json:"-"`
-	maxDataSize       uint64                                  `json:"-"`
+	TermDocVerOffset  map[string](map[string]*VersionOffsetV2) // term -> (docID -> versionOffsets)
+	predictedJSONSize uint64                                   `json:"-"`
+	maxDataSize       uint64                                   `json:"-"`
 }
 
 // VersionOffsetV2 stores the document version and associated offsets
@@ -27,6 +28,8 @@ type VersionOffsetV2 struct {
 }
 
 var baseStiBlockJSONSize uint64
+var baseStiTermDocVersionOffsetJSONSize uint64
+var baseStiDocVersionOffsetJSONSize uint64
 var baseStiVersionOffsetJSONSize uint64
 
 var initSearchTermIdxBlkV2 = func() interface{} {
@@ -34,22 +37,43 @@ var initSearchTermIdxBlkV2 = func() interface{} {
 }
 
 func init() {
-	predictSize, err := blocks.GetPredictedJSONSize(initSearchTermIdxBlkV2())
+	blk := initSearchTermIdxBlkV2()
+	predictSize, err := blocks.GetPredictedJSONSize(blk)
 	if err != nil {
 		log.Fatal(err)
 	}
 	baseStiBlockJSONSize = uint64(predictSize)
+	fmt.Println("baseStiBlockJSONSize=", baseStiBlockJSONSize)
 
 	verOffset := &VersionOffsetV2{0, []uint64{}}
 	if b, err := json.Marshal(verOffset); err == nil {
 		baseStiVersionOffsetJSONSize = uint64(len(b)) - 1 // Remove the 0 version
 	}
+
+	docVerOffset := make(map[string]*VersionOffsetV2)
+	docVerOffset[""] = verOffset
+	base2, err := blocks.GetPredictedJSONSize(docVerOffset)
+	if err != nil {
+		log.Fatal(err)
+	}
+	baseStiDocVersionOffsetJSONSize = uint64(base2) - 1
+	fmt.Println("baseStiDocVersionOffsetJSONSize=", baseStiDocVersionOffsetJSONSize)
+
+	termDocVerOffset := make(map[string]map[string]*VersionOffsetV2)
+	termDocVerOffset[""] = docVerOffset
+	base1, err := blocks.GetPredictedJSONSize(termDocVerOffset)
+	if err != nil {
+		log.Fatal(err)
+	}
+	baseStiTermDocVersionOffsetJSONSize = uint64(base1) - 1
+	fmt.Println("baseStiTermDocVersionOffsetJSONSize=", baseStiTermDocVersionOffsetJSONSize)
+
 }
 
-// CreateSearchTermIdxBlkV1 creates a new Search Index Block V1
+// CreateSearchTermIdxBlkV1 creates a new Search Index Block V2
 func CreateSearchTermIdxBlkV2(maxDataSize uint64) *SearchTermIdxBlkV2 {
 	return &SearchTermIdxBlkV2{
-		TermDocVerOffset:  make(map[string](map[string]VersionOffsetV2)),
+		TermDocVerOffset:  make(map[string]map[string]*VersionOffsetV2),
 		predictedJSONSize: baseStiBlockJSONSize,
 		maxDataSize:       maxDataSize,
 	}
@@ -60,84 +84,100 @@ func (blk *SearchTermIdxBlkV2) AddDocOffset(term, docID string, docVer uint64, o
 	return blk.AddDocOffsets(term, docID, docVer, []uint64{offset})
 }
 
-// AddDocOffsets adds new offsets to the block
+// AddDocOffsets adds new term offsets to the block
 func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, offsets []uint64) error {
-	// Delete existing DocID entry if it's older than the incoming one
-	versionOffset := blk.DocVerOffset[docID]
-	if versionOffset != nil && versionOffset.Version < docVer {
-		blk.DocRemove(docID)
+	if offsets == nil || len(offsets) == 0 {
+		return fmt.Errorf("invalid offset")
 	}
-
-	mapSize := len(blk.DocVerOffset)
+	// Delete existing DocID entry if it's older than the incoming one
+	docVerOffset := blk.TermDocVerOffset[term]
 	newSize := blk.predictedJSONSize
-	versionOffset = blk.DocVerOffset[docID]
-	if versionOffset == nil {
-		// Need to add new docID:
-		// {"DocVerOffset":{
-		//    "<docID>":{"Version":<docVer>,"Offsets":[<o1>,<o2>,...]},
-		// }}
-		newSize += (uint64(len(docID)+3) +
-			uint64(baseStiVersionOffsetJSONSize) +
+	if docVerOffset == nil {
+		// Need to add new term
+		//{"<Term>":
+		//	{"<docID>":
+		//		{"Version":<docVer>,"Offsets":[<o1>,<o2>,...], }
+		//	}
+		//}
+
+		fmt.Println("add", uint64(len(term))+
+			uint64(len(docID))+
 			uint64(len(fmt.Sprintf("%v", docVer))))
-		if mapSize > 0 {
-			newSize++ // Need to add a comma at the end if there are already keys in the map
+		fmt.Println("add", baseStiDocVersionOffsetJSONSize+3)
+		newSize += uint64(len(term)) +
+			uint64(len(docID)) +
+			uint64(len(fmt.Sprintf("%v", docVer))) +
+			// 2 double quotes, 1 colon
+			baseStiDocVersionOffsetJSONSize + 3
+
+		if len(blk.TermDocVerOffset) != 0 {
+			newSize += 1 // 1 comma
 		}
 
-		versionOffset = &VersionOffsetV1{
+		docVerOffset = make(map[string]*VersionOffsetV2)
+		docVerOffset[docID] = &VersionOffsetV2{
 			Version: docVer,
 			Offsets: make([]uint64, 0, len(offsets)),
 		}
-	}
+		blk.TermDocVerOffset[term] = docVerOffset
 
+	} else { // existing term
+		verOffset := docVerOffset[docID]
+		if verOffset == nil {
+			// Need to add new doc
+			//	{"<docID1>":
+			//		{"Version":<docVer>,"Offsets":[<o1>,<o2>,...], },
+			//	"<docID2>":
+			//		{"Version":<docVer>,"Offsets":[<o1>,<o2>,...], }
+			//	}
+			newSize += uint64(len(docID)) +
+				baseStiDocVersionOffsetJSONSize +
+				uint64(len(fmt.Sprintf("%v", docVer)))
+			docVerOffset[docID] = &VersionOffsetV2{
+				Version: docVer,
+				Offsets: make([]uint64, 0, len(offsets)),
+			}
+
+			blk.TermDocVerOffset[term][docID] = &VersionOffsetV2{
+				Version: docVer,
+				Offsets: make([]uint64, 0, len(offsets)),
+			}
+		} else if verOffset.Version < docVer {
+			// update old version
+			//{"<Term>":
+			//	{"<docID>":
+			//		{"Version":<docVer>,"Offsets":[<o1>,<o2>,...], }} --> update version & offsets
+			//}
+			oldVer := verOffset.Version
+			oldOffsets := verOffset.Offsets
+			newSize -= uint64(len(fmt.Sprintf("%v", oldVer)))
+			for _, offset := range oldOffsets {
+				newSize -= uint64(len(fmt.Sprintf("%v", offset)) + 1)
+			}
+			newSize += 1
+
+			newSize += uint64(len(fmt.Sprintf("%v", docVer)))
+			verOffset.Offsets = make([]uint64, 0, len(offsets))
+			verOffset.Version = docVer
+		}
+
+	}
+	// append offsets to existing Term & DocID
+	versionOffsets := blk.TermDocVerOffset[term][docID]
 	for _, offset := range offsets {
+		fmt.Println("offset", offset, "add", len(fmt.Sprintf("%v", offset))+1)
 		newSize += uint64(len(fmt.Sprintf("%v", offset)) + 1) // +1 is for comma
 	}
-
-	if len(versionOffset.Offsets) == 0 {
-		// If the list was empty before we add new values, we should have 1 less comma
+	fmt.Println("versionOffsets=", versionOffsets)
+	if len(versionOffsets.Offsets) == 0 {
+		fmt.Println("len(offsets)==0, minus 1")
 		newSize--
 	}
+	versionOffsets.Offsets = append(versionOffsets.Offsets, offsets...)
 
-	if newSize > blk.maxDataSize {
-		return errors.Errorf("The new size %v is bigger than the maximum allowed size %v",
-			newSize, blk.maxDataSize)
-	}
-
-	versionOffset.Offsets = append(versionOffset.Offsets, offsets...)
-	blk.DocVerOffset[docID] = versionOffset
 	blk.predictedJSONSize = newSize
+
 	return nil
-}
-
-// DocRemove removes a document from the Search Index Block
-func (blk *SearchTermIdxBlkV1) DocRemove(docID string) {
-	verOffset, ok := blk.DocVerOffset[docID]
-	delete(blk.DocVerOffset, docID)
-
-	if ok {
-		// Need to remove docID:
-		// {"DocVerOffset":{
-		//    "<docID>":{"Version":<docVer>,"Offsets":[<o1>,<o2>,...]}, <--- THIS
-		// }}
-
-		// 2 double quotes, 1 colon, 1 comma
-		// (comma only present if there is more than 1 DocID entry)
-		blk.predictedJSONSize -= uint64(len(docID) + 3 + 1)
-		if verOffset == nil {
-			blk.predictedJSONSize -= uint64(len("null"))
-		} else {
-			b, _ := verOffset.Serialize()
-			if b != nil {
-				blk.predictedJSONSize -= uint64(len(b))
-			}
-		}
-
-		// If there are no entries left, it means we removed a comma that wasn't there.
-		// Add one byte back
-		if len(blk.DocVerOffset) == 0 {
-			blk.predictedJSONSize++
-		}
-	}
 }
 
 // IsEmpty shows whether the block is empty

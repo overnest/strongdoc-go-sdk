@@ -173,9 +173,9 @@ func CreateSearchTermBatchV2(sdc client.StrongDocClient, owner common.SearchIdxO
 	}
 	batch.termList = allTerms
 
-	for _, batchElement := range batchElements {
-
-	}
+	//for _, batchElement := range batchElements {
+	//
+	//}
 
 	return batch, nil
 }
@@ -221,7 +221,7 @@ func CreateSearchTermIdxWriterV2(sdc client.StrongDocClient, owner common.Search
 	// Open previous STI if there is one
 	updateID, _ := GetLatestUpdateIDV2(sdc, owner, hashedTerm, termKey)
 	if updateID != "" {
-		stiw.oldSti, err = OpenSearchTermIdxV2(sdc, owner, hashedTerm, termKey, indexKey, updateID)
+		//stiw.oldSti, err = OpenSearchTermIdxV2(sdc, owner, hashedTerm, termKey, indexKey, updateID)
 		if err != nil {
 			stiw.oldSti = nil
 		}
@@ -231,7 +231,7 @@ func CreateSearchTermIdxWriterV2(sdc client.StrongDocClient, owner common.Search
 		//}
 	}
 
-	stiw.newSti, err = CreateSearchTermIdxV2(sdc, owner, hashedTerm, termKey, indexKey, nil, nil)
+	//stiw.newSti, err = CreateSearchTermIdxV2(sdc, owner, hashedTerm, termKey, indexKey, nil, nil)
 	if err != nil {
 		return nil, err
 	}

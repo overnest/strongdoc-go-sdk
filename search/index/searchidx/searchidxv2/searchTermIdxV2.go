@@ -13,8 +13,8 @@ import (
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
 )
 
-// SearchTermIdxV1 is a structure for search term index V1
-type SearchTermIdxV1 struct {
+// SearchTermIdxV2 is a structure for search term index V2
+type SearchTermIdxV2 struct {
 	common.StiVersionS
 	Term       string
 	Owner      common.SearchIdxOwner
@@ -36,10 +36,10 @@ type SearchTermIdxV1 struct {
 // CreateSearchTermIdxV1 creates a search term index writer V1
 func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string,
 	termKey, indexKey *sscrypto.StrongSaltKey, oldSti common.SearchTermIdx,
-	delDocs *DeletedDocsV1) (*SearchTermIdxV1, error) {
+	delDocs *DeletedDocsV1) (*SearchTermIdxV2, error) {
 
 	var err error
-	sti := &SearchTermIdxV1{
+	sti := &SearchTermIdxV2{
 		StiVersionS: common.StiVersionS{StiVer: common.STI_V1},
 		Term:        term,
 		Owner:       owner,
@@ -154,7 +154,7 @@ func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwn
 }
 
 // OpenSearchTermIdxV1 opens a search term index reader V1
-func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV1, error) {
+func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV2, error) {
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
 		return nil, errors.Errorf("The term key type %v is not a MAC key", termKey.Type.Name)
 	}
@@ -185,7 +185,7 @@ func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner
 
 func OpenSearchTermIdxPrivV1(owner common.SearchIdxOwner, term, termID, updateID string,
 	termKey, indexKey *sscrypto.StrongSaltKey, reader io.ReadCloser, plainHdr ssheaders.Header,
-	initOffset, plainHdrSize, endOffset uint64) (*SearchTermIdxV1, error) {
+	initOffset, plainHdrSize, endOffset uint64) (*SearchTermIdxV2, error) {
 
 	plainHdrBodyData, err := plainHdr.GetBody()
 	if err != nil {
@@ -209,7 +209,7 @@ func OpenSearchTermIdxPrivV1(owner common.SearchIdxOwner, term, termID, updateID
 		return nil, errors.New(err)
 	}
 
-	sti := &SearchTermIdxV1{
+	sti := &SearchTermIdxV2{
 		StiVersionS: common.StiVersionS{StiVer: plainHdrBody.GetStiVersion()},
 		Term:        term,
 		Owner:       owner,
@@ -269,11 +269,11 @@ func OpenSearchTermIdxPrivV1(owner common.SearchIdxOwner, term, termID, updateID
 	return sti, nil
 }
 
-func (sti *SearchTermIdxV1) createTermHmac() (string, error) {
+func (sti *SearchTermIdxV2) createTermHmac() (string, error) {
 	return common.CreateTermHmac(sti.Term, sti.TermKey)
 }
 
-func (sti *SearchTermIdxV1) createWriter(sdc client.StrongDocClient) error {
+func (sti *SearchTermIdxV2) createWriter(sdc client.StrongDocClient) error {
 	if sti.writer != nil {
 		return nil
 	}
@@ -287,7 +287,7 @@ func (sti *SearchTermIdxV1) createWriter(sdc client.StrongDocClient) error {
 	return nil
 }
 
-func (sti *SearchTermIdxV1) createReader(sdc client.StrongDocClient) (io.ReadCloser, uint64, error) {
+func (sti *SearchTermIdxV2) createReader(sdc client.StrongDocClient) (io.ReadCloser, uint64, error) {
 	if sti.reader != nil {
 		return sti.reader, sti.storeSize, nil
 	}
@@ -299,7 +299,7 @@ func createStiReader(sdc client.StrongDocClient, owner common.SearchIdxOwner, te
 	return common.OpenSearchTermIndexReader(sdc, owner, termHmac, updateID)
 }
 
-func (sti *SearchTermIdxV1) GetMaxBlockDataSize() uint64 {
+func (sti *SearchTermIdxV2) GetMaxBlockDataSize() uint64 {
 	if sti.bwriter != nil {
 		return uint64(sti.bwriter.GetMaxDataSize())
 	}
@@ -307,7 +307,7 @@ func (sti *SearchTermIdxV1) GetMaxBlockDataSize() uint64 {
 	return common.STI_BLOCK_SIZE_MAX
 }
 
-func (sti *SearchTermIdxV1) WriteNextBlock(block *SearchTermIdxBlkV2) error {
+func (sti *SearchTermIdxV2) WriteNextBlock(block *SearchTermIdxBlkV2) error {
 	if sti.writer == nil || sti.bwriter == nil {
 		return errors.Errorf("No writer available")
 	}
@@ -319,7 +319,7 @@ func (sti *SearchTermIdxV1) WriteNextBlock(block *SearchTermIdxBlkV2) error {
 	return nil
 }
 
-func (sti *SearchTermIdxV1) ReadNextBlock() (*SearchTermIdxBlkV2, error) {
+func (sti *SearchTermIdxV2) ReadNextBlock() (*SearchTermIdxBlkV2, error) {
 	if sti.reader == nil || sti.breader == nil {
 		return nil, errors.Errorf("No reader available")
 	}
@@ -334,7 +334,7 @@ func (sti *SearchTermIdxV1) ReadNextBlock() (*SearchTermIdxBlkV2, error) {
 	return stib, err
 }
 
-func (sti *SearchTermIdxV1) Reset() error {
+func (sti *SearchTermIdxV2) Reset() error {
 	if sti.breader == nil {
 		return errors.Errorf("The search term index is not open for reading. Can not reset")
 	}
@@ -342,7 +342,7 @@ func (sti *SearchTermIdxV1) Reset() error {
 	return sti.breader.Reset()
 }
 
-func (sti *SearchTermIdxV1) Close() error {
+func (sti *SearchTermIdxV2) Close() error {
 	var werr, rerr error = nil, nil
 
 	if sti.writer != nil {
