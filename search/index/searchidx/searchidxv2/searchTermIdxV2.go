@@ -19,7 +19,7 @@ type SearchTermIdxV2 struct {
 	Term       string
 	Owner      common.SearchIdxOwner
 	OldSti     common.SearchTermIdx
-	DelDocs    *DeletedDocsV1
+	DelDocs    *DeletedDocsV2
 	TermKey    *sscrypto.StrongSaltKey
 	IndexKey   *sscrypto.StrongSaltKey
 	IndexNonce []byte
@@ -33,14 +33,14 @@ type SearchTermIdxV2 struct {
 	storeSize  uint64
 }
 
-// CreateSearchTermIdxV1 creates a search term index writer V1
-func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string,
+// CreateSearchTermIdxV2 creates a search term index writer V2
+func CreateSearchTermIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string,
 	termKey, indexKey *sscrypto.StrongSaltKey, oldSti common.SearchTermIdx,
-	delDocs *DeletedDocsV1) (*SearchTermIdxV2, error) {
+	delDocs *DeletedDocsV2) (*SearchTermIdxV2, error) {
 
 	var err error
 	sti := &SearchTermIdxV2{
-		StiVersionS: common.StiVersionS{StiVer: common.STI_V1},
+		StiVersionS: common.StiVersionS{StiVer: common.STI_V2},
 		Term:        term,
 		Owner:       owner,
 		OldSti:      oldSti,
@@ -83,7 +83,7 @@ func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwn
 
 	// Create plaintext and ciphertext headers
 	plainHdrBody := &StiPlainHdrBodyV2{
-		StiVersionS: common.StiVersionS{StiVer: common.STI_V1},
+		StiVersionS: common.StiVersionS{StiVer: common.STI_V2},
 		KeyType:     sti.IndexKey.Type.Name,
 		Nonce:       sti.IndexNonce,
 		TermHmac:    sti.termID,
@@ -91,7 +91,7 @@ func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwn
 	}
 
 	cipherHdrBody := &StiCipherHdrBodyV2{
-		BlockVersionS: common.BlockVersionS{BlockVer: common.STI_BLOCK_V1},
+		BlockVersionS: common.BlockVersionS{BlockVer: common.STI_BLOCK_V2},
 	}
 
 	plainHdrBodySerial, err := plainHdrBody.Serialize()
@@ -153,8 +153,8 @@ func CreateSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwn
 	return sti, nil
 }
 
-// OpenSearchTermIdxV1 opens a search term index reader V1
-func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV2, error) {
+// OpenSearchTermIdxV2 opens a search term index reader V2
+func OpenSearchTermIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV2, error) {
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
 		return nil, errors.Errorf("The term key type %v is not a MAC key", termKey.Type.Name)
 	}
@@ -179,11 +179,11 @@ func OpenSearchTermIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner
 		return nil, err
 	}
 
-	return OpenSearchTermIdxPrivV1(owner, term, termID, updateID, termKey, indexKey,
+	return OpenSearchTermIdxPrivV2(owner, term, termID, updateID, termKey, indexKey,
 		reader, plainHdr, 0, uint64(plainHdrSize), size)
 }
 
-func OpenSearchTermIdxPrivV1(owner common.SearchIdxOwner, term, termID, updateID string,
+func OpenSearchTermIdxPrivV2(owner common.SearchIdxOwner, term, termID, updateID string,
 	termKey, indexKey *sscrypto.StrongSaltKey, reader io.ReadCloser, plainHdr ssheaders.Header,
 	initOffset, plainHdrSize, endOffset uint64) (*SearchTermIdxV2, error) {
 
@@ -197,9 +197,9 @@ func OpenSearchTermIdxPrivV1(owner common.SearchIdxOwner, term, termID, updateID
 		return nil, err
 	}
 
-	if version.GetStiVersion() != common.STI_V1 {
+	if version.GetStiVersion() != common.STI_V2 {
 		return nil, errors.Errorf("Search term index version %v is not %v",
-			version.GetStiVersion(), common.STI_V1)
+			version.GetStiVersion(), common.STI_V2)
 	}
 
 	// Parse plaintext header body

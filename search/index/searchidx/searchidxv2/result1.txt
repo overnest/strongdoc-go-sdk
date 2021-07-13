@@ -1,0 +1,4 @@
+test_batchSize_10 13
+	createSearchIndexSources 10 76.92%
+	CreateSearchIdxWriterV1 2 15.38%
+	ProcessBatchTerms 0 0.00%

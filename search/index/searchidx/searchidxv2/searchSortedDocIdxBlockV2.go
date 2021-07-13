@@ -1,15 +1,13 @@
-package searchidxv1
+package searchidxv2
 
 import (
-	"encoding/json"
 	"fmt"
+	rbt "github.com/emirpasic/gods/trees/redblacktree"
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"github.com/overnest/strongsalt-common-go/blocks"
+	"github.com/pkg/errors"
 	"log"
 	"strings"
-
-	rbt "github.com/emirpasic/gods/trees/redblacktree"
-	"github.com/go-errors/errors"
-	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -18,9 +16,10 @@ import (
 //
 //////////////////////////////////////////////////////////////////
 
-// SearchSortDocIdxBlkV1 is the Search Sorted Document Index Block V1
-type SearchSortDocIdxBlkV1 struct {
-	DocIDVers         []*DocIDVerV1
+// SearchSortDocIdxBlkV2 is the Search Sorted Document Index Block V2
+type SearchSortDocIdxBlkV2 struct {
+	Term              string
+	DocIDVers         []*DocIDVerV2
 	docIDVerMap       map[string]uint64 `json:"-"`
 	docIDTree         *rbt.Tree         `json:"-"`
 	totalDocIDs       uint64            `json:"-"`
@@ -32,13 +31,13 @@ type SearchSortDocIdxBlkV1 struct {
 	maxDataSize       uint64            `json:"-"`
 }
 
-// DocIDVerV1 stores the DocID and DocVer
-type DocIDVerV1 struct {
+// DocIDVerV2 stores the DocID and DocVer
+type DocIDVerV2 struct {
 	DocID  string
 	DocVer uint64
 }
 
-func (idver *DocIDVerV1) String() string {
+func (idver *DocIDVerV2) String() string {
 	return fmt.Sprintf("%v:%v", idver.DocID, idver.DocVer)
 }
 
@@ -46,11 +45,11 @@ var baseSsdiBlockJSONSize uint64
 var baseSsdiDocIDVerJSONSize uint64
 
 var initEmptySortDocIdxBlkV1 = func() interface{} {
-	return CreateSearchSortDocIdxBlkV1("", 0)
+	return CreateSearchSortDocIdxBlkV2("", "", 0)
 }
 
 func init() {
-	blk, _ := initEmptySortDocIdxBlkV1().(*SearchSortDocIdxBlkV1)
+	blk, _ := initEmptySortDocIdxBlkV1().(*SearchSortDocIdxBlkV2)
 	blk = blk.formatToBlockData()
 	predictSize, err := blocks.GetPredictedJSONSize(blk)
 	if err != nil {
@@ -58,9 +57,9 @@ func init() {
 	}
 	baseSsdiBlockJSONSize = uint64(predictSize)
 
-	docIDVer := &DocIDVerV1{"", 0}
-	if b, err := json.Marshal(docIDVer); err == nil {
-		baseSsdiDocIDVerJSONSize = uint64(len(b)) - 1 // Remove the 0 version
+	docIDVer := &DocIDVerV2{"", 0}
+	if size, err := blocks.GetPredictedJSONSize(docIDVer); err == nil {
+		baseSsdiDocIDVerJSONSize = uint64(size) - 1 // Remove the 0 version
 	}
 }
 
@@ -70,17 +69,29 @@ func init() {
 //   1        , if value is in block
 //   0        , if value not in block
 //   > 1      , if value > block
-func DocIDVerComparatorV1(value interface{}, blockData interface{}) (int, error) {
-	docID, _ := value.(string)
+type TermDoc struct {
+	Term  string
+	DocID string
+}
 
-	blk, ok := blockData.(*SearchSortDocIdxBlkV1)
+func DocIDVerComparatorV2(value interface{}, blockData interface{}) (int, error) {
+	termDoc, _ := value.(TermDoc)
+	docID := termDoc.DocID
+	term := termDoc.Term
+	blk, ok := blockData.(*SearchSortDocIdxBlkV2)
 	if !ok {
-		return 0, errors.Errorf("Cannot convert to SearchSortDocIdxBlkV1")
+		return 0, errors.Errorf("Cannot convert to SearchSortDocIdxBlkV2")
 	}
 	blk, err := blk.formatFromBlockData()
 	if err != nil {
 		return 0, err
 	}
+
+	if compareTerm := strings.Compare(term, blk.Term); compareTerm != 0 {
+		return compareTerm, nil
+	}
+
+	// same term
 
 	if _, exist := blk.docIDVerMap[docID]; exist {
 		return 1, nil
@@ -97,10 +108,11 @@ func DocIDVerComparatorV1(value interface{}, blockData interface{}) (int, error)
 	return 0, nil
 }
 
-// CreateSearchSortDocIdxBlkV1 creates a new Search Index Block V1
-func CreateSearchSortDocIdxBlkV1(prevHighDocID string, maxDataSize uint64) *SearchSortDocIdxBlkV1 {
-	return &SearchSortDocIdxBlkV1{
-		DocIDVers:         make([]*DocIDVerV1, 0, 100),
+// CreateSearchSortDocIdxBlkV2 creates a new Search Index Block V2
+func CreateSearchSortDocIdxBlkV2(term, prevHighDocID string, maxDataSize uint64) *SearchSortDocIdxBlkV2 {
+	return &SearchSortDocIdxBlkV2{
+		Term:              term,
+		DocIDVers:         make([]*DocIDVerV2, 0, 100),
 		docIDVerMap:       make(map[string]uint64),
 		docIDTree:         rbt.NewWithStringComparator(),
 		totalDocIDs:       0,
@@ -108,13 +120,13 @@ func CreateSearchSortDocIdxBlkV1(prevHighDocID string, maxDataSize uint64) *Sear
 		highDocID:         "",
 		prevHighDocID:     prevHighDocID,
 		isFull:            false,
-		predictedJSONSize: baseSsdiBlockJSONSize,
+		predictedJSONSize: baseSsdiBlockJSONSize + uint64(len(term)),
 		maxDataSize:       maxDataSize,
 	}
 }
 
 // AddDocVer adds a new document ID and version
-func (blk *SearchSortDocIdxBlkV1) AddDocVer(docID string, docVer uint64) {
+func (blk *SearchSortDocIdxBlkV2) AddDocVer(docID string, docVer uint64) {
 	// The docID is already covered in the previous block
 	if strings.Compare(docID, blk.prevHighDocID) <= 0 {
 		return
@@ -148,7 +160,7 @@ func (blk *SearchSortDocIdxBlkV1) AddDocVer(docID string, docVer uint64) {
 	}
 }
 
-func (blk *SearchSortDocIdxBlkV1) newSize(docID string, docVer uint64) uint64 {
+func (blk *SearchSortDocIdxBlkV2) newSize(docID string, docVer uint64) uint64 {
 	// Added "DocIDVers":[{"<docID>",<docVer>}]
 	//   1. New baseSsdiDocIDVerJSONSize
 	//   2. New docID
@@ -165,11 +177,11 @@ func (blk *SearchSortDocIdxBlkV1) newSize(docID string, docVer uint64) uint64 {
 	return newLen
 }
 
-func (blk *SearchSortDocIdxBlkV1) entrySize(docID string, docVer uint64) uint64 {
+func (blk *SearchSortDocIdxBlkV2) entrySize(docID string, docVer uint64) uint64 {
 	return (baseSsdiDocIDVerJSONSize + uint64(len(docID)+len(fmt.Sprintf("%v", docVer))))
 }
 
-func (blk *SearchSortDocIdxBlkV1) addDocVer(docID string, docVer uint64) {
+func (blk *SearchSortDocIdxBlkV2) addDocVer(docID string, docVer uint64) {
 	// The DocID already exists. Skip
 	if _, exist := blk.docIDVerMap[docID]; exist {
 		return
@@ -192,7 +204,7 @@ func (blk *SearchSortDocIdxBlkV1) addDocVer(docID string, docVer uint64) {
 	blk.totalDocIDs++
 }
 
-func (blk *SearchSortDocIdxBlkV1) removeHighTerm() {
+func (blk *SearchSortDocIdxBlkV2) removeHighTerm() {
 	removeSize := blk.entrySize(blk.highDocID, blk.docIDVerMap[blk.highDocID])
 
 	if len(blk.docIDVerMap) > 1 {
@@ -214,22 +226,22 @@ func (blk *SearchSortDocIdxBlkV1) removeHighTerm() {
 	}
 }
 
-func (blk *SearchSortDocIdxBlkV1) formatToBlockData() *SearchSortDocIdxBlkV1 {
+func (blk *SearchSortDocIdxBlkV2) formatToBlockData() *SearchSortDocIdxBlkV2 {
 	for blk.predictedJSONSize > blk.maxDataSize {
 		blk.removeHighTerm()
 		blk.isFull = true
 	}
 
 	docIDs := blk.docIDTree.Keys()
-	blk.DocIDVers = make([]*DocIDVerV1, len(docIDs))
+	blk.DocIDVers = make([]*DocIDVerV2, len(docIDs))
 	for i, id := range docIDs {
 		docID := id.(string)
-		blk.DocIDVers[i] = &DocIDVerV1{docID, blk.docIDVerMap[docID]}
+		blk.DocIDVers[i] = &DocIDVerV2{docID, blk.docIDVerMap[docID]}
 	}
 	return blk
 }
 
-func (blk *SearchSortDocIdxBlkV1) formatFromBlockData() (*SearchSortDocIdxBlkV1, error) {
+func (blk *SearchSortDocIdxBlkV2) formatFromBlockData() (*SearchSortDocIdxBlkV2, error) {
 	if blk.docIDVerMap == nil {
 		blk.docIDVerMap = make(map[string]uint64)
 	}
@@ -255,16 +267,16 @@ func (blk *SearchSortDocIdxBlkV1) formatFromBlockData() (*SearchSortDocIdxBlkV1,
 }
 
 // IsFull shows whether the block is full
-func (blk *SearchSortDocIdxBlkV1) IsFull() bool {
+func (blk *SearchSortDocIdxBlkV2) IsFull() bool {
 	return blk.isFull
 }
 
 // GetLowDocID returns the lowest docID in the sorted list
-func (blk *SearchSortDocIdxBlkV1) GetLowDocID() string {
+func (blk *SearchSortDocIdxBlkV2) GetLowDocID() string {
 	return blk.lowDocID
 }
 
 // GetHighDocID returns the highest docID in the sorted list
-func (blk *SearchSortDocIdxBlkV1) GetHighDocID() string {
+func (blk *SearchSortDocIdxBlkV2) GetHighDocID() string {
 	return blk.highDocID
 }

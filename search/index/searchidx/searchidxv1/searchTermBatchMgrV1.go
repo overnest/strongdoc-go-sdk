@@ -277,28 +277,27 @@ func (batch *SearchTermBatchV1) ProcessTermBatch(sdc client.StrongDocClient, eve
 }
 
 type SearchTermBlockRespV1 struct {
-
 	Block *SearchTermIdxSourceBlockV1
 	Error error
 }
 
 type SearchTermReadingRespV1 struct {
 	stiwToBlks map[*SearchTermIdxWriterV1][]*SearchTermIdxSourceBlockV1
-	Error error
+	Error      error
 }
 
 type SearchTermWritingRespV1 struct {
 	stiwToResp map[*SearchTermIdxWriterV1]*SearchTermIdxWriterRespV1
-	Error error
+	Error      error
 }
 
 type SearchTermCollectingRespV1 struct {
-	respMap map[*SearchTermIdxWriterV1]error
+	respMap       map[*SearchTermIdxWriterV1]error
 	processedDocs map[string](map[string]uint64)
-	Error error
+	Error         error
 }
 
-func (batch *SearchTermBatchV1) processStiBatchParaReading(readToWriteChan chan<- *SearchTermReadingRespV1){
+func (batch *SearchTermBatchV1) processStiBatchParaReading(readToWriteChan chan<- *SearchTermReadingRespV1) {
 
 	defer close(readToWriteChan)
 
@@ -320,7 +319,7 @@ func (batch *SearchTermBatchV1) processStiBatchParaReading(readToWriteChan chan<
 		}
 
 		for source, blkChan := range blkToChan {
-			blkResp := <- blkChan
+			blkResp := <-blkChan
 			err := blkResp.Error
 			blk := blkResp.Block
 
@@ -330,6 +329,7 @@ func (batch *SearchTermBatchV1) processStiBatchParaReading(readToWriteChan chan<
 			}
 
 			if blk != nil && len(blk.TermOffset) > 0 {
+				// doc1 -> [term_A_writer, term_B_writer, term_C_writer]
 				for _, stiw := range batch.sourceToWriters[source] {
 					blkList := stiwToBlks[stiw]
 					if blkList == nil {
@@ -340,8 +340,10 @@ func (batch *SearchTermBatchV1) processStiBatchParaReading(readToWriteChan chan<
 			}
 		}
 
+		// term_A_writer -> [doc1_block2, doc3_block2, doc5_block2] ... but not guarantee block contains term A
+
 		// Finish reading all blocks
-		if(len(stiwToBlks) == 0) {
+		if len(stiwToBlks) == 0 {
 			readToWriteChan <- &SearchTermReadingRespV1{stiwToBlks, nil}
 			return
 		}
@@ -356,7 +358,7 @@ func (batch *SearchTermBatchV1) processStiBatchParaWriting(readToWriteChan <-cha
 	defer close(writeToCollectChan)
 
 	for {
-		readResp, more := <- readToWriteChan
+		readResp, more := <-readToWriteChan
 
 		if more {
 
@@ -404,19 +406,19 @@ func (batch *SearchTermBatchV1) processStiBatchParaWriting(readToWriteChan <-cha
 
 }
 
-func (batch *SearchTermBatchV1) processStiBatchParaCollecting(writeToCollectChan <-chan *SearchTermWritingRespV1, collectToAllChan chan<- *SearchTermCollectingRespV1,) {
+func (batch *SearchTermBatchV1) processStiBatchParaCollecting(writeToCollectChan <-chan *SearchTermWritingRespV1, collectToAllChan chan<- *SearchTermCollectingRespV1) {
 	respMap := make(map[*SearchTermIdxWriterV1]error)
 	processedDocs := make(map[string](map[string]uint64))
 	defer close(collectToAllChan)
 
 	for {
-		writingResp, more := <- writeToCollectChan
+		writingResp, more := <-writeToCollectChan
 		if more {
 			stiBlocksResp := writingResp.stiwToResp
 			err := writingResp.Error
 
 			if err != nil && err != io.EOF {
-				collectToAllChan <- &SearchTermCollectingRespV1{respMap, processedDocs ,err}
+				collectToAllChan <- &SearchTermCollectingRespV1{respMap, processedDocs, err}
 				return
 			}
 
@@ -444,7 +446,7 @@ func (batch *SearchTermBatchV1) processStiBatchParaCollecting(writeToCollectChan
 				}
 			}
 		} else {
-			collectToAllChan <- &SearchTermCollectingRespV1{respMap, processedDocs ,nil}
+			collectToAllChan <- &SearchTermCollectingRespV1{respMap, processedDocs, nil}
 			return
 		}
 
@@ -477,11 +479,10 @@ func (batch *SearchTermBatchV1) processStiAll(event *utils.TimeEvent) (
 	go batch.processStiBatchParaReading(readToWriteChan)
 
 	// wait for collecting to finish
-	collectResp := <- collectToAllChan
+	collectResp := <-collectToAllChan
 	respMap := collectResp.respMap
 	err := collectResp.Error
 	processedDocs := collectResp.processedDocs
-
 
 	if err != nil && err != io.EOF {
 		return nil, nil, err
@@ -777,6 +778,7 @@ func (stiw *SearchTermIdxWriterV1) ProcessSourceBlocks(sourceBlocks []*SearchTer
 	for sourceNotEmpty := true; sourceNotEmpty; {
 		var blks []*SearchTermIdxBlkV1 = nil
 		var processed map[string]uint64
+		// sourceNotEmpty = false, when all cloneSourceBlocks are processed, all offsets are written
 		sourceNotEmpty, processed, blks, err = stiw.processSourceBlocks(cloneSourceBlocks, srcOffsetMap, copyLen)
 		if err != nil {
 			return nil, nil, err
@@ -787,6 +789,7 @@ func (stiw *SearchTermIdxWriterV1) ProcessSourceBlocks(sourceBlocks []*SearchTer
 
 		returnBlocks = append(returnBlocks, blks...)
 
+		// process old sti block, just one block
 		blks, processed, err = stiw.processOldStiBlock(copyLen, false)
 		if err != nil && err != io.EOF {
 			return nil, nil, err
@@ -952,6 +955,7 @@ func (stiw *SearchTermIdxWriterV1) Close() ([]*SearchTermIdxBlkV1, map[string]ui
 	var processedDocs map[string]uint64
 
 	if stiw.oldStiBlk != nil {
+		// all old sti blocks are processed!!!
 		for err != nil {
 			blks, processedDocs, err = stiw.processOldStiBlock(copyLen, true)
 			if err != nil && err != io.EOF {

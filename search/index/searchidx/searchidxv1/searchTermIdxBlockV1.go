@@ -43,8 +43,8 @@ func init() {
 	baseStiBlockJSONSize = uint64(predictSize)
 
 	verOffset := &VersionOffsetV1{0, []uint64{}}
-	if b, err := json.Marshal(verOffset); err == nil {
-		baseStiVersionOffsetJSONSize = uint64(len(b)) - 1 // Remove the 0 version
+	if b, err := blocks.GetPredictedJSONSize(verOffset); err == nil {
+		baseStiVersionOffsetJSONSize = uint64(b) - 1 // Remove the 0 version
 	}
 }
 

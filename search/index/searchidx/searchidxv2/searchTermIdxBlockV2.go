@@ -43,7 +43,6 @@ func init() {
 		log.Fatal(err)
 	}
 	baseStiBlockJSONSize = uint64(predictSize)
-	fmt.Println("baseStiBlockJSONSize=", baseStiBlockJSONSize)
 
 	verOffset := &VersionOffsetV2{0, []uint64{}}
 	if b, err := json.Marshal(verOffset); err == nil {
@@ -57,7 +56,6 @@ func init() {
 		log.Fatal(err)
 	}
 	baseStiDocVersionOffsetJSONSize = uint64(base2) - 1
-	fmt.Println("baseStiDocVersionOffsetJSONSize=", baseStiDocVersionOffsetJSONSize)
 
 	termDocVerOffset := make(map[string]map[string]*VersionOffsetV2)
 	termDocVerOffset[""] = docVerOffset
@@ -66,7 +64,6 @@ func init() {
 		log.Fatal(err)
 	}
 	baseStiTermDocVersionOffsetJSONSize = uint64(base1) - 1
-	fmt.Println("baseStiTermDocVersionOffsetJSONSize=", baseStiTermDocVersionOffsetJSONSize)
 
 }
 
@@ -100,10 +97,6 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 		//	}
 		//}
 
-		fmt.Println("add", uint64(len(term))+
-			uint64(len(docID))+
-			uint64(len(fmt.Sprintf("%v", docVer))))
-		fmt.Println("add", baseStiDocVersionOffsetJSONSize+3)
 		newSize += uint64(len(term)) +
 			uint64(len(docID)) +
 			uint64(len(fmt.Sprintf("%v", docVer))) +
@@ -143,7 +136,7 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 				Offsets: make([]uint64, 0, len(offsets)),
 			}
 		} else if verOffset.Version < docVer {
-			// update old version
+			// Update doc version
 			//{"<Term>":
 			//	{"<docID>":
 			//		{"Version":<docVer>,"Offsets":[<o1>,<o2>,...], }} --> update version & offsets
@@ -151,26 +144,25 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 			oldVer := verOffset.Version
 			oldOffsets := verOffset.Offsets
 			newSize -= uint64(len(fmt.Sprintf("%v", oldVer)))
-			for _, offset := range oldOffsets {
-				newSize -= uint64(len(fmt.Sprintf("%v", offset)) + 1)
+			for _, oldOffset := range oldOffsets {
+				newSize -= uint64(len(fmt.Sprintf("%v", oldOffset)) + 1)
 			}
 			newSize += 1
 
 			newSize += uint64(len(fmt.Sprintf("%v", docVer)))
 			verOffset.Offsets = make([]uint64, 0, len(offsets))
 			verOffset.Version = docVer
+
+			//TODO: verOffset.Version > docVer
 		}
 
 	}
 	// append offsets to existing Term & DocID
 	versionOffsets := blk.TermDocVerOffset[term][docID]
 	for _, offset := range offsets {
-		fmt.Println("offset", offset, "add", len(fmt.Sprintf("%v", offset))+1)
 		newSize += uint64(len(fmt.Sprintf("%v", offset)) + 1) // +1 is for comma
 	}
-	fmt.Println("versionOffsets=", versionOffsets)
 	if len(versionOffsets.Offsets) == 0 {
-		fmt.Println("len(offsets)==0, minus 1")
 		newSize--
 	}
 	versionOffsets.Offsets = append(versionOffsets.Offsets, offsets...)
