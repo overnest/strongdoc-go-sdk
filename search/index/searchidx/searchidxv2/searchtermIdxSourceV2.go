@@ -27,7 +27,7 @@ type SearchTermIdxSourceBlockV2 struct {
 type SearchTermIdxSourceV2 interface {
 	GetDocID() string
 	GetDocVer() uint64
-	GetAddTerms() []string
+	GetAllTerms() []string
 	GetDelTerms() []string
 	// Returns io.EOF error if there are no more blocks
 	GetNextSourceBlock(filterTerms []string) (*SearchTermIdxSourceBlockV2, error)
@@ -40,7 +40,7 @@ type searchTermIdxSourceV2 struct {
 	doiNew   didxcommon.DocOffsetIdx
 	dtiOld   didxcommon.DocTermIdx
 	dtiNew   didxcommon.DocTermIdx
-	addTerms []string
+	allTerms []string
 	delTerms []string
 }
 
@@ -89,12 +89,12 @@ func createSearchTermIdxSourceV2(doiNew didxcommon.DocOffsetIdx, dtiOld, dtiNew 
 				return nil, err
 			}
 
-			source.addTerms = make([]string, 0, len(terms))
+			source.allTerms = make([]string, 0, len(terms))
 			for term := range terms {
-				source.addTerms = append(source.addTerms, term)
+				source.allTerms = append(source.allTerms, term)
 			}
 
-			sort.Strings(source.addTerms)
+			sort.Strings(source.allTerms)
 		default:
 			return nil, errors.Errorf("Document offset index version %v is not supported",
 				doiNew.GetDoiVersion())
@@ -104,7 +104,7 @@ func createSearchTermIdxSourceV2(doiNew didxcommon.DocOffsetIdx, dtiOld, dtiNew 
 		if err != nil {
 			return nil, err
 		}
-		source.addTerms, err = docidx.GetAllTermList(dtiNew)
+		source.allTerms, err = docidx.GetAllTermList(dtiNew)
 		if err != nil {
 			return nil, err
 		}
@@ -165,8 +165,8 @@ func (sis *searchTermIdxSourceV2) GetDocVer() uint64 {
 	return sis.doiNew.GetDocVersion()
 }
 
-func (sis *searchTermIdxSourceV2) GetAddTerms() []string {
-	return sis.addTerms
+func (sis *searchTermIdxSourceV2) GetAllTerms() []string {
+	return sis.allTerms
 }
 
 func (sis *searchTermIdxSourceV2) GetDelTerms() []string {

@@ -90,7 +90,7 @@ func CreateSearchTermBatchMgrV2(owner common.SearchIdxOwner, sources []SearchTer
 
 	termSourcesMap := make(map[string]*SearchTermBatchSources) // term -> termSources
 	for _, source := range sources {
-		for _, term := range source.GetAddTerms() {
+		for _, term := range source.GetAllTerms() {
 			stbs := termSourcesMap[term]
 			if stbs == nil {
 				stbs = &SearchTermBatchSources{
@@ -147,13 +147,14 @@ type SearchTermIdxTermInfo struct {
 	delDocMap  map[string]bool //
 }
 type SearchTermBatchV2 struct {
-	Owner              common.SearchIdxOwner               // owner
-	SourceList         []SearchTermIdxSourceV2             // all docs
-	termList           []string                            // all terms
-	hashedTermList     []string                            // all hashed terms
-	HashedTermToWriter map[string]*SearchTermIdxWriterV2   // hashedTerm -> index writer
-	HashedTermToTerms  map[string][]*SearchTermIdxTermInfo // hashedTerm -> terms mapped to this hashedTerm
-	sourceToHashTerms  map[SearchTermIdxSourceV2][]string  // source -> hashedTerms
+	Owner                     common.SearchIdxOwner                              // owner
+	SourceList                []SearchTermIdxSourceV2                            // all docs
+	termList                  []string                                           // all terms
+	hashedTermList            []string                                           // all hashed terms
+	HashedTermToWriter        map[string]*SearchTermIdxWriterV2                  // hashedTerm -> index writer
+	HashedTermToTerms         map[string][]*SearchTermIdxTermInfo                // hashedTerm -> terms mapped to this hashedTerm
+	sourceToHashTerms         map[SearchTermIdxSourceV2][]string                 // source -> hashedTerms
+	sourceToHashedTermWriters map[SearchTermIdxSourceV2][]*SearchTermIdxWriterV2 // source -> hashedTerm writers
 }
 
 func (mgr *SearchTermBatchMgrV2) GetNextTermBatch(sdc client.StrongDocClient, batchSize int) (*SearchTermBatchV2, error) {
@@ -279,6 +280,19 @@ func CreateSearchTermBatchV2(sdc client.StrongDocClient, owner common.SearchIdxO
 	sort.Strings(allHashedTerms)
 	batch.hashedTermList = allHashedTerms
 
+	sourceToHashedTermWriters := make(map[SearchTermIdxSourceV2][]*SearchTermIdxWriterV2)
+	for source, hashTermsMap := range sourceToHashTermsMap {
+		var hashTermWriters []*SearchTermIdxWriterV2
+		if hashTermsMap != nil && len(hashTermsMap) > 0 {
+			for hashTerm, _ := range hashTermsMap {
+				hashTermWriter := batch.HashedTermToWriter[hashTerm]
+				hashTermWriters = append(hashTermWriters, hashTermWriter)
+			}
+		}
+		sourceToHashedTermWriters[source] = hashTermWriters
+	}
+	batch.sourceToHashedTermWriters = sourceToHashedTermWriters
+
 	return batch, nil
 }
 
@@ -286,31 +300,78 @@ func (batch *SearchTermBatchV2) ProcessTermBatch(sdc client.StrongDocClient, eve
 	respMap := make(map[string]error)
 
 	e1 := utils.AddSubEvent(event, "processStiAll")
-	//processDocs, stiResp, err := batch.processStiAll(e1)
-	_, _, err := batch.processStiAll(e1)
+	processDocs, stiResp, err := batch.processStiAll(e1)
 	if err != nil {
 		return respMap, err
 	}
 	utils.EndEvent(e1)
 
-	//stiSuccess := make([]*SearchTermIdxWriterV2, 0, len(stiResp))
-	//for stiw, err := range stiResp {
-	//	respMap[stiw.1] = utils.FirstError(respMap[stiw.Term], err)
-	//	if err == nil {
-	//		stiSuccess = append(stiSuccess, stiw)
-	//	}
-	//}
+	stiSuccess := make([]*SearchTermIdxWriterV2, 0, len(stiResp))
+	for stiw, err := range stiResp {
+		respMap[stiw.HashedTerm] = utils.FirstError(respMap[stiw.HashedTerm], err)
+		if err == nil {
+			stiSuccess = append(stiSuccess, stiw)
+		}
+	}
 
-	//e2 := utils.AddSubEvent(event, "processSsdiAll")
-	//ssdiResp, err := batch.processSsdiAll(sdc, stiSuccess, processDocs)
-	//if err != nil {
-	//	return respMap, err
-	//}
-	//
-	//for stiw, err := range ssdiResp {
-	//	respMap[stiw.Term] = utils.FirstError(respMap[stiw.Term], err)
-	//}
-	//utils.EndEvent(e2)
+	e2 := utils.AddSubEvent(event, "processSsdiAll")
+	ssdiResp, err := batch.processSsdiAll(sdc, stiSuccess, processDocs)
+	if err != nil {
+		return respMap, err
+	}
+
+	for stiw, err := range ssdiResp {
+		respMap[stiw.HashedTerm] = utils.FirstError(respMap[stiw.HashedTerm], err)
+	}
+	utils.EndEvent(e2)
+
+	return respMap, nil
+}
+
+// ------------------ Process SSDI------------------
+func (batch *SearchTermBatchV2) processSsdiAll(sdc client.StrongDocClient,
+	stiwList []*SearchTermIdxWriterV2,
+	processedDocs map[string]map[string]map[string]uint64) (map[*SearchTermIdxWriterV2]error, error) {
+
+	ssdiToChan := make(map[*SearchTermIdxWriterV2](chan error))
+
+	for _, stiw := range stiwList {
+		ssdiChan := make(chan error)
+		ssdiToChan[stiw] = ssdiChan
+
+		// process each hashedTerm in a separate thread
+		go func(stiw *SearchTermIdxWriterV2, docs map[string]map[string]uint64, ssdiChan chan<- error) {
+			defer close(ssdiChan)
+			ssdi, err := CreateSearchSortDocIdxV2(sdc, batch.Owner, stiw.HashedTerm,
+				stiw.GetUpdateID(), stiw.TermKey, stiw.IndexKey, docs)
+			if err != nil {
+				ssdiChan <- err
+				return
+			}
+			defer ssdi.Close()
+
+			for err == nil {
+				var blk *SearchSortDocIdxBlkV2
+				blk, err = ssdi.WriteNextBlock()
+
+				_ = blk
+				// fmt.Println(stiw.Term, blk.TermDocIDVers)
+
+				if err != nil && err != io.EOF {
+					ssdiChan <- err
+					return
+				}
+			}
+
+			ssdi.Close()
+			ssdiChan <- nil
+		}(stiw, processedDocs[stiw.HashedTerm], ssdiChan)
+	}
+
+	respMap := make(map[*SearchTermIdxWriterV2]error)
+	for stiw, ssdiChan := range ssdiToChan {
+		respMap[stiw] = <-ssdiChan
+	}
 
 	return respMap, nil
 }
@@ -322,18 +383,20 @@ type SearchTermBlockRespV2 struct {
 }
 
 type SearchTermReadingRespV2 struct {
-	hashedTermToBlks map[string][]*SearchTermIdxSourceBlockV2
-	Error            error
+	//hashedTermToBlks map[string][]*SearchTermIdxSourceBlockV2
+	hashedTermWriterToBlks map[*SearchTermIdxWriterV2][]*SearchTermIdxSourceBlockV2
+	Error                  error
 }
 
 type SearchTermWritingRespV2 struct {
-	hashedTermToResp map[string]*SearchTermIdxWriterRespV2
-	Error            error
+	hashedTermWriterToResp map[*SearchTermIdxWriterV2]*SearchTermIdxWriterRespV2
+	//hashedTermToResp map[string]*SearchTermIdxWriterRespV2
+	Error error
 }
 
 type SearchTermCollectingRespV2 struct {
-	respMap       map[string]error
-	processedDocs map[string](map[string]uint64)
+	respMap       map[*SearchTermIdxWriterV2]error
+	processedDocs map[string]map[string]map[string]uint64 // hashedTerm -> (term -> (docID -> ver))
 	Error         error
 }
 
@@ -345,7 +408,7 @@ func (batch *SearchTermBatchV2) processStiBatchParaReading(readToWriteChan chan<
 
 	for {
 		// hashedTerm -> sources(doc1Block2, doc2Block2, doc3Block2)
-		hashedTermToBlks := make(map[string][]*SearchTermIdxSourceBlockV2)
+		hashedTermWriterToBlks := make(map[*SearchTermIdxWriterV2][]*SearchTermIdxSourceBlockV2)
 
 		blkToChan := make(map[SearchTermIdxSourceV2](chan *SearchTermBlockRespV2))
 
@@ -368,30 +431,30 @@ func (batch *SearchTermBatchV2) processStiBatchParaReading(readToWriteChan chan<
 			blk := blkResp.Block
 
 			if err != nil && err != io.EOF {
-				readToWriteChan <- &SearchTermReadingRespV2{hashedTermToBlks, err}
+				readToWriteChan <- &SearchTermReadingRespV2{hashedTermWriterToBlks, err}
 				return
 			}
 
 			if blk != nil && len(blk.TermOffset) > 0 {
-				for _, hashedTerm := range batch.sourceToHashTerms[source] {
+				for _, hashedTermWriter := range batch.sourceToHashedTermWriters[source] {
 					//TODO check if blk contains hashedTerm
-					blkList := hashedTermToBlks[hashedTerm]
+					blkList := hashedTermWriterToBlks[hashedTermWriter]
 					if blkList == nil {
 						blkList = make([]*SearchTermIdxSourceBlockV2, 0, 1)
 					}
-					hashedTermToBlks[hashedTerm] = append(blkList, blk)
+					hashedTermWriterToBlks[hashedTermWriter] = append(blkList, blk)
 				}
 			}
 		}
 
 		// Finish reading all blocks
-		if len(hashedTermToBlks) == 0 {
-			readToWriteChan <- &SearchTermReadingRespV2{hashedTermToBlks, nil}
+		if len(hashedTermWriterToBlks) == 0 {
+			readToWriteChan <- &SearchTermReadingRespV2{hashedTermWriterToBlks, nil}
 			return
 		}
 
 		// Finish reading one more batch, not finish all yet, just go on with the loop
-		readToWriteChan <- &SearchTermReadingRespV2{hashedTermToBlks, nil}
+		readToWriteChan <- &SearchTermReadingRespV2{hashedTermWriterToBlks, nil}
 	}
 
 }
@@ -407,7 +470,7 @@ func (batch *SearchTermBatchV2) processStiBatchParaWriting(
 		if more {
 
 			// Parse the response from reading
-			hashedTermToBlks := readResp.hashedTermToBlks
+			hashedTermToBlks := readResp.hashedTermWriterToBlks
 			err := readResp.Error
 
 			// Check errors
@@ -417,11 +480,11 @@ func (batch *SearchTermBatchV2) processStiBatchParaWriting(
 			}
 
 			// Process Source Block in Parallel
-			hashedtermToChan := make(map[string](chan *SearchTermIdxWriterRespV2))
-			for hashedTerm, blkList := range hashedTermToBlks {
+			hashedtermToChan := make(map[*SearchTermIdxWriterV2](chan *SearchTermIdxWriterRespV2))
+			for hashedTermWriter, blkList := range hashedTermToBlks {
 				if len(blkList) > 0 {
 					hashedTermChan := make(chan *SearchTermIdxWriterRespV2)
-					hashedtermToChan[hashedTerm] = hashedTermChan
+					hashedtermToChan[hashedTermWriter] = hashedTermChan
 
 					// process each hashedTerm in a separate goroutine
 					go func(terms []*SearchTermIdxTermInfo,
@@ -433,8 +496,8 @@ func (batch *SearchTermBatchV2) processStiBatchParaWriting(
 						stibs, processedDocs, err := writer.ProcessSourceBlocks(blkList)
 
 						stiwChan <- &SearchTermIdxWriterRespV2{stibs, processedDocs, err}
-					}(batch.HashedTermToTerms[hashedTerm],
-						batch.HashedTermToWriter[hashedTerm],
+					}(batch.HashedTermToTerms[hashedTermWriter.HashedTerm],
+						hashedTermWriter,
 						blkList,
 						hashedTermChan)
 
@@ -442,7 +505,7 @@ func (batch *SearchTermBatchV2) processStiBatchParaWriting(
 			}
 
 			// Wait for each parallel writing to finish
-			respMap := make(map[string]*SearchTermIdxWriterRespV2)
+			respMap := make(map[*SearchTermIdxWriterV2]*SearchTermIdxWriterRespV2)
 			for hashedTerm, hashedTermChan := range hashedtermToChan {
 				respMap[hashedTerm] = <-hashedTermChan
 			}
@@ -699,14 +762,15 @@ func (stiw *SearchTermIdxWriterV2) getOldSearchTermIndexBlock() error {
 
 func (batch *SearchTermBatchV2) processStiBatchParaCollecting(writeToCollectChan <-chan *SearchTermWritingRespV2,
 	collectToAllChan chan<- *SearchTermCollectingRespV2) {
-	respMap := make(map[string]error)
-	processedDocs := make(map[string](map[string]uint64)) // term -> (docID -> docVer)
+
+	respMap := make(map[*SearchTermIdxWriterV2]error)
+	processedDocs := make(map[string]map[string]map[string]uint64) // hashedTerm -> (term -> (docID -> docVer))
 	defer close(collectToAllChan)
 
 	for {
 		writingResp, more := <-writeToCollectChan
 		if more {
-			stiBlocksResp := writingResp.hashedTermToResp
+			stiBlocksResp := writingResp.hashedTermWriterToResp
 			err := writingResp.Error
 
 			if err != nil && err != io.EOF {
@@ -715,18 +779,25 @@ func (batch *SearchTermBatchV2) processStiBatchParaCollecting(writeToCollectChan
 			}
 
 			if len(stiBlocksResp) > 0 {
-				for hashedTerm, resp := range stiBlocksResp {
+				for stiw, resp := range stiBlocksResp {
 					if resp != nil {
 						// If there is already an error for this STIW, do not overwrite
-						if respMap[hashedTerm] == nil {
-							respMap[hashedTerm] = resp.Error
+						if respMap[stiw] == nil {
+							respMap[stiw] = resp.Error
 						}
 
 						// update processed docs
 						if resp.ProcessedDocs != nil && len(resp.ProcessedDocs) > 0 {
+							if _, ok := processedDocs[stiw.HashedTerm]; !ok {
+								processedDocs[stiw.HashedTerm] = make(map[string]map[string]uint64)
+							}
+
 							for term, docIdVer := range resp.ProcessedDocs {
+								if _, ok := processedDocs[stiw.HashedTerm][term]; !ok {
+									processedDocs[stiw.HashedTerm][term] = make(map[string]uint64)
+								}
 								for id, ver := range docIdVer {
-									processedDocs[term][id] = ver
+									processedDocs[stiw.HashedTerm][term][id] = ver
 								}
 							}
 
@@ -744,8 +815,8 @@ func (batch *SearchTermBatchV2) processStiBatchParaCollecting(writeToCollectChan
 
 // process search term index
 func (batch *SearchTermBatchV2) processStiAll(event *utils.TimeEvent) (
-	map[string](map[string]uint64), // processedDoc term -> (docID -> docVer), used for ssdi
-	map[string]error,
+	map[string]map[string]map[string]uint64, // hashedTerm -> ( term -> (docID -> docVer))
+	map[*SearchTermIdxWriterV2]error, // hashedTerm writer -> error
 	error) { // some other error
 	e1 := utils.AddSubEvent(event, "resetSources")
 	for _, source := range batch.SourceList {
@@ -788,10 +859,10 @@ func (batch *SearchTermBatchV2) processStiAll(event *utils.TimeEvent) (
 		err           error
 	}
 
-	stiwToChan := make(map[string](chan closeStiwResp))
-	for hashTerm, stiw := range batch.HashedTermToWriter {
+	stiwToChan := make(map[*SearchTermIdxWriterV2](chan closeStiwResp))
+	for _, stiw := range batch.HashedTermToWriter {
 		stiwChan := make(chan closeStiwResp)
-		stiwToChan[hashTerm] = stiwChan
+		stiwToChan[stiw] = stiwChan
 		go func(stiw *SearchTermIdxWriterV2, stiwChan chan closeStiwResp) {
 			defer close(stiwChan)
 			_, docs, err := stiw.Close()
@@ -799,20 +870,27 @@ func (batch *SearchTermBatchV2) processStiAll(event *utils.TimeEvent) (
 		}(stiw, stiwChan)
 	}
 
-	for hashTerm, stiwChan := range stiwToChan {
+	for stiw, stiwChan := range stiwToChan {
 		resp := <-stiwChan
 		err := resp.err
 		if err != nil {
-			_, ok := respMap[hashTerm]
+			_, ok := respMap[stiw]
 			if !ok {
-				respMap[hashTerm] = err
+				respMap[stiw] = err
 			}
 		} else {
 			// update processed docs
 			if resp.processedDocs != nil && len(resp.processedDocs) > 0 {
+
+				if _, ok := processedDocs[stiw.HashedTerm]; !ok {
+					processedDocs[stiw.HashedTerm] = make(map[string]map[string]uint64)
+				}
 				for term, docIdVer := range resp.processedDocs {
+					if _, ok := processedDocs[stiw.HashedTerm][term]; !ok {
+						processedDocs[stiw.HashedTerm][term] = make(map[string]uint64)
+					}
 					for id, ver := range docIdVer {
-						processedDocs[term][id] = ver
+						processedDocs[stiw.HashedTerm][term][id] = ver
 					}
 				}
 
@@ -1020,6 +1098,10 @@ func (stiw *SearchTermIdxWriterV2) Close() ([]*SearchTermIdxBlkV2, map[string]ma
 	}
 
 	return returnBlocks, processedDocs, finalErr
+}
+
+func (stiw *SearchTermIdxWriterV2) GetUpdateID() string {
+	return stiw.updateID
 }
 
 func (batch *SearchTermBatchV2) IsEmpty() bool {
