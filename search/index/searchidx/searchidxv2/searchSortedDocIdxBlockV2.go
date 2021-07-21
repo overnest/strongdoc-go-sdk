@@ -134,9 +134,9 @@ func DocIDVerComparatorV2(value interface{}, blockData interface{}) (int, error)
 // CreateSearchSortDocIdxBlkV2 creates a new Search Index Block V2
 func CreateSearchSortDocIdxBlkV2(prevHighTerm, prevHighDocID string, maxDataSize uint64) *SearchSortDocIdxBlkV2 {
 	return &SearchSortDocIdxBlkV2{
-		TermDocIDVers:  make([]*DocIDVerV2, 0, 100),
-		termToDocIDVer: make(map[string]map[string]uint64),
-
+		TermDocIDVers:      make([]*DocIDVerV2, 0, 100),
+		termToDocIDVer:     make(map[string]map[string]uint64),
+		termToDocIDTree:    make(map[string]*rbt.Tree),
 		totalTermDocIdVers: 0,
 
 		termToLowDocID:  make(map[string]string),
@@ -249,9 +249,12 @@ func (blk *SearchSortDocIdxBlkV2) addDocVer(term, docID string, docVer uint64) {
 
 	blk.predictedJSONSize = newSize
 	blk.totalTermDocIdVers++
+	blk.lowTerm = blk.termTree.Left().Key.(string)
+	blk.highTerm = blk.termTree.Right().Key.(string)
+
 }
 
-func (blk *SearchSortDocIdxBlkV2) removeLastEntry() {
+func (blk *SearchSortDocIdxBlkV2) removeLastEntry() error {
 	highTerm := blk.highTerm
 	highDocID := blk.termToHighDocID[highTerm]
 	highDocVer := blk.termToDocIDVer[highTerm][highDocID]
@@ -266,6 +269,7 @@ func (blk *SearchSortDocIdxBlkV2) removeLastEntry() {
 	blk.totalTermDocIdVers--
 
 	delete(blk.termToDocIDVer[highTerm], highDocID)
+
 	blk.termToDocIDTree[highTerm].Remove(highDocID)
 
 	if len(blk.termToDocIDVer[highTerm]) == 0 {
@@ -279,8 +283,17 @@ func (blk *SearchSortDocIdxBlkV2) removeLastEntry() {
 	} else {
 		max := blk.termToDocIDTree[highTerm].Right()
 		blk.termToHighDocID[highTerm] = max.Key.(string)
-
 	}
+
+	if len(blk.termTree.Keys()) > 0 {
+		blk.lowTerm = blk.termTree.Left().Key.(string)
+		blk.highTerm = blk.termTree.Right().Key.(string)
+	} else {
+		blk.lowTerm = ""
+		blk.highTerm = ""
+	}
+
+	return nil
 }
 
 func (blk *SearchSortDocIdxBlkV2) formatToBlockData() *SearchSortDocIdxBlkV2 {

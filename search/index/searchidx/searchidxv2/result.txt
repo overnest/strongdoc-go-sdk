@@ -1,0 +1,2146 @@
+ProcessBatchTerms 21
+	ProcessTermBatch 15 71.43%
+		processStiAll 14 93.33%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 11 78.57%
+			closeStiw 3 21.43%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 22
+	ProcessTermBatch 15 68.18%
+		processStiAll 13 86.67%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 12 92.31%
+			closeStiw 1 7.69%
+		processSsdiAll 1 6.67%
+ProcessBatchTerms 20
+	ProcessTermBatch 14 70.00%
+		processStiAll 13 92.86%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 11 84.62%
+			closeStiw 1 7.69%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 22
+	ProcessTermBatch 15 68.18%
+		processStiAll 14 93.33%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 12 85.71%
+			closeStiw 2 14.29%
+		processSsdiAll 1 6.67%
+ProcessBatchTerms 22
+	ProcessTermBatch 14 63.64%
+		processStiAll 13 92.86%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 12 92.31%
+			closeStiw 1 7.69%
+		processSsdiAll 1 7.14%
+ProcessBatchTerms 24
+	ProcessTermBatch 17 70.83%
+		processStiAll 16 94.12%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 14 87.50%
+			closeStiw 2 12.50%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 24
+	ProcessTermBatch 16 66.67%
+		processStiAll 15 93.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 86.67%
+			closeStiw 1 6.67%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 23
+	ProcessTermBatch 15 65.22%
+		processStiAll 14 93.33%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 92.86%
+			closeStiw 1 7.14%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 24
+	ProcessTermBatch 16 66.67%
+		processStiAll 15 93.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 14 93.33%
+			closeStiw 1 6.67%
+		processSsdiAll 1 6.25%
+ProcessBatchTerms 23
+	ProcessTermBatch 16 69.57%
+		processStiAll 15 93.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 86.67%
+			closeStiw 2 13.33%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 23
+	ProcessTermBatch 15 65.22%
+		processStiAll 15 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 86.67%
+			closeStiw 2 13.33%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 22
+	ProcessTermBatch 15 68.18%
+		processStiAll 15 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 86.67%
+			closeStiw 1 6.67%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 20
+	ProcessTermBatch 13 65.00%
+		processStiAll 13 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 11 84.62%
+			closeStiw 1 7.69%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 20
+	ProcessTermBatch 13 65.00%
+		processStiAll 13 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 11 84.62%
+			closeStiw 1 7.69%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 23
+	ProcessTermBatch 16 69.57%
+		processStiAll 16 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 81.25%
+			closeStiw 2 12.50%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 0
+ProcessBatchTerms 25
+	ProcessTermBatch 17 68.00%
+		processStiAll 17 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 76.47%
+			closeStiw 3 17.65%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 25
+	ProcessTermBatch 17 68.00%
+		processStiAll 16 94.12%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 14 87.50%
+			closeStiw 2 12.50%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 27
+	ProcessTermBatch 17 62.96%
+		processStiAll 16 94.12%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 81.25%
+			closeStiw 2 12.50%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 24
+	ProcessTermBatch 17 70.83%
+		processStiAll 16 94.12%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 81.25%
+			closeStiw 2 12.50%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 23
+	ProcessTermBatch 16 69.57%
+		processStiAll 15 93.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 86.67%
+			closeStiw 1 6.67%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 23
+	ProcessTermBatch 16 69.57%
+		processStiAll 15 93.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 86.67%
+			closeStiw 2 13.33%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 21
+	ProcessTermBatch 14 66.67%
+		processStiAll 14 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 12 85.71%
+			closeStiw 1 7.14%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 21
+	ProcessTermBatch 14 66.67%
+		processStiAll 13 92.86%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 11 84.62%
+			closeStiw 2 15.38%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 22
+	ProcessTermBatch 15 68.18%
+		processStiAll 14 93.33%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 92.86%
+			closeStiw 1 7.14%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 21
+	ProcessTermBatch 14 66.67%
+		processStiAll 14 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 11 78.57%
+			closeStiw 2 14.29%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 20
+	ProcessTermBatch 14 70.00%
+		processStiAll 13 92.86%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 11 84.62%
+			closeStiw 1 7.69%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 24
+	ProcessTermBatch 17 70.83%
+		processStiAll 16 94.12%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 14 87.50%
+			closeStiw 2 12.50%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 24
+	ProcessTermBatch 16 66.67%
+		processStiAll 16 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 81.25%
+			closeStiw 2 12.50%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 24
+	ProcessTermBatch 17 70.83%
+		processStiAll 16 94.12%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 14 87.50%
+			closeStiw 2 12.50%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 23
+	ProcessTermBatch 16 69.57%
+		processStiAll 15 93.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 86.67%
+			closeStiw 2 13.33%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 0
+ProcessBatchTerms 22
+	ProcessTermBatch 15 68.18%
+		processStiAll 15 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 12 80.00%
+			closeStiw 3 20.00%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 23
+	ProcessTermBatch 14 60.87%
+		processStiAll 14 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 11 78.57%
+			closeStiw 2 14.29%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 23
+	ProcessTermBatch 14 60.87%
+		processStiAll 14 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 12 85.71%
+			closeStiw 1 7.14%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 21
+	ProcessTermBatch 15 71.43%
+		processStiAll 13 86.67%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 12 92.31%
+			closeStiw 1 7.69%
+		processSsdiAll 1 6.67%
+ProcessBatchTerms 21
+	ProcessTermBatch 14 66.67%
+		processStiAll 13 92.86%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 12 92.31%
+			closeStiw 1 7.69%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 21
+	ProcessTermBatch 15 71.43%
+		processStiAll 14 93.33%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 12 85.71%
+			closeStiw 2 14.29%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 23
+	ProcessTermBatch 16 69.57%
+		processStiAll 15 93.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 14 93.33%
+			closeStiw 1 6.67%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 24
+	ProcessTermBatch 16 66.67%
+		processStiAll 15 93.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 86.67%
+			closeStiw 2 13.33%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 24
+	ProcessTermBatch 17 70.83%
+		processStiAll 16 94.12%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 14 87.50%
+			closeStiw 1 6.25%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 23
+	ProcessTermBatch 16 69.57%
+		processStiAll 15 93.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 86.67%
+			closeStiw 2 13.33%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 22
+	ProcessTermBatch 15 68.18%
+		processStiAll 15 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 86.67%
+			closeStiw 1 6.67%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 24
+	ProcessTermBatch 17 70.83%
+		processStiAll 16 94.12%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 81.25%
+			closeStiw 2 12.50%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 23
+	ProcessTermBatch 16 69.57%
+		processStiAll 15 93.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 86.67%
+			closeStiw 1 6.67%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 21
+	ProcessTermBatch 15 71.43%
+		processStiAll 15 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 86.67%
+			closeStiw 1 6.67%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 22
+	ProcessTermBatch 16 72.73%
+		processStiAll 15 93.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 13 86.67%
+			closeStiw 1 6.67%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 0
+ProcessBatchTerms 131
+	ProcessTermBatch 121 92.37%
+		processStiAll 117 96.69%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 112 95.73%
+			closeStiw 5 4.27%
+		processSsdiAll 3 2.48%
+ProcessBatchTerms 121
+	ProcessTermBatch 111 91.74%
+		processStiAll 108 97.30%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 100 92.59%
+			closeStiw 7 6.48%
+		processSsdiAll 3 2.70%
+ProcessBatchTerms 116
+	ProcessTermBatch 105 90.52%
+		processStiAll 102 97.14%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 98 96.08%
+			closeStiw 4 3.92%
+		processSsdiAll 2 1.90%
+ProcessBatchTerms 144
+	ProcessTermBatch 135 93.75%
+		processStiAll 132 97.78%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 109 82.58%
+			closeStiw 22 16.67%
+		processSsdiAll 3 2.22%
+ProcessBatchTerms 118
+	ProcessTermBatch 108 91.53%
+		processStiAll 106 98.15%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 101 95.28%
+			closeStiw 5 4.72%
+		processSsdiAll 2 1.85%
+ProcessBatchTerms 128
+	ProcessTermBatch 121 94.53%
+		processStiAll 117 96.69%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 100 85.47%
+			closeStiw 17 14.53%
+		processSsdiAll 3 2.48%
+ProcessBatchTerms 109
+	ProcessTermBatch 102 93.58%
+		processStiAll 97 95.10%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 93 95.88%
+			closeStiw 4 4.12%
+		processSsdiAll 4 3.92%
+ProcessBatchTerms 106
+	ProcessTermBatch 100 94.34%
+		processStiAll 97 97.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 94.85%
+			closeStiw 4 4.12%
+		processSsdiAll 3 3.00%
+ProcessBatchTerms 121
+	ProcessTermBatch 113 93.39%
+		processStiAll 110 97.35%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 101 91.82%
+			closeStiw 8 7.27%
+		processSsdiAll 3 2.65%
+ProcessBatchTerms 111
+	ProcessTermBatch 104 93.69%
+		processStiAll 100 96.15%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 97 97.00%
+			closeStiw 3 3.00%
+		processSsdiAll 3 2.88%
+ProcessBatchTerms 108
+	ProcessTermBatch 102 94.44%
+		processStiAll 98 96.08%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 94 95.92%
+			closeStiw 4 4.08%
+		processSsdiAll 3 2.94%
+ProcessBatchTerms 123
+	ProcessTermBatch 117 95.12%
+		processStiAll 114 97.44%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 101 88.60%
+			closeStiw 12 10.53%
+		processSsdiAll 3 2.56%
+ProcessBatchTerms 107
+	ProcessTermBatch 101 94.39%
+		processStiAll 99 98.02%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 94 94.95%
+			closeStiw 4 4.04%
+		processSsdiAll 2 1.98%
+ProcessBatchTerms 107
+	ProcessTermBatch 102 95.33%
+		processStiAll 98 96.08%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 93 94.90%
+			closeStiw 5 5.10%
+		processSsdiAll 3 2.94%
+ProcessBatchTerms 132
+	ProcessTermBatch 126 95.45%
+		processStiAll 122 96.83%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 101 82.79%
+			closeStiw 21 17.21%
+		processSsdiAll 3 2.38%
+ProcessBatchTerms 0
+ProcessBatchTerms 116
+	ProcessTermBatch 105 90.52%
+		processStiAll 102 97.14%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 98 96.08%
+			closeStiw 3 2.94%
+		processSsdiAll 3 2.86%
+ProcessBatchTerms 122
+	ProcessTermBatch 113 92.62%
+		processStiAll 110 97.35%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 101 91.82%
+			closeStiw 9 8.18%
+		processSsdiAll 3 2.65%
+ProcessBatchTerms 146
+	ProcessTermBatch 133 91.10%
+		processStiAll 129 96.99%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 123 95.35%
+			closeStiw 5 3.88%
+		processSsdiAll 4 3.01%
+ProcessBatchTerms 187
+	ProcessTermBatch 178 95.19%
+		processStiAll 174 97.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 149 85.63%
+			closeStiw 25 14.37%
+		processSsdiAll 3 1.69%
+ProcessBatchTerms 116
+	ProcessTermBatch 109 93.97%
+		processStiAll 104 95.41%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 98 94.23%
+			closeStiw 5 4.81%
+		processSsdiAll 4 3.67%
+ProcessBatchTerms 124
+	ProcessTermBatch 118 95.16%
+		processStiAll 116 98.31%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 99 85.34%
+			closeStiw 17 14.66%
+		processSsdiAll 2 1.69%
+ProcessBatchTerms 110
+	ProcessTermBatch 103 93.64%
+		processStiAll 97 94.17%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 93 95.88%
+			closeStiw 4 4.12%
+		processSsdiAll 6 5.83%
+ProcessBatchTerms 116
+	ProcessTermBatch 110 94.83%
+		processStiAll 106 96.36%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 100 94.34%
+			closeStiw 5 4.72%
+		processSsdiAll 3 2.73%
+ProcessBatchTerms 120
+	ProcessTermBatch 112 93.33%
+		processStiAll 109 97.32%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 101 92.66%
+			closeStiw 8 7.34%
+		processSsdiAll 2 1.79%
+ProcessBatchTerms 110
+	ProcessTermBatch 102 92.73%
+		processStiAll 99 97.06%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 93 93.94%
+			closeStiw 6 6.06%
+		processSsdiAll 2 1.96%
+ProcessBatchTerms 111
+	ProcessTermBatch 104 93.69%
+		processStiAll 101 97.12%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 94 93.07%
+			closeStiw 6 5.94%
+		processSsdiAll 3 2.88%
+ProcessBatchTerms 161
+	ProcessTermBatch 153 95.03%
+		processStiAll 150 98.04%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 135 90.00%
+			closeStiw 15 10.00%
+		processSsdiAll 3 1.96%
+ProcessBatchTerms 112
+	ProcessTermBatch 105 93.75%
+		processStiAll 102 97.14%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 98 96.08%
+			closeStiw 4 3.92%
+		processSsdiAll 2 1.90%
+ProcessBatchTerms 106
+	ProcessTermBatch 101 95.28%
+		processStiAll 98 97.03%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 94 95.92%
+			closeStiw 4 4.08%
+		processSsdiAll 2 1.98%
+ProcessBatchTerms 108
+	ProcessTermBatch 100 92.59%
+		processStiAll 98 98.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 93.88%
+			closeStiw 5 5.10%
+		processSsdiAll 2 2.00%
+ProcessBatchTerms 0
+ProcessBatchTerms 112
+	ProcessTermBatch 106 94.64%
+		processStiAll 103 97.17%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 95 92.23%
+			closeStiw 7 6.80%
+		processSsdiAll 2 1.89%
+ProcessBatchTerms 123
+	ProcessTermBatch 117 95.12%
+		processStiAll 114 97.44%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 105 92.11%
+			closeStiw 8 7.02%
+		processSsdiAll 2 1.71%
+ProcessBatchTerms 118
+	ProcessTermBatch 111 94.07%
+		processStiAll 107 96.40%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 97 90.65%
+			closeStiw 10 9.35%
+		processSsdiAll 4 3.60%
+ProcessBatchTerms 176
+	ProcessTermBatch 167 94.89%
+		processStiAll 165 98.80%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 139 84.24%
+			closeStiw 25 15.15%
+		processSsdiAll 2 1.20%
+ProcessBatchTerms 111
+	ProcessTermBatch 104 93.69%
+		processStiAll 101 97.12%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 96 95.05%
+			closeStiw 5 4.95%
+		processSsdiAll 2 1.92%
+ProcessBatchTerms 130
+	ProcessTermBatch 122 93.85%
+		processStiAll 119 97.54%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 101 84.87%
+			closeStiw 17 14.29%
+		processSsdiAll 2 1.64%
+ProcessBatchTerms 113
+	ProcessTermBatch 107 94.69%
+		processStiAll 103 96.26%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 96 93.20%
+			closeStiw 7 6.80%
+		processSsdiAll 3 2.80%
+ProcessBatchTerms 110
+	ProcessTermBatch 103 93.64%
+		processStiAll 101 98.06%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 94 93.07%
+			closeStiw 6 5.94%
+		processSsdiAll 2 1.94%
+ProcessBatchTerms 114
+	ProcessTermBatch 107 93.86%
+		processStiAll 104 97.20%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 97 93.27%
+			closeStiw 7 6.73%
+		processSsdiAll 2 1.87%
+ProcessBatchTerms 110
+	ProcessTermBatch 104 94.55%
+		processStiAll 101 97.12%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 95 94.06%
+			closeStiw 6 5.94%
+		processSsdiAll 2 1.92%
+ProcessBatchTerms 112
+	ProcessTermBatch 105 93.75%
+		processStiAll 102 97.14%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 94 92.16%
+			closeStiw 7 6.86%
+		processSsdiAll 2 1.90%
+ProcessBatchTerms 155
+	ProcessTermBatch 149 96.13%
+		processStiAll 145 97.32%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 129 88.97%
+			closeStiw 16 11.03%
+		processSsdiAll 3 2.01%
+ProcessBatchTerms 108
+	ProcessTermBatch 102 94.44%
+		processStiAll 99 97.06%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 96 96.97%
+			closeStiw 3 3.03%
+		processSsdiAll 2 1.96%
+ProcessBatchTerms 107
+	ProcessTermBatch 100 93.46%
+		processStiAll 98 98.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 93 94.90%
+			closeStiw 5 5.10%
+		processSsdiAll 2 2.00%
+ProcessBatchTerms 111
+	ProcessTermBatch 105 94.59%
+		processStiAll 102 97.14%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 95 93.14%
+			closeStiw 6 5.88%
+		processSsdiAll 3 2.86%
+ProcessBatchTerms 0
+ProcessBatchTerms 114
+	ProcessTermBatch 104 91.23%
+		processStiAll 100 96.15%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 97 97.00%
+			closeStiw 3 3.00%
+		processSsdiAll 3 2.88%
+ProcessBatchTerms 116
+	ProcessTermBatch 110 94.83%
+		processStiAll 106 96.36%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 96 90.57%
+			closeStiw 10 9.43%
+		processSsdiAll 3 2.73%
+ProcessBatchTerms 143
+	ProcessTermBatch 136 95.10%
+		processStiAll 133 97.79%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 127 95.49%
+			closeStiw 5 3.76%
+		processSsdiAll 3 2.21%
+ProcessBatchTerms 149
+	ProcessTermBatch 139 93.29%
+		processStiAll 136 97.84%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 116 85.29%
+			closeStiw 20 14.71%
+		processSsdiAll 2 1.44%
+ProcessBatchTerms 117
+	ProcessTermBatch 111 94.87%
+		processStiAll 108 97.30%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 99 91.67%
+			closeStiw 8 7.41%
+		processSsdiAll 3 2.70%
+ProcessBatchTerms 128
+	ProcessTermBatch 119 92.97%
+		processStiAll 116 97.48%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 102 87.93%
+			closeStiw 13 11.21%
+		processSsdiAll 3 2.52%
+ProcessBatchTerms 112
+	ProcessTermBatch 105 93.75%
+		processStiAll 102 97.14%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 96 94.12%
+			closeStiw 6 5.88%
+		processSsdiAll 2 1.90%
+ProcessBatchTerms 108
+	ProcessTermBatch 103 95.37%
+		processStiAll 100 97.09%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 95 95.00%
+			closeStiw 4 4.00%
+		processSsdiAll 2 1.94%
+ProcessBatchTerms 113
+	ProcessTermBatch 106 93.81%
+		processStiAll 103 97.17%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 95 92.23%
+			closeStiw 7 6.80%
+		processSsdiAll 3 2.83%
+ProcessBatchTerms 106
+	ProcessTermBatch 99 93.40%
+		processStiAll 97 97.98%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 94.85%
+			closeStiw 5 5.15%
+		processSsdiAll 2 2.02%
+ProcessBatchTerms 128
+	ProcessTermBatch 123 96.09%
+		processStiAll 119 96.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 111 93.28%
+			closeStiw 8 6.72%
+		processSsdiAll 4 3.25%
+ProcessBatchTerms 133
+	ProcessTermBatch 125 93.98%
+		processStiAll 120 96.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 109 90.83%
+			closeStiw 11 9.17%
+		processSsdiAll 4 3.20%
+ProcessBatchTerms 109
+	ProcessTermBatch 103 94.50%
+		processStiAll 100 97.09%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 94 94.00%
+			closeStiw 5 5.00%
+		processSsdiAll 2 1.94%
+ProcessBatchTerms 103
+	ProcessTermBatch 98 95.15%
+		processStiAll 95 96.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 95.79%
+			closeStiw 3 3.16%
+		processSsdiAll 2 2.04%
+ProcessBatchTerms 106
+	ProcessTermBatch 99 93.40%
+		processStiAll 96 96.97%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 94.79%
+			closeStiw 5 5.21%
+		processSsdiAll 2 2.02%
+ProcessBatchTerms 0
+ProcessBatchTerms 143
+	ProcessTermBatch 136 95.10%
+		processStiAll 132 97.06%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 128 96.97%
+			closeStiw 3 2.27%
+		processSsdiAll 4 2.94%
+ProcessBatchTerms 104
+	ProcessTermBatch 100 96.15%
+		processStiAll 97 97.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 94.85%
+			closeStiw 5 5.15%
+		processSsdiAll 2 2.00%
+ProcessBatchTerms 111
+	ProcessTermBatch 108 97.30%
+		processStiAll 105 97.22%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 99 94.29%
+			closeStiw 6 5.71%
+		processSsdiAll 3 2.78%
+ProcessBatchTerms 106
+	ProcessTermBatch 102 96.23%
+		processStiAll 98 96.08%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 93 94.90%
+			closeStiw 4 4.08%
+		processSsdiAll 3 2.94%
+ProcessBatchTerms 100
+	ProcessTermBatch 95 95.00%
+		processStiAll 92 96.84%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 97.83%
+			closeStiw 2 2.17%
+		processSsdiAll 2 2.11%
+ProcessBatchTerms 107
+	ProcessTermBatch 102 95.33%
+		processStiAll 99 97.06%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 95 95.96%
+			closeStiw 3 3.03%
+		processSsdiAll 3 2.94%
+ProcessBatchTerms 110
+	ProcessTermBatch 106 96.36%
+		processStiAll 103 97.17%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 100 97.09%
+			closeStiw 2 1.94%
+		processSsdiAll 3 2.83%
+ProcessBatchTerms 139
+	ProcessTermBatch 134 96.40%
+		processStiAll 131 97.76%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 111 84.73%
+			closeStiw 20 15.27%
+		processSsdiAll 2 1.49%
+ProcessBatchTerms 109
+	ProcessTermBatch 107 98.17%
+		processStiAll 103 96.26%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 100 97.09%
+			closeStiw 2 1.94%
+		processSsdiAll 3 2.80%
+ProcessBatchTerms 126
+	ProcessTermBatch 122 96.83%
+		processStiAll 119 97.54%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 114 95.80%
+			closeStiw 4 3.36%
+		processSsdiAll 2 1.64%
+ProcessBatchTerms 121
+	ProcessTermBatch 117 96.69%
+		processStiAll 114 97.44%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 101 88.60%
+			closeStiw 13 11.40%
+		processSsdiAll 3 2.56%
+ProcessBatchTerms 99
+	ProcessTermBatch 96 96.97%
+		processStiAll 93 96.88%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 95.70%
+			closeStiw 4 4.30%
+		processSsdiAll 2 2.08%
+ProcessBatchTerms 101
+	ProcessTermBatch 98 97.03%
+		processStiAll 95 96.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 96.84%
+			closeStiw 3 3.16%
+		processSsdiAll 2 2.04%
+ProcessBatchTerms 102
+	ProcessTermBatch 99 97.06%
+		processStiAll 97 97.98%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 94.85%
+			closeStiw 4 4.12%
+		processSsdiAll 2 2.02%
+ProcessBatchTerms 99
+	ProcessTermBatch 96 96.97%
+		processStiAll 93 96.88%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 96.77%
+			closeStiw 3 3.23%
+		processSsdiAll 2 2.08%
+ProcessBatchTerms 100
+	ProcessTermBatch 97 97.00%
+		processStiAll 95 97.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 95.79%
+			closeStiw 3 3.16%
+		processSsdiAll 2 2.06%
+ProcessBatchTerms 100
+	ProcessTermBatch 97 97.00%
+		processStiAll 93 95.88%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 96.77%
+			closeStiw 2 2.15%
+		processSsdiAll 4 4.12%
+ProcessBatchTerms 102
+	ProcessTermBatch 99 97.06%
+		processStiAll 96 96.97%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 95.83%
+			closeStiw 4 4.17%
+		processSsdiAll 2 2.02%
+ProcessBatchTerms 125
+	ProcessTermBatch 120 96.00%
+		processStiAll 117 97.50%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 114 97.44%
+			closeStiw 2 1.71%
+		processSsdiAll 3 2.50%
+ProcessBatchTerms 106
+	ProcessTermBatch 103 97.17%
+		processStiAll 101 98.06%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 98 97.03%
+			closeStiw 2 1.98%
+		processSsdiAll 1 0.97%
+ProcessBatchTerms 99
+	ProcessTermBatch 96 96.97%
+		processStiAll 93 96.88%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 96.77%
+			closeStiw 3 3.23%
+		processSsdiAll 2 2.08%
+ProcessBatchTerms 101
+	ProcessTermBatch 97 96.04%
+		processStiAll 94 96.91%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 96.81%
+			closeStiw 2 2.13%
+		processSsdiAll 3 3.09%
+ProcessBatchTerms 113
+	ProcessTermBatch 109 96.46%
+		processStiAll 107 98.17%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 97 90.65%
+			closeStiw 10 9.35%
+		processSsdiAll 2 1.83%
+ProcessBatchTerms 115
+	ProcessTermBatch 109 94.78%
+		processStiAll 106 97.25%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 100 94.34%
+			closeStiw 6 5.66%
+		processSsdiAll 2 1.83%
+ProcessBatchTerms 97
+	ProcessTermBatch 94 96.91%
+		processStiAll 90 95.74%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 98.89%
+			closeStiw 1 1.11%
+		processSsdiAll 3 3.19%
+ProcessBatchTerms 100
+	ProcessTermBatch 97 97.00%
+		processStiAll 93 95.88%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 96.77%
+			closeStiw 3 3.23%
+		processSsdiAll 3 3.09%
+ProcessBatchTerms 99
+	ProcessTermBatch 96 96.97%
+		processStiAll 94 97.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 95.74%
+			closeStiw 4 4.26%
+		processSsdiAll 2 2.08%
+ProcessBatchTerms 96
+	ProcessTermBatch 94 97.92%
+		processStiAll 91 96.81%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 97.80%
+			closeStiw 2 2.20%
+		processSsdiAll 2 2.13%
+ProcessBatchTerms 103
+	ProcessTermBatch 99 96.12%
+		processStiAll 96 96.97%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 93 96.88%
+			closeStiw 3 3.12%
+		processSsdiAll 2 2.02%
+ProcessBatchTerms 98
+	ProcessTermBatch 95 96.94%
+		processStiAll 92 96.84%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 96.74%
+			closeStiw 3 3.26%
+		processSsdiAll 3 3.16%
+ProcessBatchTerms 0
+ProcessBatchTerms 110
+	ProcessTermBatch 101 91.82%
+		processStiAll 99 98.02%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 96 96.97%
+			closeStiw 3 3.03%
+		processSsdiAll 1 0.99%
+ProcessBatchTerms 121
+	ProcessTermBatch 112 92.56%
+		processStiAll 109 97.32%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 98 89.91%
+			closeStiw 11 10.09%
+		processSsdiAll 2 1.79%
+ProcessBatchTerms 136
+	ProcessTermBatch 128 94.12%
+		processStiAll 125 97.66%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 117 93.60%
+			closeStiw 8 6.40%
+		processSsdiAll 2 1.56%
+ProcessBatchTerms 113
+	ProcessTermBatch 103 91.15%
+		processStiAll 102 99.03%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 96 94.12%
+			closeStiw 5 4.90%
+		processSsdiAll 1 0.97%
+ProcessBatchTerms 108
+	ProcessTermBatch 100 92.59%
+		processStiAll 98 98.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 93.88%
+			closeStiw 6 6.12%
+		processSsdiAll 1 1.00%
+ProcessBatchTerms 107
+	ProcessTermBatch 100 93.46%
+		processStiAll 98 98.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 92.86%
+			closeStiw 6 6.12%
+		processSsdiAll 2 2.00%
+ProcessBatchTerms 122
+	ProcessTermBatch 115 94.26%
+		processStiAll 112 97.39%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 102 91.07%
+			closeStiw 10 8.93%
+		processSsdiAll 2 1.74%
+ProcessBatchTerms 106
+	ProcessTermBatch 99 93.40%
+		processStiAll 97 97.98%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 94.85%
+			closeStiw 5 5.15%
+		processSsdiAll 1 1.01%
+ProcessBatchTerms 108
+	ProcessTermBatch 103 95.37%
+		processStiAll 101 98.06%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 95 94.06%
+			closeStiw 5 4.95%
+		processSsdiAll 1 0.97%
+ProcessBatchTerms 138
+	ProcessTermBatch 132 95.65%
+		processStiAll 130 98.48%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 106 81.54%
+			closeStiw 24 18.46%
+		processSsdiAll 1 0.76%
+ProcessBatchTerms 111
+	ProcessTermBatch 104 93.69%
+		processStiAll 100 96.15%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 97 97.00%
+			closeStiw 3 3.00%
+		processSsdiAll 3 2.88%
+ProcessBatchTerms 135
+	ProcessTermBatch 126 93.33%
+		processStiAll 124 98.41%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 115 92.74%
+			closeStiw 9 7.26%
+		processSsdiAll 1 0.79%
+ProcessBatchTerms 104
+	ProcessTermBatch 97 93.27%
+		processStiAll 94 96.91%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 96.81%
+			closeStiw 3 3.19%
+		processSsdiAll 2 2.06%
+ProcessBatchTerms 101
+	ProcessTermBatch 96 95.05%
+		processStiAll 94 97.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 95.74%
+			closeStiw 3 3.19%
+		processSsdiAll 2 2.08%
+ProcessBatchTerms 124
+	ProcessTermBatch 116 93.55%
+		processStiAll 114 98.28%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 101 88.60%
+			closeStiw 13 11.40%
+		processSsdiAll 1 0.86%
+ProcessBatchTerms 103
+	ProcessTermBatch 98 95.15%
+		processStiAll 94 95.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 96.81%
+			closeStiw 3 3.19%
+		processSsdiAll 3 3.06%
+ProcessBatchTerms 109
+	ProcessTermBatch 102 93.58%
+		processStiAll 100 98.04%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 94 94.00%
+			closeStiw 5 5.00%
+		processSsdiAll 1 0.98%
+ProcessBatchTerms 104
+	ProcessTermBatch 98 94.23%
+		processStiAll 95 96.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 96.84%
+			closeStiw 3 3.16%
+		processSsdiAll 2 2.04%
+ProcessBatchTerms 106
+	ProcessTermBatch 97 91.51%
+		processStiAll 95 97.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 93.68%
+			closeStiw 5 5.26%
+		processSsdiAll 2 2.06%
+ProcessBatchTerms 112
+	ProcessTermBatch 106 94.64%
+		processStiAll 104 98.11%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 95 91.35%
+			closeStiw 8 7.69%
+		processSsdiAll 2 1.89%
+ProcessBatchTerms 0
+ProcessBatchTerms 124
+	ProcessTermBatch 114 91.94%
+		processStiAll 113 99.12%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 108 95.58%
+			closeStiw 4 3.54%
+		processSsdiAll 1 0.88%
+ProcessBatchTerms 104
+	ProcessTermBatch 95 91.35%
+		processStiAll 93 97.89%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 97.85%
+			closeStiw 2 2.15%
+		processSsdiAll 1 1.05%
+ProcessBatchTerms 104
+	ProcessTermBatch 97 93.27%
+		processStiAll 97 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 94.85%
+			closeStiw 4 4.12%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 100
+	ProcessTermBatch 93 93.00%
+		processStiAll 90 96.77%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 97.78%
+			closeStiw 1 1.11%
+		processSsdiAll 3 3.23%
+ProcessBatchTerms 101
+	ProcessTermBatch 96 95.05%
+		processStiAll 95 98.96%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 93 97.89%
+			closeStiw 2 2.11%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 104
+	ProcessTermBatch 96 92.31%
+		processStiAll 95 98.96%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 95.79%
+			closeStiw 4 4.21%
+		processSsdiAll 1 1.04%
+ProcessBatchTerms 118
+	ProcessTermBatch 111 94.07%
+		processStiAll 110 99.10%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 98 89.09%
+			closeStiw 12 10.91%
+		processSsdiAll 1 0.90%
+ProcessBatchTerms 97
+	ProcessTermBatch 92 94.85%
+		processStiAll 90 97.83%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 97.78%
+			closeStiw 1 1.11%
+		processSsdiAll 1 1.09%
+ProcessBatchTerms 113
+	ProcessTermBatch 108 95.58%
+		processStiAll 107 99.07%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 102 95.33%
+			closeStiw 5 4.67%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 126
+	ProcessTermBatch 115 91.27%
+		processStiAll 114 99.13%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 112 98.25%
+			closeStiw 2 1.75%
+		processSsdiAll 1 0.87%
+ProcessBatchTerms 109
+	ProcessTermBatch 98 89.91%
+		processStiAll 97 98.98%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 95 97.94%
+			closeStiw 1 1.03%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 93 93.94%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 95.65%
+			closeStiw 4 4.35%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 105
+	ProcessTermBatch 99 94.29%
+		processStiAll 98 98.99%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 92.86%
+			closeStiw 7 7.14%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 103
+	ProcessTermBatch 98 95.15%
+		processStiAll 97 98.98%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 94.85%
+			closeStiw 5 5.15%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 104
+	ProcessTermBatch 97 93.27%
+		processStiAll 96 98.97%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 93 96.88%
+			closeStiw 2 2.08%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 102
+	ProcessTermBatch 94 92.16%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 97.85%
+			closeStiw 1 1.08%
+		processSsdiAll 1 1.06%
+ProcessBatchTerms 97
+	ProcessTermBatch 90 92.78%
+		processStiAll 89 98.89%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 97.75%
+			closeStiw 1 1.12%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 100
+	ProcessTermBatch 94 94.00%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 96.77%
+			closeStiw 2 2.15%
+		processSsdiAll 1 1.06%
+ProcessBatchTerms 101
+	ProcessTermBatch 94 93.07%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 97.85%
+			closeStiw 1 1.08%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 103
+	ProcessTermBatch 95 92.23%
+		processStiAll 94 98.95%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 97.87%
+			closeStiw 2 2.13%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 117
+	ProcessTermBatch 110 94.02%
+		processStiAll 109 99.09%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 107 98.17%
+			closeStiw 1 0.92%
+		processSsdiAll 1 0.91%
+ProcessBatchTerms 102
+	ProcessTermBatch 94 92.16%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 98.92%
+			closeStiw 1 1.08%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 104
+	ProcessTermBatch 95 91.35%
+		processStiAll 94 98.95%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 97.87%
+			closeStiw 2 2.13%
+		processSsdiAll 1 1.05%
+ProcessBatchTerms 101
+	ProcessTermBatch 95 94.06%
+		processStiAll 94 98.95%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 95.74%
+			closeStiw 3 3.19%
+		processSsdiAll 1 1.05%
+ProcessBatchTerms 100
+	ProcessTermBatch 94 94.00%
+		processStiAll 91 96.81%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 98.90%
+			closeStiw 1 1.10%
+		processSsdiAll 2 2.13%
+ProcessBatchTerms 102
+	ProcessTermBatch 97 95.10%
+		processStiAll 96 98.97%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 95.83%
+			closeStiw 3 3.12%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 93 93.94%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 97.83%
+			closeStiw 2 2.17%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 93 93.94%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 96.74%
+			closeStiw 2 2.17%
+		processSsdiAll 1 1.08%
+ProcessBatchTerms 101
+	ProcessTermBatch 96 95.05%
+		processStiAll 95 98.96%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 95.79%
+			closeStiw 3 3.16%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 94 94.95%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 95.70%
+			closeStiw 4 4.30%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 95 95.96%
+		processStiAll 94 98.95%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 94.68%
+			closeStiw 4 4.26%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 93 93.94%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 95.65%
+			closeStiw 3 3.26%
+		processSsdiAll 1 1.08%
+ProcessBatchTerms 98
+	ProcessTermBatch 93 94.90%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 96.74%
+			closeStiw 2 2.17%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 98
+	ProcessTermBatch 93 94.90%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 96.74%
+			closeStiw 3 3.26%
+		processSsdiAll 1 1.08%
+ProcessBatchTerms 99
+	ProcessTermBatch 94 94.95%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 95.70%
+			closeStiw 4 4.30%
+		processSsdiAll 1 1.06%
+ProcessBatchTerms 100
+	ProcessTermBatch 94 94.00%
+		processStiAll 94 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 95.74%
+			closeStiw 3 3.19%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 96
+	ProcessTermBatch 91 94.79%
+		processStiAll 91 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 95.60%
+			closeStiw 3 3.30%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 96
+	ProcessTermBatch 91 94.79%
+		processStiAll 90 98.90%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 86 95.56%
+			closeStiw 3 3.33%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 108
+	ProcessTermBatch 101 93.52%
+		processStiAll 101 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 93 92.08%
+			closeStiw 7 6.93%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 97
+	ProcessTermBatch 91 93.81%
+		processStiAll 90 98.90%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 97.78%
+			closeStiw 2 2.22%
+		processSsdiAll 1 1.10%
+ProcessBatchTerms 107
+	ProcessTermBatch 101 94.39%
+		processStiAll 100 99.01%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 92.00%
+			closeStiw 7 7.00%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 100
+	ProcessTermBatch 94 94.00%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 96.77%
+			closeStiw 2 2.15%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 124
+	ProcessTermBatch 119 95.97%
+		processStiAll 117 98.32%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 98 83.76%
+			closeStiw 18 15.38%
+		processSsdiAll 2 1.68%
+ProcessBatchTerms 100
+	ProcessTermBatch 95 95.00%
+		processStiAll 93 97.89%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 96.77%
+			closeStiw 3 3.23%
+		processSsdiAll 1 1.05%
+ProcessBatchTerms 100
+	ProcessTermBatch 92 92.00%
+		processStiAll 90 97.83%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 97.78%
+			closeStiw 1 1.11%
+		processSsdiAll 2 2.17%
+ProcessBatchTerms 104
+	ProcessTermBatch 99 95.19%
+		processStiAll 97 97.98%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 95 97.94%
+			closeStiw 1 1.03%
+		processSsdiAll 1 1.01%
+ProcessBatchTerms 101
+	ProcessTermBatch 96 95.05%
+		processStiAll 95 98.96%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 94.74%
+			closeStiw 5 5.26%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 101
+	ProcessTermBatch 94 93.07%
+		processStiAll 94 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 95.74%
+			closeStiw 3 3.19%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 124
+	ProcessTermBatch 119 95.97%
+		processStiAll 118 99.16%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 113 95.76%
+			closeStiw 4 3.39%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 107
+	ProcessTermBatch 101 94.39%
+		processStiAll 100 99.01%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 98 98.00%
+			closeStiw 1 1.00%
+		processSsdiAll 1 0.99%
+ProcessBatchTerms 0
+ProcessBatchTerms 110
+	ProcessTermBatch 98 89.09%
+		processStiAll 97 98.98%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 94 96.91%
+			closeStiw 3 3.09%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 93 93.94%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 98.91%
+			closeStiw 1 1.09%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 92 92.93%
+		processStiAll 92 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 95.65%
+			closeStiw 3 3.26%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 103
+	ProcessTermBatch 99 96.12%
+		processStiAll 98 98.99%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 97 98.98%
+			closeStiw 1 1.02%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 127
+	ProcessTermBatch 117 92.13%
+		processStiAll 116 99.15%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 112 96.55%
+			closeStiw 4 3.45%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 97
+	ProcessTermBatch 90 92.78%
+		processStiAll 90 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 98.89%
+			closeStiw 1 1.11%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 116
+	ProcessTermBatch 109 93.97%
+		processStiAll 108 99.08%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 98 90.74%
+			closeStiw 9 8.33%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 105
+	ProcessTermBatch 95 90.48%
+		processStiAll 95 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 96.84%
+			closeStiw 2 2.11%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 100
+	ProcessTermBatch 95 95.00%
+		processStiAll 94 98.95%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 96.81%
+			closeStiw 3 3.19%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 100
+	ProcessTermBatch 93 93.00%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 97.83%
+			closeStiw 2 2.17%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 98
+	ProcessTermBatch 93 94.90%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 96.74%
+			closeStiw 3 3.26%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 95
+	ProcessTermBatch 90 94.74%
+		processStiAll 89 98.89%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 97.75%
+			closeStiw 1 1.12%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 100
+	ProcessTermBatch 94 94.00%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 96.77%
+			closeStiw 3 3.23%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 132
+	ProcessTermBatch 125 94.70%
+		processStiAll 124 99.20%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 115 92.74%
+			closeStiw 9 7.26%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 108
+	ProcessTermBatch 101 93.52%
+		processStiAll 101 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 98 97.03%
+			closeStiw 2 1.98%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 101
+	ProcessTermBatch 94 93.07%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 95.70%
+			closeStiw 3 3.23%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 96
+	ProcessTermBatch 90 93.75%
+		processStiAll 89 98.89%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 98.88%
+			closeStiw 1 1.12%
+		processSsdiAll 1 1.11%
+ProcessBatchTerms 101
+	ProcessTermBatch 95 94.06%
+		processStiAll 94 98.95%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 97.87%
+			closeStiw 2 2.13%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 110
+	ProcessTermBatch 102 92.73%
+		processStiAll 101 99.02%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 98 97.03%
+			closeStiw 3 2.97%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 94 94.95%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 98.92%
+			closeStiw 1 1.08%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 92 92.93%
+		processStiAll 91 98.91%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 97.80%
+			closeStiw 1 1.10%
+		processSsdiAll 1 1.09%
+ProcessBatchTerms 96
+	ProcessTermBatch 91 94.79%
+		processStiAll 90 98.90%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 98.89%
+			closeStiw 1 1.11%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 105
+	ProcessTermBatch 99 94.29%
+		processStiAll 98 98.99%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 92.86%
+			closeStiw 6 6.12%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 130
+	ProcessTermBatch 121 93.08%
+		processStiAll 121 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 116 95.87%
+			closeStiw 4 3.31%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 98
+	ProcessTermBatch 93 94.90%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 98.91%
+			closeStiw 1 1.09%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 122
+	ProcessTermBatch 115 94.26%
+		processStiAll 114 99.13%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 111 97.37%
+			closeStiw 3 2.63%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 115
+	ProcessTermBatch 105 91.30%
+		processStiAll 105 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 101 96.19%
+			closeStiw 3 2.86%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 94 94.95%
+		processStiAll 92 97.87%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 97.83%
+			closeStiw 1 1.09%
+		processSsdiAll 1 1.06%
+ProcessBatchTerms 97
+	ProcessTermBatch 92 94.85%
+		processStiAll 91 98.91%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 97.80%
+			closeStiw 1 1.10%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 101
+	ProcessTermBatch 94 93.07%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 97.85%
+			closeStiw 2 2.15%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 102
+	ProcessTermBatch 96 94.12%
+		processStiAll 95 98.96%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 93 97.89%
+			closeStiw 2 2.11%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 100
+	ProcessTermBatch 94 94.00%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 97.85%
+			closeStiw 2 2.15%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 102
+	ProcessTermBatch 94 92.16%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 96.77%
+			closeStiw 2 2.15%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 101
+	ProcessTermBatch 96 95.05%
+		processStiAll 96 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 95.83%
+			closeStiw 3 3.12%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 96
+	ProcessTermBatch 90 93.75%
+		processStiAll 90 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 97.78%
+			closeStiw 1 1.11%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 127
+	ProcessTermBatch 119 93.70%
+		processStiAll 118 99.16%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 116 98.31%
+			closeStiw 2 1.69%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 105
+	ProcessTermBatch 98 93.33%
+		processStiAll 97 98.98%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 96 98.97%
+			closeStiw 1 1.03%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 100
+	ProcessTermBatch 93 93.00%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 96.74%
+			closeStiw 3 3.26%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 105
+	ProcessTermBatch 99 94.29%
+		processStiAll 98 98.99%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 92.86%
+			closeStiw 7 7.14%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 98
+	ProcessTermBatch 93 94.90%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 96.74%
+			closeStiw 2 2.17%
+		processSsdiAll 1 1.08%
+ProcessBatchTerms 106
+	ProcessTermBatch 101 95.28%
+		processStiAll 101 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 93 92.08%
+			closeStiw 7 6.93%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 92 92.93%
+		processStiAll 91 98.91%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 97.80%
+			closeStiw 2 2.20%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 100
+	ProcessTermBatch 94 94.00%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 98.92%
+			closeStiw 1 1.08%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 101
+	ProcessTermBatch 94 93.07%
+		processStiAll 94 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 96.81%
+			closeStiw 2 2.13%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 102
+	ProcessTermBatch 94 92.16%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 98.92%
+			closeStiw 1 1.08%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 104
+	ProcessTermBatch 97 93.27%
+		processStiAll 96 98.97%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 95 98.96%
+			closeStiw 1 1.04%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 97
+	ProcessTermBatch 90 92.78%
+		processStiAll 89 98.89%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 97.75%
+			closeStiw 1 1.12%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 98
+	ProcessTermBatch 91 92.86%
+		processStiAll 91 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 98.90%
+			closeStiw 1 1.10%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 98
+	ProcessTermBatch 91 92.86%
+		processStiAll 91 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 97.80%
+			closeStiw 1 1.10%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 100
+	ProcessTermBatch 93 93.00%
+		processStiAll 93 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 97.85%
+			closeStiw 1 1.08%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 97
+	ProcessTermBatch 90 92.78%
+		processStiAll 90 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 97.78%
+			closeStiw 1 1.11%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 92 92.93%
+		processStiAll 92 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 97.83%
+			closeStiw 1 1.09%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 97
+	ProcessTermBatch 90 92.78%
+		processStiAll 90 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 98.89%
+			closeStiw 1 1.11%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 97
+	ProcessTermBatch 91 93.81%
+		processStiAll 90 98.90%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 98.89%
+			closeStiw 1 1.11%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 93 93.94%
+		processStiAll 93 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 96.77%
+			closeStiw 3 3.23%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 94
+	ProcessTermBatch 89 94.68%
+		processStiAll 87 97.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 86 98.85%
+			closeStiw 1 1.15%
+		processSsdiAll 2 2.25%
+ProcessBatchTerms 98
+	ProcessTermBatch 93 94.90%
+		processStiAll 93 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 96.77%
+			closeStiw 2 2.15%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 100
+	ProcessTermBatch 95 95.00%
+		processStiAll 94 98.95%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 96.81%
+			closeStiw 3 3.19%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 95
+	ProcessTermBatch 90 94.74%
+		processStiAll 90 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 96.67%
+			closeStiw 2 2.22%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 97
+	ProcessTermBatch 92 94.85%
+		processStiAll 92 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 96.74%
+			closeStiw 2 2.17%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 98
+	ProcessTermBatch 93 94.90%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 95.65%
+			closeStiw 3 3.26%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 98
+	ProcessTermBatch 93 94.90%
+		processStiAll 93 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 95.70%
+			closeStiw 3 3.23%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 95
+	ProcessTermBatch 89 93.68%
+		processStiAll 88 98.88%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 98.86%
+			closeStiw 1 1.14%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 108
+	ProcessTermBatch 101 93.52%
+		processStiAll 99 98.02%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 89.90%
+			closeStiw 10 10.10%
+		processSsdiAll 1 0.99%
+ProcessBatchTerms 106
+	ProcessTermBatch 99 93.40%
+		processStiAll 99 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 95 95.96%
+			closeStiw 3 3.03%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 97
+	ProcessTermBatch 93 95.88%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 89 96.74%
+			closeStiw 2 2.17%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 95
+	ProcessTermBatch 91 95.79%
+		processStiAll 90 98.90%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 96.67%
+			closeStiw 2 2.22%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 102
+	ProcessTermBatch 97 95.10%
+		processStiAll 96 98.97%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 93.75%
+			closeStiw 6 6.25%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 104
+	ProcessTermBatch 99 95.19%
+		processStiAll 98 98.99%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 97 98.98%
+			closeStiw 1 1.02%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 98
+	ProcessTermBatch 91 92.86%
+		processStiAll 90 98.90%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 97.78%
+			closeStiw 1 1.11%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 93 93.94%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 97.83%
+			closeStiw 2 2.17%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 96
+	ProcessTermBatch 91 94.79%
+		processStiAll 90 98.90%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 96.67%
+			closeStiw 2 2.22%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 97
+	ProcessTermBatch 92 94.85%
+		processStiAll 91 98.91%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 98.90%
+			closeStiw 1 1.10%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 97
+	ProcessTermBatch 91 93.81%
+		processStiAll 90 98.90%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 97.78%
+			closeStiw 2 2.22%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 96
+	ProcessTermBatch 91 94.79%
+		processStiAll 91 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 95.60%
+			closeStiw 3 3.30%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 99
+	ProcessTermBatch 93 93.94%
+		processStiAll 93 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 96.77%
+			closeStiw 2 2.15%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 125
+	ProcessTermBatch 120 96.00%
+		processStiAll 120 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 116 96.67%
+			closeStiw 3 2.50%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 106
+	ProcessTermBatch 100 94.34%
+		processStiAll 99 99.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 97 97.98%
+			closeStiw 2 2.02%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 100
+	ProcessTermBatch 94 94.00%
+		processStiAll 94 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 96.81%
+			closeStiw 2 2.13%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 101
+	ProcessTermBatch 96 95.05%
+		processStiAll 95 98.96%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 95.79%
+			closeStiw 3 3.16%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 103
+	ProcessTermBatch 96 93.20%
+		processStiAll 96 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 95.83%
+			closeStiw 3 3.12%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 98
+	ProcessTermBatch 93 94.90%
+		processStiAll 92 98.92%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 91 98.91%
+			closeStiw 1 1.09%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 97
+	ProcessTermBatch 92 94.85%
+		processStiAll 91 98.91%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 96.70%
+			closeStiw 3 3.30%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 97
+	ProcessTermBatch 91 93.81%
+		processStiAll 90 98.90%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 96.67%
+			closeStiw 3 3.33%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 95
+	ProcessTermBatch 90 94.74%
+		processStiAll 89 98.89%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 98.88%
+			closeStiw 1 1.12%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 97
+	ProcessTermBatch 91 93.81%
+		processStiAll 90 98.90%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 97.78%
+			closeStiw 2 2.22%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 126
+	ProcessTermBatch 120 95.24%
+		processStiAll 119 99.17%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 116 97.48%
+			closeStiw 3 2.52%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 100
+	ProcessTermBatch 94 94.00%
+		processStiAll 93 98.94%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 92 98.92%
+			closeStiw 1 1.08%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 98
+	ProcessTermBatch 92 93.88%
+		processStiAll 91 98.91%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 90 98.90%
+			closeStiw 1 1.10%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 95
+	ProcessTermBatch 90 94.74%
+		processStiAll 89 98.89%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 98.88%
+			closeStiw 1 1.12%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 95
+	ProcessTermBatch 89 93.68%
+		processStiAll 88 98.88%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 98.86%
+			closeStiw 1 1.14%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 98
+	ProcessTermBatch 91 92.86%
+		processStiAll 90 98.90%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 97.78%
+			closeStiw 2 2.22%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 102
+	ProcessTermBatch 97 95.10%
+		processStiAll 96 98.97%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 94 97.92%
+			closeStiw 2 2.08%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 96
+	ProcessTermBatch 89 92.71%
+		processStiAll 89 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 88 98.88%
+			closeStiw 1 1.12%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 96
+	ProcessTermBatch 90 93.75%
+		processStiAll 90 100.00%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 96.67%
+			closeStiw 2 2.22%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 96
+	ProcessTermBatch 91 94.79%
+		processStiAll 89 97.80%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 97.75%
+			closeStiw 1 1.12%
+		processSsdiAll 1 1.10%
+ProcessBatchTerms 124
+	ProcessTermBatch 117 94.35%
+		processStiAll 116 99.15%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 114 98.28%
+			closeStiw 1 0.86%
+		processSsdiAll 1 0.85%
+ProcessBatchTerms 126
+	ProcessTermBatch 120 95.24%
+		processStiAll 119 99.17%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 101 84.87%
+			closeStiw 18 15.13%
+		processSsdiAll 0 0.00%
+ProcessBatchTerms 94
+	ProcessTermBatch 90 95.74%
+		processStiAll 88 97.78%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 87 98.86%
+			closeStiw 1 1.14%
+		processSsdiAll 1 1.11%
+ProcessBatchTerms 94
+	ProcessTermBatch 89 94.68%
+		processStiAll 87 97.75%
+			resetSources 0 0.00%
+			processStiBatches in 3 threads 86 98.85%
+			closeStiw 1 1.15%
+		processSsdiAll 1 1.12%
+ProcessBatchTerms 0

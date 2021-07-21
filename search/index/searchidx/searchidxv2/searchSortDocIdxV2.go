@@ -283,8 +283,8 @@ func CreateSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdx
 	return ssdi, nil
 }
 
-// OpenSearchSortDocIdxV1 opens a search sorted document index reader V1
-func OpenSearchSortDocIdxV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchSortDocIdxV1, error) {
+// OpenSearchSortDocIdxV2 opens a search sorted document index reader V1
+func OpenSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchSortDocIdxV1, error) {
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
 		return nil, errors.Errorf("The term key type %v is not a MAC key", termKey.Type.Name)
 	}
@@ -442,17 +442,19 @@ func (ssdi *SearchSortDocIdxV1) WriteNextBlock() (*SearchSortDocIdxBlkV2, error)
 		return nil, errors.New(err)
 	}
 
-	// Read all blocks from STI
 	for {
-		termDocIDVers, err := ssdi.source.ReadNextDocInfos()
+		var termDocIDVers map[string]map[string]uint64
+		termDocIDVers, err = ssdi.source.ReadNextDocInfos()
 		if err != nil {
 			break
 		}
 
 		for term, docIDVers := range termDocIDVers {
+			//fmt.Println("term", term, "len(docIDVers)", len(docIDVers))
 			for docID, ver := range docIDVers {
 				ssdi.block.AddTermDocVer(term, docID, ver)
 			}
+
 		}
 	}
 

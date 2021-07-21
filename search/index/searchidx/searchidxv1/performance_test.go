@@ -27,16 +27,14 @@ func TestSIDExp1(t *testing.T) {
 	// ================================ Generate Doc index ================================
 	indexKey, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
-	docIDs, docVers := testDocIndexGeneration(t, sdc, indexKey, 1)
+	docIDs, docVers := testDocIndexGeneration(t, sdc, indexKey, 10)
 
 	// ================================ Generate Search index ================================
 
-	for i := 1; i <= 300; i += 10 {
-		common.STI_TERM_BATCH_SIZE = i
-		event := utils.NewTimeEvent(fmt.Sprintf("test %d", i), output)
-		testSearchIndexOneBatchGeneration(t, sdc, owner, event, docIDs, docVers, indexKey)
-		event.Output()
-	}
+	common.STI_TERM_BATCH_SIZE = 200
+	event := utils.NewTimeEvent("processAllBatches", output)
+	testSearchIndexAllBatchesGeneration(t, sdc, owner, event, docIDs, docVers, indexKey)
+	event.Output()
 
 }
 

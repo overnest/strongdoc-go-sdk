@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-const modVal = 150
+const modVal = 1000
 const copyLen = 10
 
 func hashStringToInt(s string, modVal int) int {
@@ -333,7 +333,7 @@ func (batch *SearchTermBatchV2) processSsdiAll(sdc client.StrongDocClient,
 	stiwList []*SearchTermIdxWriterV2,
 	processedDocs map[string]map[string]map[string]uint64) (map[*SearchTermIdxWriterV2]error, error) {
 
-	ssdiToChan := make(map[*SearchTermIdxWriterV2](chan error))
+	ssdiToChan := make(map[*SearchTermIdxWriterV2]chan error)
 
 	for _, stiw := range stiwList {
 		ssdiChan := make(chan error)
@@ -355,7 +355,6 @@ func (batch *SearchTermBatchV2) processSsdiAll(sdc client.StrongDocClient,
 				blk, err = ssdi.WriteNextBlock()
 
 				_ = blk
-				// fmt.Println(stiw.Term, blk.TermDocIDVers)
 
 				if err != nil && err != io.EOF {
 					ssdiChan <- err
@@ -366,6 +365,7 @@ func (batch *SearchTermBatchV2) processSsdiAll(sdc client.StrongDocClient,
 			ssdi.Close()
 			ssdiChan <- nil
 		}(stiw, processedDocs[stiw.HashedTerm], ssdiChan)
+		break
 	}
 
 	respMap := make(map[*SearchTermIdxWriterV2]error)
@@ -480,11 +480,11 @@ func (batch *SearchTermBatchV2) processStiBatchParaWriting(
 			}
 
 			// Process Source Block in Parallel
-			hashedtermToChan := make(map[*SearchTermIdxWriterV2](chan *SearchTermIdxWriterRespV2))
+			stiwToChan := make(map[*SearchTermIdxWriterV2]chan *SearchTermIdxWriterRespV2)
 			for hashedTermWriter, blkList := range hashedTermToBlks {
 				if len(blkList) > 0 {
 					hashedTermChan := make(chan *SearchTermIdxWriterRespV2)
-					hashedtermToChan[hashedTermWriter] = hashedTermChan
+					stiwToChan[hashedTermWriter] = hashedTermChan
 
 					// process each hashedTerm in a separate goroutine
 					go func(terms []*SearchTermIdxTermInfo,
@@ -495,7 +495,11 @@ func (batch *SearchTermBatchV2) processStiBatchParaWriting(
 
 						stibs, processedDocs, err := writer.ProcessSourceBlocks(blkList)
 
-						stiwChan <- &SearchTermIdxWriterRespV2{stibs, processedDocs, err}
+						if err != nil && err != io.EOF {
+							stiwChan <- &SearchTermIdxWriterRespV2{stibs, processedDocs, err}
+						} else {
+							stiwChan <- &SearchTermIdxWriterRespV2{stibs, processedDocs, nil}
+						}
 					}(batch.HashedTermToTerms[hashedTermWriter.HashedTerm],
 						hashedTermWriter,
 						blkList,
@@ -506,7 +510,7 @@ func (batch *SearchTermBatchV2) processStiBatchParaWriting(
 
 			// Wait for each parallel writing to finish
 			respMap := make(map[*SearchTermIdxWriterV2]*SearchTermIdxWriterRespV2)
-			for hashedTerm, hashedTermChan := range hashedtermToChan {
+			for hashedTerm, hashedTermChan := range stiwToChan {
 				respMap[hashedTerm] = <-hashedTermChan
 			}
 
@@ -1006,48 +1010,52 @@ func CreateSearchTermIdxWriterV2(sdc client.StrongDocClient, owner common.Search
 func (stiw *SearchTermIdxWriterV2) updateHighDocVersion(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string,
 	termKey, indexKey *sscrypto.StrongSaltKey, updateID string) error {
 
-	//ssdi, err := OpenSearchSortDocIdxV2(sdc, owner, term, termKey, indexKey, updateID)
-	//if err == nil {
-	//	err = nil
-	//	for err == nil {
-	//		var blk *SearchSortDocIdxBlkV2 = nil
-	//		blk, err = ssdi.ReadNextBlock()
-	//		if err != nil && err != io.EOF {
-	//			return err
-	//		}
-	//		if blk != nil {
-	//			for docID, docVer := range blk.docIDVerMap {
-	//				if highVer, exist := stiw.highDocVerMap[docID]; exist && highVer < docVer {
-	//					stiw.highDocVerMap[docID] = docVer
-	//				}
-	//			}
-	//		}
-	//	}
-	//	ssdi.Close()
-	//} else
-	if stiw.oldSti != nil {
-		sti := stiw.oldSti.(*SearchTermIdxV2)
-		var err error
+	ssdi, err := OpenSearchSortDocIdxV2(sdc, owner, term, termKey, indexKey, updateID)
+	if err == nil {
+		err = nil
 		for err == nil {
-			var blk *SearchTermIdxBlkV2 = nil
-			blk, err = sti.ReadNextBlock()
+			var blk *SearchSortDocIdxBlkV2 = nil
+			blk, err = ssdi.ReadNextBlock()
 			if err != nil && err != io.EOF {
 				return err
 			}
 			if blk != nil {
-				for _, docIDVer := range blk.TermDocVerOffset {
-					for docID, docVerOff := range docIDVer {
-						if highVer, exist := stiw.highDocVerMap[docID]; exist && highVer < docVerOff.Version {
-							stiw.highDocVerMap[docID] = docVerOff.Version
+				for _, docIDVer := range blk.termToDocIDVer {
+					for docID, docVer := range docIDVer {
+						if highVer, exist := stiw.highDocVerMap[docID]; exist && highVer < docVer {
+							stiw.highDocVerMap[docID] = docVer
 						}
 					}
 
 				}
 			}
 		}
-		err = sti.Reset()
-		if err != nil {
-			return err
+		ssdi.Close()
+	} else {
+		if stiw.oldSti != nil {
+			sti := stiw.oldSti.(*SearchTermIdxV2)
+			var err error
+			for err == nil {
+				var blk *SearchTermIdxBlkV2 = nil
+				blk, err = sti.ReadNextBlock()
+				if err != nil && err != io.EOF {
+					return err
+				}
+				if blk != nil {
+					for _, docIDVer := range blk.TermDocVerOffset {
+						for docID, docVerOff := range docIDVer {
+							if highVer, exist := stiw.highDocVerMap[docID]; exist && highVer < docVerOff.Version {
+								stiw.highDocVerMap[docID] = docVerOff.Version
+							}
+						}
+
+					}
+				}
+			}
+			err = sti.Reset()
+			if err != nil {
+				return err
+			}
 		}
 	}
 

@@ -121,6 +121,8 @@ func CreateSearchIdxWriterV1(owner common.SearchIdxOwner, termKey, indexKey *ssc
 	return searchIdx, nil
 }
 
+var numOfTerms int = 0
+
 func (idx *SearchIdxV1) ProcessBatchTerms(sdc client.StrongDocClient, event *utils.TimeEvent) (map[string]error, error) {
 	emptyResult := make(map[string]error)
 
@@ -133,7 +135,8 @@ func (idx *SearchIdxV1) ProcessBatchTerms(sdc client.StrongDocClient, event *uti
 		return emptyResult, io.EOF
 	}
 
-	fmt.Println("batch: ", termBatch.termList[0], "->", termBatch.termList[len(termBatch.termList)-1])
+	numOfTerms += len(termBatch.termList)
+	fmt.Println("batch: ", termBatch.termList[0], "->", termBatch.termList[len(termBatch.termList)-1], numOfTerms)
 
 	e := utils.AddSubEvent(event, "ProcessTermBatch")
 	termErrs, err := termBatch.ProcessTermBatch(sdc, e)

@@ -62,13 +62,19 @@ func CreateSearchIdxWriterV2(owner common.SearchIdxOwner, termKey, indexKey *ssc
 	return searchIdx, nil
 }
 
+var batchNum int = 0
+var numOfTerms int = 0
+
 // process one batch
 func (idx *SearchIdxV2) ProcessBatchTerms(sdc client.StrongDocClient, event *utils.TimeEvent) (map[string]error, error) {
+
+	if event == nil {
+		event = utils.NewTimeEvent("ProcessBatchTerms", "result.txt")
+		defer event.Output()
+	}
 	emptyResult := make(map[string]error) // term -> error
 
 	termBatch, err := idx.batchMgr.GetNextTermBatch(sdc, common.STI_TERM_BATCH_SIZE_V2)
-	fmt.Println("all hashed terms", len(termBatch.hashedTermList), termBatch.hashedTermList)
-	fmt.Println("all terms", len(termBatch.termList), termBatch.termList)
 
 	if err != nil {
 		return emptyResult, err
@@ -77,7 +83,11 @@ func (idx *SearchIdxV2) ProcessBatchTerms(sdc client.StrongDocClient, event *uti
 	if termBatch.IsEmpty() {
 		return emptyResult, io.EOF
 	}
+	batchNum++
+	numOfTerms += len(termBatch.termList)
+	fmt.Println("batch", batchNum, "process", len(termBatch.termList), "terms,", numOfTerms, "in total")
 
+	//fmt.Println(termBatch.termList)
 	e := utils.AddSubEvent(event, "ProcessTermBatch")
 	termErrs, err := termBatch.ProcessTermBatch(sdc, e)
 	utils.EndEvent(e)

@@ -35,8 +35,8 @@ const (
 	STI_V2       = uint32(2)
 )
 
-var STI_TERM_BATCH_SIZE = 200   // Process terms in batches of 1000
-var STI_TERM_BATCH_SIZE_V2 = 10 // Process terms in batches of 1000
+var STI_TERM_BATCH_SIZE = 200 // Process terms in batches of 1000
+var STI_TERM_BATCH_SIZE_V2 = 10
 
 // GetSearchIdxPathPrefix gets the search index path prefix
 func GetSearchIdxPathPrefix() string {
