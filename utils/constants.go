@@ -18,5 +18,5 @@ const (
 	OwnerOrg  OwnerType = "OWNER_ORG"
 	OwnerUser OwnerType = "OWNER_USER"
 
-	TestLocal bool = true
+	TestLocal bool = false
 )
