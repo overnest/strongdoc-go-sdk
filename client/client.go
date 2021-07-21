@@ -47,7 +47,7 @@ var serviceLocations = map[ServiceLocation]locationConfig{
 	DEFAULT: {"api.strongsalt.com:9090", "./certs/ssca.cert.pem"},
 	SANDBOX: {"api.sandbox.strongsalt.com:9090", "./certs/ssca.cert.pem"},
 	QA:      {"api.strongsaltqa.com:9090", "./certs/ssca.cert.pem"},
-	LOCAL:   {"localhost:9090", "./certs/localhost.crt"},
+	LOCAL:   {"172.18.124.229:9090", "./certs/localhost.crt"},
 }
 
 type connPool struct {

@@ -11,9 +11,9 @@ implementations for InternalService
 */
 
 const (
-	LOGIN_API                 = "http://localhost:8081/v1/account/login"
-	LOGOUT_API                = "http://localhost:8081/v1/account/logout"
-	REMOVE_ORG_API            = "http://localhost:8081/v1/organization"
+	LOGIN_API                 = "http://172.18.124.229:8081/v1/account/login"
+	LOGOUT_API                = "http://172.18.124.229:8081/v1/account/logout"
+	REMOVE_ORG_API            = "http://172.18.124.229:8081/v1/organization"
 	USER_ID                   = "userid"
 	PASSWORD                  = "passwd"
 	AUTHENTICATION            = "authorization"
