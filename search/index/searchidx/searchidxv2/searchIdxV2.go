@@ -69,7 +69,7 @@ var numOfTerms int = 0
 func (idx *SearchIdxV2) ProcessBatchTerms(sdc client.StrongDocClient, event *utils.TimeEvent) (map[string]error, error) {
 
 	if event == nil {
-		event = utils.NewTimeEvent("ProcessBatchTerms", "result.txt")
+		event = utils.NewTimeEvent("ProcessBatchTerms", "result1.txt")
 		defer event.Output()
 	}
 	emptyResult := make(map[string]error) // term -> error
