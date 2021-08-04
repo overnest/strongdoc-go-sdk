@@ -20,7 +20,7 @@ import (
 //
 //  step1: tokenize data using FileTokenizer
 //	step2: generate Document Offset Index(doi) from tokenized data
-//	step3: generate Document Term Index(dti) from tokenized source data or doi(preferred)
+//	step3: generate Document HashedTerm Index(dti) from tokenized source data or doi(preferred)
 //
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

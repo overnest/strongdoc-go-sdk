@@ -1,7 +1,6 @@
 package searchidxv2
 
 import (
-	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
@@ -62,32 +61,21 @@ func CreateSearchIdxWriterV2(owner common.SearchIdxOwner, termKey, indexKey *ssc
 	return searchIdx, nil
 }
 
-var batchNum int = 0
-var numOfTerms int = 0
-
 // process one batch
 func (idx *SearchIdxV2) ProcessBatchTerms(sdc client.StrongDocClient, event *utils.TimeEvent) (map[string]error, error) {
-
-	if event == nil {
-		event = utils.NewTimeEvent("ProcessBatchTerms", "result1.txt")
-		defer event.Output()
-	}
 	emptyResult := make(map[string]error) // term -> error
 
 	termBatch, err := idx.batchMgr.GetNextTermBatch(sdc, common.STI_TERM_BATCH_SIZE_V2)
-
 	if err != nil {
 		return emptyResult, err
 	}
 
+	//fmt.Println("process one batch", termBatch.termList)
+
 	if termBatch.IsEmpty() {
 		return emptyResult, io.EOF
 	}
-	batchNum++
-	numOfTerms += len(termBatch.termList)
-	fmt.Println("batch", batchNum, "process", len(termBatch.termList), "terms,", numOfTerms, "in total")
 
-	//fmt.Println(termBatch.termList)
 	e := utils.AddSubEvent(event, "ProcessTermBatch")
 	termErrs, err := termBatch.ProcessTermBatch(sdc, e)
 	utils.EndEvent(e)
@@ -116,8 +104,8 @@ func (idx *SearchIdxV2) ProcessAllTerms(sdc client.StrongDocClient, event *utils
 
 // GetUpdateIdsV2 returns the list of available update IDs for a specific owner + term in
 // reverse chronological order. The most recent update ID will come first
-func GetUpdateIdsV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) ([]string, error) {
-	termHmac, err := common.CreateTermHmac(term, termKey)
+func GetUpdateIdsV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, hashedTerm string, termKey *sscrypto.StrongSaltKey) ([]string, error) {
+	termHmac, err := common.CreateTermHmac(hashedTerm, termKey)
 	if err != nil {
 		return nil, err
 	}
@@ -125,8 +113,8 @@ func GetUpdateIdsV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, ter
 }
 
 // GetLatestUpdateIDV2 returns the latest update IDs for a specific owner + term
-func GetLatestUpdateIDV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey *sscrypto.StrongSaltKey) (string, error) {
-	ids, err := GetUpdateIdsV2(sdc, owner, term, termKey)
+func GetLatestUpdateIDV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, hashedTerm string, termKey *sscrypto.StrongSaltKey) (string, error) {
+	ids, err := GetUpdateIdsV2(sdc, owner, hashedTerm, termKey)
 	if err != nil {
 		return "", err
 	}

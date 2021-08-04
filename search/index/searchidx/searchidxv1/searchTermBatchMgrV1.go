@@ -16,7 +16,7 @@ var copyLen int = 10
 
 //////////////////////////////////////////////////////////////////
 //
-//                   Search Term Batch Manager V1
+//                   Search HashedTerm Batch Manager V1
 //
 //////////////////////////////////////////////////////////////////
 
@@ -158,7 +158,7 @@ func (mgr *SearchTermBatchMgrV1) Close() error {
 
 //////////////////////////////////////////////////////////////////
 //
-//                    Search Term Batch V1
+//                    Search HashedTerm Batch V1
 //
 //////////////////////////////////////////////////////////////////
 
@@ -556,7 +556,7 @@ func (batch *SearchTermBatchV1) processSsdiAll(sdc client.StrongDocClient, stiwL
 				blk, err = ssdi.WriteNextBlock()
 
 				_ = blk
-				// fmt.Println(stiw.Term, blk.DocIDVers)
+				// fmt.Println(stiw.HashedTerm, blk.DocIDVers)
 
 				if err != nil && err != io.EOF {
 					ssdiChan <- err
@@ -588,7 +588,7 @@ func (batch *SearchTermBatchV1) Close() error {
 
 //////////////////////////////////////////////////////////////////
 //
-//                 Search Term Batch Writer V1
+//                 Search HashedTerm Batch Writer V1
 //
 //////////////////////////////////////////////////////////////////
 
@@ -778,7 +778,6 @@ func (stiw *SearchTermIdxWriterV1) ProcessSourceBlocks(sourceBlocks []*SearchTer
 	for sourceNotEmpty := true; sourceNotEmpty; {
 		var blks []*SearchTermIdxBlkV1 = nil
 		var processed map[string]uint64
-		// sourceNotEmpty = false, when all cloneSourceBlocks are processed, all offsets are written
 		sourceNotEmpty, processed, blks, err = stiw.processSourceBlocks(cloneSourceBlocks, srcOffsetMap, copyLen)
 		if err != nil {
 			return nil, nil, err
@@ -789,7 +788,6 @@ func (stiw *SearchTermIdxWriterV1) ProcessSourceBlocks(sourceBlocks []*SearchTer
 
 		returnBlocks = append(returnBlocks, blks...)
 
-		// process old sti block, just one block
 		blks, processed, err = stiw.processOldStiBlock(copyLen, false)
 		if err != nil && err != io.EOF {
 			return nil, nil, err

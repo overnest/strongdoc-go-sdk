@@ -23,11 +23,11 @@ var debug bool = false
 
 //////////////////////////////////////////////////////////////////
 //
-//                Document Term Index Block
+//                Document HashedTerm Index Block
 //
 //////////////////////////////////////////////////////////////////
 
-// DocTermIdxBlkV1 is the Document Term Index Block V1
+// DocTermIdxBlkV1 is the Document HashedTerm Index Block V1
 type DocTermIdxBlkV1 struct {
 	Terms             []string
 	termMap           map[string]uint32 `json:"-"`

@@ -84,7 +84,7 @@ func TestSearchIdxWriterV1(t *testing.T) {
 	//
 	// Test STI
 	//
-	stiReader, err := OpenSearchTermIndex(sdc, owner, terms, termKey, indexKey)
+	stiReader, err := OpenSearchTermIndex(sdc, owner, terms, termKey, indexKey, common.STI_V1)
 	assert.NilError(t, err)
 	defer stiReader.Close()
 
@@ -120,7 +120,7 @@ func TestSearchIdxWriterV1(t *testing.T) {
 	//
 	// Test SSDI
 	//
-	ssdiReader, err := OpenSearchSortedDocIndex(sdc, owner, terms, termKey, indexKey)
+	ssdiReader, err := OpenSearchSortedDocIndex(sdc, owner, terms, termKey, indexKey, common.STI_V1)
 	assert.NilError(t, err)
 	defer ssdiReader.Close()
 

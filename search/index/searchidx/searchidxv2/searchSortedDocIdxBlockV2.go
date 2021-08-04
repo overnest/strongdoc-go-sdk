@@ -198,7 +198,7 @@ func (blk *SearchSortDocIdxBlkV2) AddTermDocVer(term, docID string, docVer uint6
 func (blk *SearchSortDocIdxBlkV2) newSize(term, docID string, docVer uint64) uint64 {
 	// Added "TermDocIDVers":[{"<docID>",<docVer>}]
 	//   1. New baseSsdiDocIDVerJSONSize
-	//	 2. New Term
+	//	 2. New HashedTerm
 	//   3. New docID
 	//   4. New docVer
 	//   5. No comma

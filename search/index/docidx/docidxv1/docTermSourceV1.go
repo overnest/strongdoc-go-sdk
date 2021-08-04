@@ -8,7 +8,7 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
-// DocTermSourceV1 is the Document Term Source V1
+// DocTermSourceV1 is the Document HashedTerm Source V1
 type DocTermSourceV1 interface {
 	// Returns io.EOF error if there are no more terms
 	GetNextTerm() (string, uint64, error)
@@ -22,7 +22,7 @@ type docTermSourceTextFileV1 struct {
 	tokenizer utils.BleveTokenizer
 }
 
-// OpenDocTermSourceTextFileV1 opens the text file Document Term Source V1
+// OpenDocTermSourceTextFileV1 opens the text file Document HashedTerm Source V1
 func OpenDocTermSourceTextFileV1(source utils.Source) (*docTermSourceTextFileV1, error) {
 	tokenizer, err := utils.OpenBleveTokenizer(source)
 	if err != nil {

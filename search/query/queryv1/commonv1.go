@@ -17,7 +17,7 @@ func AnalyzeTerms(terms []string) ([]string, map[string]string, error) {
 	for i, term := range terms {
 		tokens := analyzer.Analyze([]byte(term))
 		if len(tokens) != 1 {
-			return analyzedTerms, analyzedTermsMap, errors.Errorf("Term analysis error %v:%v", term, tokens)
+			return analyzedTerms, analyzedTermsMap, errors.Errorf("HashedTerm analysis error %v:%v", term, tokens)
 		}
 		token := tokens[0].String()
 		analyzedTerms[i] = token

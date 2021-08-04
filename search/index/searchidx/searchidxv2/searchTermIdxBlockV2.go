@@ -91,7 +91,7 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 	newSize := blk.predictedJSONSize
 	if docVerOffset == nil {
 		// Need to add new term
-		//{"<Term>":
+		//{"<HashedTerm>":
 		//	{"<docID>":
 		//		{"Version":<docVer>,"Offsets":[<o1>,<o2>,...], }
 		//	}
@@ -137,7 +137,7 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 			}
 		} else if verOffset.Version < docVer {
 			// Update doc version
-			//{"<Term>":
+			//{"<HashedTerm>":
 			//	{"<docID>":
 			//		{"Version":<docVer>,"Offsets":[<o1>,<o2>,...], }} --> update version & offsets
 			//}
@@ -157,7 +157,7 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 		}
 
 	}
-	// append offsets to existing Term & DocID
+	// append offsets to existing HashedTerm & DocID
 	versionOffsets := blk.TermDocVerOffset[term][docID]
 	for _, offset := range offsets {
 		newSize += uint64(len(fmt.Sprintf("%v", offset)) + 1) // +1 is for comma

@@ -80,6 +80,7 @@ func OpenSearchTermIndexReader(sdc client.StrongDocClient, owner SearchIdxOwner,
 func OpenSearchSortDocIndexReader(sdc client.StrongDocClient, owner SearchIdxOwner, termID string, updateID string) (io.ReadCloser, uint64, error) {
 	if utils.TestLocal {
 		path := getSearchSortDocIdxPath(owner, termID, updateID)
+		//fmt.Println("ssdi reader path", path)
 		reader, err := os.Open(path)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -111,6 +112,8 @@ func OpenSearchSortDocIndexReader(sdc client.StrongDocClient, owner SearchIdxOwn
 func OpenSearchSortDocIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwner, termHmac string, updateID string) (io.WriteCloser, error) {
 	if utils.TestLocal {
 		path := getSearchSortDocIdxPath(owner, termHmac, updateID)
+		//fmt.Println("ssdi writer path", path)
+
 		return utils.MakeDirAndCreateFile(path)
 	}
 	return api.NewSearchSortedDocIdxWriter(sdc, owner.GetOwnerType(), termHmac, updateID)

@@ -30,7 +30,7 @@ type ssdiSource interface {
 }
 
 //
-// Sorted Doc Index Source from Search Term Index
+// Sorted Doc Index Source from Search HashedTerm Index
 //
 type ssdiSourceSTI struct {
 	sti *SearchTermIdxV1

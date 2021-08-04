@@ -78,7 +78,7 @@ func TestSearchSortDocIdxSimpleV1(t *testing.T) {
 	maxOffsetCount := 30
 	defer common.RemoveSearchIndex(sdc, owner)
 
-	// ================================ Generate Search Term Index ================================
+	// ================================ Generate Search HashedTerm Index ================================
 	termKey, err := sscrypto.GenerateKey(sscrypto.Type_HMACSha512)
 	assert.NilError(t, err)
 	indexKey, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)

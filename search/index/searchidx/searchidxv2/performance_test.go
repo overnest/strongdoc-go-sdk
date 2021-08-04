@@ -32,6 +32,7 @@ func TestSIDExp1(t *testing.T) {
 	common.STI_TERM_BATCH_SIZE_V2 = 10
 	//event := utils.NewTimeEvent(fmt.Sprintf("test_batchSize_%d", common.STI_TERM_BATCH_SIZE_V2), output)
 	testSearchIndexAllBatchesGeneration(t, sdc, owner, nil, docIDs, docVers, indexKey)
+	//testSearchIndexOneBatchGeneration(t, sdc, owner, nil, docIDs, docVers, indexKey)
 	//event.Output()
 
 }

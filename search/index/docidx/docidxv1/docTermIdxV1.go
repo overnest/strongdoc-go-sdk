@@ -14,7 +14,7 @@ import (
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
 )
 
-// The format off Document Term Index
+// The format off Document HashedTerm Index
 //
 // --------------------------------------------------------------------------
 // |   Unencrypted    |                   Encrypted                         |
@@ -24,11 +24,11 @@ import (
 
 //////////////////////////////////////////////////////////////////
 //
-//                   Document Term Index
+//                   Document HashedTerm Index
 //
 //////////////////////////////////////////////////////////////////
 
-// DocTermIdxV1 is the Document Term Index V1
+// DocTermIdxV1 is the Document HashedTerm Index V1
 type DocTermIdxV1 struct {
 	common.DtiVersionS
 	DocID         string

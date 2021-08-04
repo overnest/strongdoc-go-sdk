@@ -16,7 +16,7 @@ import (
 // SearchTermIdxV2 is a structure for search term index V2
 type SearchTermIdxV2 struct {
 	common.StiVersionS
-	Term       string
+	HashedTerm string
 	Owner      common.SearchIdxOwner
 	OldSti     common.SearchTermIdx
 	DelDocs    *DeletedDocsV2
@@ -41,7 +41,7 @@ func CreateSearchTermIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwn
 	var err error
 	sti := &SearchTermIdxV2{
 		StiVersionS: common.StiVersionS{StiVer: common.STI_V2},
-		Term:        term,
+		HashedTerm:  term,
 		Owner:       owner,
 		OldSti:      oldSti,
 		DelDocs:     delDocs,
@@ -154,7 +154,7 @@ func CreateSearchTermIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwn
 }
 
 // OpenSearchTermIdxV2 opens a search term index reader V2
-func OpenSearchTermIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV2, error) {
+func OpenSearchTermIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, hashedTerm string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV2, error) {
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
 		return nil, errors.Errorf("The term key type %v is not a MAC key", termKey.Type.Name)
 	}
@@ -164,7 +164,7 @@ func OpenSearchTermIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner
 			indexKey.Type.Name, sscrypto.Type_XChaCha20.Name)
 	}
 
-	termID, err := common.CreateTermHmac(term, termKey)
+	termID, err := common.CreateTermHmac(hashedTerm, termKey)
 	if err != nil {
 		return nil, err
 	}
@@ -179,11 +179,11 @@ func OpenSearchTermIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner
 		return nil, err
 	}
 
-	return OpenSearchTermIdxPrivV2(owner, term, termID, updateID, termKey, indexKey,
+	return OpenSearchTermIdxPrivV2(owner, hashedTerm, termID, updateID, termKey, indexKey,
 		reader, plainHdr, 0, uint64(plainHdrSize), size)
 }
 
-func OpenSearchTermIdxPrivV2(owner common.SearchIdxOwner, term, termID, updateID string,
+func OpenSearchTermIdxPrivV2(owner common.SearchIdxOwner, hashedTerm, termID, updateID string,
 	termKey, indexKey *sscrypto.StrongSaltKey, reader io.ReadCloser, plainHdr ssheaders.Header,
 	initOffset, plainHdrSize, endOffset uint64) (*SearchTermIdxV2, error) {
 
@@ -211,7 +211,7 @@ func OpenSearchTermIdxPrivV2(owner common.SearchIdxOwner, term, termID, updateID
 
 	sti := &SearchTermIdxV2{
 		StiVersionS: common.StiVersionS{StiVer: plainHdrBody.GetStiVersion()},
-		Term:        term,
+		HashedTerm:  hashedTerm,
 		Owner:       owner,
 		OldSti:      nil,
 		DelDocs:     nil,
@@ -270,7 +270,7 @@ func OpenSearchTermIdxPrivV2(owner common.SearchIdxOwner, term, termID, updateID
 }
 
 func (sti *SearchTermIdxV2) createTermHmac() (string, error) {
-	return common.CreateTermHmac(sti.Term, sti.TermKey)
+	return common.CreateTermHmac(sti.HashedTerm, sti.TermKey)
 }
 
 func (sti *SearchTermIdxV2) createWriter(sdc client.StrongDocClient) error {

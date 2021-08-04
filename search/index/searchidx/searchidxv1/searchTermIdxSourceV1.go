@@ -18,7 +18,7 @@ type SearchTermIdxSourceBlockV1 struct {
 	TermOffset  map[string][]uint64
 }
 
-// SearchTermIdxSourceV1 is the Search Term Index Source V1
+// SearchTermIdxSourceV1 is the Search HashedTerm Index Source V1
 type SearchTermIdxSourceV1 interface {
 	GetDocID() string
 	GetDocVer() uint64

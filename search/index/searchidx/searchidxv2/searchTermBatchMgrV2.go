@@ -1,30 +1,17 @@
 package searchidxv2
 
 import (
-	"fmt"
 	"github.com/emirpasic/gods/trees/binaryheap"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
-	"hash/fnv"
 	"io"
 	"sort"
 	"strings"
 )
 
-const modVal = 1000
-const copyLen = 10
-
-func hashStringToInt(s string, modVal int) int {
-	h := fnv.New32a()
-	h.Write([]byte(s))
-	number := h.Sum32()
-	return int(number) % modVal
-}
-func hashTerm(term string) string {
-	return fmt.Sprintf("%v", hashStringToInt(term, modVal))
-}
+const copyLen = 10 //TODO
 
 func removeString(stringList []string, i int) []string {
 	if stringList != nil && i >= 0 && i < len(stringList) {
@@ -119,7 +106,7 @@ func CreateSearchTermBatchMgrV2(owner common.SearchIdxOwner, sources []SearchTer
 
 	batchElementMap := make(map[string]*SearchTermBatchElement) // hashedTerm -> batchElement
 	for term, termSources := range termSourcesMap {
-		hashedTerm := hashTerm(term)
+		hashedTerm := common.HashTerm(term)
 		batchElement := batchElementMap[hashedTerm]
 		if batchElement == nil {
 			batchElement = &SearchTermBatchElement{
@@ -340,7 +327,9 @@ func (batch *SearchTermBatchV2) processSsdiAll(sdc client.StrongDocClient,
 		ssdiToChan[stiw] = ssdiChan
 
 		// process each hashedTerm in a separate thread
-		go func(stiw *SearchTermIdxWriterV2, docs map[string]map[string]uint64, ssdiChan chan<- error) {
+		go func(stiw *SearchTermIdxWriterV2,
+			docs map[string]map[string]uint64, // [term] -> [[docID] -> ver]
+			ssdiChan chan<- error) {
 			defer close(ssdiChan)
 			ssdi, err := CreateSearchSortDocIdxV2(sdc, batch.Owner, stiw.HashedTerm,
 				stiw.GetUpdateID(), stiw.TermKey, stiw.IndexKey, docs)
@@ -365,7 +354,7 @@ func (batch *SearchTermBatchV2) processSsdiAll(sdc client.StrongDocClient,
 			ssdi.Close()
 			ssdiChan <- nil
 		}(stiw, processedDocs[stiw.HashedTerm], ssdiChan)
-		break
+
 	}
 
 	respMap := make(map[*SearchTermIdxWriterV2]error)
@@ -486,7 +475,7 @@ func (batch *SearchTermBatchV2) processStiBatchParaWriting(
 					hashedTermChan := make(chan *SearchTermIdxWriterRespV2)
 					stiwToChan[hashedTermWriter] = hashedTermChan
 
-					// process each hashedTerm in a separate goroutine
+					// process each hashedTerm(writer) in a separate goroutine
 					go func(terms []*SearchTermIdxTermInfo,
 						writer *SearchTermIdxWriterV2,
 						blkList []*SearchTermIdxSourceBlockV2,
@@ -523,7 +512,8 @@ func (batch *SearchTermBatchV2) processStiBatchParaWriting(
 	}
 }
 
-// process one hashedTerm
+// TODO: optimize by parallelism
+// process one hashedTerm writer
 func (stiw *SearchTermIdxWriterV2) ProcessSourceBlocks(sourceBlocks []*SearchTermIdxSourceBlockV2) (
 	[]*SearchTermIdxBlkV2, // returned block
 	map[string]map[string]uint64, // term -> (docID -> docVer)
@@ -592,7 +582,6 @@ func (stiw *SearchTermIdxWriterV2) ProcessSourceBlocks(sourceBlocks []*SearchTer
 
 		returnBlocks = append(returnBlocks, blks...)
 
-		//TODO: process one old sti block after parallel processing terms
 		blks, processed, err = stiw.processOldStiBlock(copyLen, false)
 		if err != nil && err != io.EOF {
 			return nil, nil, err
@@ -606,7 +595,6 @@ func (stiw *SearchTermIdxWriterV2) ProcessSourceBlocks(sourceBlocks []*SearchTer
 	return returnBlocks, processedDocs, err
 }
 
-// process one old sti block
 func (stiw *SearchTermIdxWriterV2) processOldStiBlock(copyLen int, writeFull bool) (
 	[]*SearchTermIdxBlkV2, map[string]map[string]uint64, error) {
 	var err error = nil
@@ -620,14 +608,17 @@ func (stiw *SearchTermIdxWriterV2) processOldStiBlock(copyLen int, writeFull boo
 	// Process the old STI block
 	for i := 0; i < len(stiw.oldStiBlkDocIDs); i++ {
 		docID := stiw.oldStiBlkDocIDs[i]
+
+		oldDocUnfinished := false
+		newBlockISFull := false
+
 		for term, docVerOffset := range stiw.oldStiBlk.TermDocVerOffset {
 			verOffset := docVerOffset[docID]
-			if verOffset == nil {
-				stiw.oldStiBlkDocIDs = removeString(stiw.oldStiBlkDocIDs, i)
-				i--
+			if verOffset == nil || len(verOffset.Offsets) == 0 {
 				continue
 			}
 
+			// Write result to newSTI
 			count := utils.Min(len(verOffset.Offsets), copyLen)
 			offsets := verOffset.Offsets[:count]
 			err = stiw.newStiBlk.AddDocOffsets(term, docID, verOffset.Version, offsets)
@@ -647,24 +638,34 @@ func (stiw *SearchTermIdxWriterV2) processOldStiBlock(copyLen int, writeFull boo
 					}
 				} else {
 					// The new block is full. Don't bother processing anymore old STI block
+					newBlockISFull = true
 					break
 				}
 			}
+
+			// update processedDocs
 			if _, ok := processedDocs[term]; !ok {
 				processedDocs[term] = make(map[string]uint64)
 			}
 			processedDocs[term][docID] = verOffset.Version
 
-			// Remove the successfully processed offsets from the old STI block
+			// Remove the successfully processed offsets from the old STI block (in-place change)
 			verOffset.Offsets = verOffset.Offsets[count:]
-			if len(verOffset.Offsets) == 0 {
-				stiw.oldStiBlkDocIDs = removeString(stiw.oldStiBlkDocIDs, i)
-				i--
+			if len(verOffset.Offsets) > 0 {
+				oldDocUnfinished = true
 			}
+		}
+
+		if newBlockISFull {
+			break
+		}
+		if !oldDocUnfinished { // oldBlock[anyTerm][docID] has been processed
+			stiw.oldStiBlkDocIDs = removeString(stiw.oldStiBlkDocIDs, i)
+			i--
 		}
 	}
 
-	if len(stiw.oldStiBlkDocIDs) == 0 {
+	if len(stiw.oldStiBlkDocIDs) == 0 { // all docIDs are processed, get next old block
 		err = stiw.getOldSearchTermIndexBlock()
 		if err != nil && err != io.EOF {
 			return returnBlocks, processedDocs, err
@@ -722,9 +723,9 @@ func (stiw *SearchTermIdxWriterV2) processSourceBlocks(
 }
 
 // read one block from old search term index
-// remove documents that are outdated or in source block delete list or in global delete list
-// set stiw.OldStiBlock
-// set stiw.oldStiBlkDocIDs (valid docIDs)
+// remove documents that are outdated or in source_block_delete_list or in global_delete_list
+// set stiw.OldStiBlock to the original block read from STI
+// set stiw.oldStiBlkDocIDs to valid docIDs
 func (stiw *SearchTermIdxWriterV2) getOldSearchTermIndexBlock() error {
 	var err error = nil
 
@@ -1007,10 +1008,10 @@ func CreateSearchTermIdxWriterV2(sdc client.StrongDocClient, owner common.Search
 // check document highest versions
 // read from sortedDocIndex if exists
 // else read from old search term index if exists
-func (stiw *SearchTermIdxWriterV2) updateHighDocVersion(sdc client.StrongDocClient, owner common.SearchIdxOwner, term string,
+func (stiw *SearchTermIdxWriterV2) updateHighDocVersion(sdc client.StrongDocClient, owner common.SearchIdxOwner, hashedTerm string,
 	termKey, indexKey *sscrypto.StrongSaltKey, updateID string) error {
 
-	ssdi, err := OpenSearchSortDocIdxV2(sdc, owner, term, termKey, indexKey, updateID)
+	ssdi, err := OpenSearchSortDocIdxV2(sdc, owner, hashedTerm, termKey, indexKey, updateID)
 	if err == nil {
 		err = nil
 		for err == nil {

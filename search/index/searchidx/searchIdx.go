@@ -1,6 +1,7 @@
 package searchidx
 
 import (
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/searchidxv2"
 	"io"
 	"os"
 
@@ -21,30 +22,37 @@ const (
 
 //////////////////////////////////////////////////////////////////
 //
-//                          Term ID
+//                          HashedTerm ID
 //
 //////////////////////////////////////////////////////////////////
-
-func GetTermID(term string, termKey *sscrypto.StrongSaltKey) (string, error) {
-	return common.CreateTermHmac(term, termKey)
-}
-
-func GetTermIDs(terms []string, termKey *sscrypto.StrongSaltKey) (map[string][]string, error) {
+// return termID -> [original terms list]
+func GetTermIDs(terms []string, termKey *sscrypto.StrongSaltKey, stiVersion uint32) (map[string][]string, error) {
 	termIDMap := make(map[string][]string) // termID -> list of terms
-
-	for _, term := range terms {
-		termID, err := GetTermID(term, termKey)
-		if err != nil {
-			return nil, err
+	switch stiVersion {
+	case common.STI_V1:
+		for _, term := range terms {
+			termID, err := common.CreateTermHmac(term, termKey)
+			if err != nil {
+				return nil, err
+			}
+			termIDMap[termID] = append(termIDMap[termID], term)
 		}
-		termIDMap[termID] = append(termIDMap[termID], term)
+	case common.STI_V2:
+		for _, term := range terms {
+			hashedTerm := common.HashTerm(term)
+			termID, err := common.CreateTermHmac(hashedTerm, termKey)
+			if err != nil {
+				return nil, err
+			}
+			termIDMap[termID] = append(termIDMap[termID], term)
+		}
 	}
 	return termIDMap, nil
 }
 
 //////////////////////////////////////////////////////////////////
 //
-//                     Search Term Index
+//                     Search HashedTerm Index
 //
 //////////////////////////////////////////////////////////////////
 
@@ -93,6 +101,7 @@ type stiReader struct {
 	terms   []string
 	termMap map[string]bool
 	stiV1   *searchidxv1.SearchTermIdxV1
+	stiV2   *searchidxv2.SearchTermIdxV2 //TODO
 }
 
 type stiBulkReader struct {
@@ -103,7 +112,7 @@ type stiBulkReader struct {
 }
 
 func OpenSearchTermIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner, terms []string,
-	termKey, indexKey *sscrypto.StrongSaltKey) (StiReader, error) {
+	termKey, indexKey *sscrypto.StrongSaltKey, stiVersion uint32) (StiReader, error) {
 
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
 		return nil, errors.Errorf("The term key type %v is not a MAC key", termKey.Type.Name)
@@ -113,9 +122,8 @@ func OpenSearchTermIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner
 		return nil, errors.Errorf("Index key type %v is not supported. The only supported key type is %v",
 			indexKey.Type.Name, sscrypto.Type_XChaCha20.Name)
 	}
-
 	// termID -> list of terms
-	termIDMap, err := GetTermIDs(terms, termKey)
+	termIDMap, err := GetTermIDs(terms, termKey, stiVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +136,7 @@ func OpenSearchTermIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner
 	}
 
 	for termID, terms := range termIDMap {
+		//fmt.Println("termID", termID, "terms", terms)
 		updateID, err := common.GetLatestUpdateID(sdc, owner, termID)
 		if err != nil && err != os.ErrNotExist {
 			return nil, err
@@ -153,7 +162,7 @@ func OpenSearchTermIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner
 		stiRdr := &stiReader{
 			reader:  reader,
 			size:    size,
-			version: 1,
+			version: stiVersion,
 			termID:  termID,
 			terms:   terms,
 			termMap: make(map[string]bool),
@@ -178,6 +187,7 @@ func OpenSearchTermIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner
 			return nil, err
 		}
 
+		//fmt.Println("version.GetStiVersion()=", version.GetStiVersion())
 		switch version.GetStiVersion() {
 		case common.STI_V1:
 			stiRdr.version = common.STI_V1
@@ -196,11 +206,29 @@ func OpenSearchTermIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner
 			}
 
 			stiRdr.stiV1 = stiv1
+
+		case common.STI_V2:
+			stiRdr.version = common.STI_V2
+
+			plainHdrBody := &searchidxv1.StiPlainHdrBodyV1{}
+			plainHdrBody, err := plainHdrBody.Deserialize(plainHdrBodyData)
+			if err != nil {
+				return nil, errors.New(err)
+			}
+
+			hashedTerm := common.HashTerm(terms[0])
+			stiv2, err := searchidxv2.OpenSearchTermIdxPrivV2(owner, hashedTerm, termID, updateID, termKey,
+				indexKey, reader, plainHdr, 0, uint64(plainHdrSize), size)
+			if err != nil {
+				return nil, err
+			}
+
+			stiRdr.stiV2 = stiv2
+
 		default:
 			return nil, errors.Errorf("Search term index version %v is not supported",
 				version.GetStiVersion())
 		}
-
 		bReader.stiReaders = append(bReader.stiReaders, stiRdr)
 		bReader.termIdInfoMap[termID] = stiRdr
 	} // for termID, terms := range termIDMap
@@ -288,6 +316,62 @@ func (reader *stiBulkReader) ReadNextData() (StiData, error) {
 					}
 					docOffset.offsets = append(docOffset.offsets, verOffset.Offsets...)
 				}
+
+			case common.STI_V2:
+				blk, err := reader.stiV2.ReadNextBlock()
+				if err != nil {
+					result.err = err
+					if err != io.EOF {
+						channel <- result
+						return
+					}
+				}
+
+				result.data = &stiData{
+					termDoc: make(map[string]StiDocOffsets), // term -> stiTermDoc
+					termEof: make(map[string]bool),          // term -> eof(bool)
+				}
+
+				existTerm := false
+				for _, term := range reader.terms {
+					result.data.termEof[term] = (err == io.EOF)
+					if blk != nil {
+						if _, ok := blk.TermDocVerOffset[term]; ok {
+							existTerm = true
+						}
+					}
+				}
+
+				if blk == nil && !existTerm {
+					channel <- result
+					return
+				}
+
+				termToStiTermDoc := make(map[string]*stiTermDoc)
+				for term, docIDVerOffset := range blk.TermDocVerOffset {
+					if _, ok := termToStiTermDoc[term]; !ok {
+						termToStiTermDoc[term] = &stiTermDoc{
+							docIDs:     make([]string, 0),
+							docOffsets: make(map[string]*stiDocOffsets),
+						}
+						result.data.termDoc[term] = termToStiTermDoc[term]
+					}
+					termDoc := termToStiTermDoc[term]
+					for docID, verOffset := range docIDVerOffset {
+						termDoc.docIDs = append(termDoc.docIDs, docID)
+						docOffset := termDoc.docOffsets[docID]
+						if docOffset == nil {
+							docOffset = &stiDocOffsets{
+								docID:   docID,
+								docVer:  verOffset.Version,
+								offsets: make([]uint64, 0, len(verOffset.Offsets)),
+							}
+							termDoc.docOffsets[docID] = docOffset
+						}
+						docOffset.offsets = append(docOffset.offsets, verOffset.Offsets...)
+					}
+				}
+
 			default:
 				result.err = errors.Errorf("Search term index version %v is not supported",
 					reader.version)
@@ -458,6 +542,7 @@ type ssdiReader struct {
 	terms   []string
 	termMap map[string]bool
 	ssdiV1  *searchidxv1.SearchSortDocIdxV1
+	ssdiV2  *searchidxv2.SearchSortDocIdxV2
 }
 
 type ssdiBulkReader struct {
@@ -468,7 +553,7 @@ type ssdiBulkReader struct {
 }
 
 func OpenSearchSortedDocIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner, terms []string,
-	termKey, indexKey *sscrypto.StrongSaltKey) (SsdiReader, error) {
+	termKey, indexKey *sscrypto.StrongSaltKey, ssdiVersion uint32) (SsdiReader, error) {
 
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
 		return nil, errors.Errorf("The term key type %v is not a MAC key", termKey.Type.Name)
@@ -480,7 +565,7 @@ func OpenSearchSortedDocIndex(sdc client.StrongDocClient, owner common.SearchIdx
 	}
 
 	// termID -> list of terms
-	termIDMap, err := GetTermIDs(terms, termKey)
+	termIDMap, err := GetTermIDs(terms, termKey, ssdiVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -518,7 +603,7 @@ func OpenSearchSortedDocIndex(sdc client.StrongDocClient, owner common.SearchIdx
 		ssdiRdr := &ssdiReader{
 			reader:  reader,
 			size:    size,
-			version: 1,
+			version: ssdiVersion,
 			termID:  termID,
 			terms:   terms,
 			termMap: make(map[string]bool),
@@ -561,6 +646,23 @@ func OpenSearchSortedDocIndex(sdc client.StrongDocClient, owner common.SearchIdx
 			}
 
 			ssdiRdr.ssdiV1 = ssdiv1
+		case common.SSDI_V2:
+			ssdiRdr.version = common.SSDI_V2
+
+			// Parse plaintext header body
+			plainHdrBody := &searchidxv1.StiPlainHdrBodyV1{}
+			plainHdrBody, err := plainHdrBody.Deserialize(plainHdrBodyData)
+			if err != nil {
+				return nil, errors.New(err)
+			}
+
+			ssdiv2, err := searchidxv2.OpenSearchSortDocIdxPrivV2(owner, common.HashTerm(terms[0]), termID, updateID,
+				termKey, indexKey, reader, plainHdr, 0, uint64(plainHdrSize), size)
+			if err != nil {
+				return nil, err
+			}
+
+			ssdiRdr.ssdiV2 = ssdiv2
 		default:
 			return nil, errors.Errorf("Search sorted document index version %v is not supported",
 				version.GetSsdiVersion())
@@ -640,6 +742,55 @@ func (reader *ssdiBulkReader) ReadNextData() (SsdiData, error) {
 				}
 				data.termDoc[term] = docs
 				data.termDocID[term] = docIDMap
+			case common.SSDI_V2:
+				blk, err := reader.ssdiV2.ReadNextBlock()
+				if err != nil {
+					result.err = err
+					if err != io.EOF {
+						channel <- result
+						return
+					}
+				}
+
+				if blk == nil {
+					channel <- result
+					return
+				}
+
+				data := &ssdiData{
+					termDoc:   make(map[string][]SsdiDoc),          // term -> []SddiDoc
+					termDocID: make(map[string]map[string]SsdiDoc), // term -> (docID -> ssdiDoc)
+				}
+				result.data = data
+
+				readerTerms := make(map[string]bool)
+				for _, term := range reader.terms {
+					readerTerms[term] = true
+				}
+
+				for _, termDocIDVer := range blk.TermDocIDVers {
+					term := termDocIDVer.Term
+					docID := termDocIDVer.DocID
+					docVer := termDocIDVer.DocVer
+					if _, exists := readerTerms[term]; !exists {
+						continue
+					}
+
+					ssdiDoc := &ssdiDoc{docID: docID, docVer: docVer}
+
+					// update data.termDoc
+					if _, exists := data.termDoc[term]; !exists {
+						data.termDoc[term] = []SsdiDoc{}
+					}
+					data.termDoc[term] = append(data.termDoc[term], ssdiDoc)
+
+					// update data.termDocID
+					if _, exists := data.termDocID[term]; !exists {
+						data.termDocID[term] = make(map[string]SsdiDoc)
+					}
+					data.termDocID[term][docID] = ssdiDoc
+				}
+
 			default:
 				result.err = errors.Errorf("Search sorted document version %v is not supported",
 					reader.version)

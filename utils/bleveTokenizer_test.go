@@ -245,6 +245,6 @@ func TestBlevePaulTokenizer(t *testing.T) {
 	}
 
 	sort.Strings(terms)
-	fmt.Println("Term count:", len(terms))
+	fmt.Println("HashedTerm count:", len(terms))
 	// fmt.Println(terms)
 }
