@@ -168,7 +168,7 @@ func (qrv *queryResultV1) Clone() QueryResultV1 {
 }
 
 func QueryTermsAndV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, terms []string,
-	termKey, indexKey *sscrypto.StrongSaltKey) (QueryResultV1, error) {
+	termKey, indexKey *sscrypto.StrongSaltKey, searchIndexVer uint32) (QueryResultV1, error) {
 
 	queryResult := &queryResultV1{
 		docVers: []QueryDocVerV1{},
@@ -178,7 +178,7 @@ func QueryTermsAndV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, te
 		return queryResult, nil
 	}
 
-	reader, err := OpenTermSearchV1(sdc, owner, terms, termKey, indexKey)
+	reader, err := OpenTermSearchV1(sdc, owner, terms, termKey, indexKey, searchIndexVer)
 	if err != nil {
 		return queryResult, err
 	}
@@ -240,7 +240,7 @@ func queryTermsAndV1(terms []string, prevDocID string, termResult *TermSearchRes
 }
 
 func QueryTermsOrV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, terms []string,
-	termKey, indexKey *sscrypto.StrongSaltKey) (QueryResultV1, error) {
+	termKey, indexKey *sscrypto.StrongSaltKey, searchIndexVer uint32) (QueryResultV1, error) {
 
 	queryResult := &queryResultV1{
 		docVers: []QueryDocVerV1{},
@@ -250,7 +250,7 @@ func QueryTermsOrV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, ter
 		return queryResult, nil
 	}
 
-	reader, err := OpenTermSearchV1(sdc, owner, terms, termKey, indexKey)
+	reader, err := OpenTermSearchV1(sdc, owner, terms, termKey, indexKey, searchIndexVer)
 	if err != nil {
 		return nil, err
 	}

@@ -1,33 +1,30 @@
-package searchidxv1
+package searchidxv2
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
-	"path"
-	"sort"
-	"testing"
-
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/client"
-	docidx "github.com/overnest/strongdoc-go-sdk/search/index/docidx"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
-	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
-
 	"gotest.tools/assert"
+	"io"
+	"os"
+	"sort"
+	"testing"
 )
 
-func TestCreateDocIndexAndSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
+// create doc index and search indexV2
+func TestCreateDocIndexAndSearchIdxV2(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner,
 	docKey, termKey, indexKey *sscrypto.StrongSaltKey,
 	oldDocs []*docidx.TestDocumentIdxV1,
 	newDocs []*docidx.TestDocumentIdxV1) {
 
-	sources := make([]SearchTermIdxSourceV1, 0, len(newDocs))
+	sources := make([]SearchTermIdxSourceV2, 0, len(newDocs))
 	for i, newDoc := range newDocs {
+		// create doi & dti
 		assert.NilError(t, newDoc.CreateDoiAndDti(sdc, docKey))
 		newDoi, err := newDoc.OpenDoi(sdc, docKey)
 		assert.NilError(t, err)
@@ -36,6 +33,7 @@ func TestCreateDocIndexAndSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
 		assert.NilError(t, err)
 		defer newDti.Close()
 
+		// create SearchTermIdxSourceV2
 		if oldDocs == nil {
 			source, err := SearchTermIdxSourceCreateDoc(newDoi, newDti)
 			assert.NilError(t, err)
@@ -52,9 +50,11 @@ func TestCreateDocIndexAndSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
 		}
 	}
 
-	siw, err := CreateSearchIdxWriterV1(owner, termKey, indexKey, sources)
+	// create search index writer
+	siw, err := CreateSearchIdxWriterV2(owner, termKey, indexKey, sources)
 	assert.NilError(t, err)
 
+	// process all terms
 	termErr, err := siw.ProcessAllTerms(sdc, nil)
 	if err != nil {
 		fmt.Println(err.(*errors.Error).ErrorStack())
@@ -69,14 +69,16 @@ func TestCreateDocIndexAndSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
 	}
 }
 
-func TestValidateSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
+// validate created search index
+func TestValidateSearchIdxV2(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, docKey, termKey, indexKey *sscrypto.StrongSaltKey,
 	newDocs []*docidx.TestDocumentIdxV1) {
 
-	docTermsMap := make(map[string]bool)
+	docTermsMap := make(map[string]bool)                                     // term -> true
 	docTermLocMap := make(map[*docidx.TestDocumentIdxV1]map[string][]uint64) // term -> []locations
 	delTermsMap := make(map[string][]*docidx.TestDocumentIdxV1)              // term -> []testDocs
 
+	// open document term index
 	for _, doc := range newDocs {
 		doi, err := doc.OpenDoi(sdc, docKey)
 		assert.NilError(t, err)
@@ -111,28 +113,31 @@ func TestValidateSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
 			}
 		}
 
-		TestValidateSearchTermIdxV1(t, sdc, owner, termKey, indexKey, term, docLocMap)
-		TestValidateSortedDocIdxV1(t, sdc, owner, termKey, indexKey, term, docLocMap)
+		TestValidateSearchTermIdxV2(t, sdc, owner, termKey, indexKey, term, docLocMap)
+		TestValidateSortedDocIdxV2(t, sdc, owner, termKey, indexKey, term, docLocMap)
 	}
 
 	for term, docs := range delTermsMap {
-		TestValidateDeletedSearchTermIdxV1(t, sdc, owner, termKey, indexKey, term, docs)
-		TestValidateDeletedSortedDocIdxV1(t, sdc, owner, termKey, indexKey, term, docs)
+		TestValidateDeletedSearchTermIdxV2(t, sdc, owner, termKey, indexKey, term, docs)
+		TestValidateDeletedSortedDocIdxV2(t, sdc, owner, termKey, indexKey, term, docs)
 	}
 }
 
-func TestValidateSearchTermIdxV1(t *testing.T, sdc client.StrongDocClient,
+// validate search term index
+func TestValidateSearchTermIdxV2(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
 	term string, docLocMap map[*docidx.TestDocumentIdxV1][]uint64) {
+	hashedTerm := common.HashTerm(term)
 
-	updateIDs, err := GetUpdateIdsV1(sdc, owner, term, termKey)
+	updateID, err := GetLatestUpdateIDV2(sdc, owner, hashedTerm, termKey)
 	assert.NilError(t, err)
 
-	sti, err := OpenSearchTermIdxV1(sdc, owner, term, termKey, indexKey, updateIDs[0])
+	// open term index
+	sti, err := OpenSearchTermIdxV2(sdc, owner, hashedTerm, termKey, indexKey, updateID)
 	assert.NilError(t, err)
 
 	for err == nil {
-		var blk *SearchTermIdxBlkV1
+		var blk *SearchTermIdxBlkV2
 		blk, err = sti.ReadNextBlock()
 		if err != nil {
 			assert.Equal(t, err, io.EOF)
@@ -142,11 +147,21 @@ func TestValidateSearchTermIdxV1(t *testing.T, sdc client.StrongDocClient,
 			continue
 		}
 
+		if _, exists := blk.TermDocVerOffset[term]; !exists {
+			continue
+		}
+		//fmt.Println("check the block")
+
 		for doc, locs := range docLocMap {
-			verOff := blk.DocVerOffset[doc.DocID]
+			verOff := blk.TermDocVerOffset[term][doc.DocID]
 			if verOff == nil {
 				continue
 			}
+
+			//fmt.Println("check docID", doc.DocID)
+			//fmt.Println("locs", locs)
+			//fmt.Println("verOff.Offsets", verOff.Offsets)
+
 			assert.Equal(t, doc.DocVer, verOff.Version)
 			assert.Assert(t, len(locs) >= len(verOff.Offsets))
 			assert.DeepEqual(t, verOff.Offsets, locs[:len(verOff.Offsets)])
@@ -162,18 +177,20 @@ func TestValidateSearchTermIdxV1(t *testing.T, sdc client.StrongDocClient,
 	}
 }
 
-func TestValidateDeletedSearchTermIdxV1(t *testing.T, sdc client.StrongDocClient,
+// validate deleted search term index
+func TestValidateDeletedSearchTermIdxV2(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
 	term string, delDocs []*docidx.TestDocumentIdxV1) {
+	hashedTerm := common.HashTerm(term)
 
-	updateIDs, err := GetUpdateIdsV1(sdc, owner, term, termKey)
+	updateID, err := GetLatestUpdateIDV2(sdc, owner, hashedTerm, termKey)
 	assert.NilError(t, err)
 
-	sti, err := OpenSearchTermIdxV1(sdc, owner, term, termKey, indexKey, updateIDs[0])
+	sti, err := OpenSearchTermIdxV2(sdc, owner, hashedTerm, termKey, indexKey, updateID)
 	assert.NilError(t, err)
 
 	for err == nil {
-		var blk *SearchTermIdxBlkV1
+		var blk *SearchTermIdxBlkV2
 		blk, err = sti.ReadNextBlock()
 		if err != nil {
 			assert.Equal(t, err, io.EOF)
@@ -183,8 +200,12 @@ func TestValidateDeletedSearchTermIdxV1(t *testing.T, sdc client.StrongDocClient
 			continue
 		}
 
+		if _, exists := blk.TermDocVerOffset[term]; !exists {
+			continue
+		}
+
 		for _, delDoc := range delDocs {
-			assert.Assert(t, blk.DocVerOffset[delDoc.DocID] == nil)
+			assert.Assert(t, blk.TermDocVerOffset[term][delDoc.DocID] == nil)
 		}
 	}
 
@@ -192,14 +213,16 @@ func TestValidateDeletedSearchTermIdxV1(t *testing.T, sdc client.StrongDocClient
 	assert.NilError(t, err)
 }
 
-func TestValidateSortedDocIdxV1(t *testing.T, sdc client.StrongDocClient,
+// validate sorted doc index
+func TestValidateSortedDocIdxV2(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
 	term string, docLocMap map[*docidx.TestDocumentIdxV1][]uint64) {
+	hashedTerm := common.HashTerm(term)
 
-	updateIDs, err := GetUpdateIdsV1(sdc, owner, term, termKey)
+	updateID, err := GetLatestUpdateIDV2(sdc, owner, hashedTerm, termKey)
 	assert.NilError(t, err)
 
-	ssdi, err := OpenSearchSortDocIdxV1(sdc, owner, term, termKey, indexKey, updateIDs[0])
+	ssdi, err := OpenSearchSortDocIdxV2(sdc, owner, hashedTerm, termKey, indexKey, updateID)
 	assert.NilError(t, err)
 
 	docIDs := make([]string, 0, len(docLocMap))
@@ -207,7 +230,7 @@ func TestValidateSortedDocIdxV1(t *testing.T, sdc client.StrongDocClient,
 		docIDs = append(docIDs, doc.DocID)
 	}
 
-	docIdVerMap, err := ssdi.FindDocIDs(docIDs)
+	docIdVerMap, err := ssdi.FindDocIDs(term, docIDs)
 	assert.NilError(t, err)
 
 	for doc := range docLocMap {
@@ -222,14 +245,16 @@ func TestValidateSortedDocIdxV1(t *testing.T, sdc client.StrongDocClient,
 	assert.NilError(t, err)
 }
 
-func TestValidateDeletedSortedDocIdxV1(t *testing.T, sdc client.StrongDocClient,
+// validate deleted sorted doc index
+func TestValidateDeletedSortedDocIdxV2(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
 	term string, delDocs []*docidx.TestDocumentIdxV1) {
 
-	updateIDs, err := GetUpdateIdsV1(sdc, owner, term, termKey)
+	hashedTerm := common.HashTerm(term)
+	updateIDs, err := GetUpdateIdsV2(sdc, owner, hashedTerm, termKey)
 	assert.NilError(t, err)
 
-	ssdi, err := OpenSearchSortDocIdxV1(sdc, owner, term, termKey, indexKey, updateIDs[0])
+	ssdi, err := OpenSearchSortDocIdxV2(sdc, owner, hashedTerm, termKey, indexKey, updateIDs[0])
 	if err != nil {
 		assert.Equal(t, err, os.ErrNotExist)
 		return
@@ -240,7 +265,7 @@ func TestValidateDeletedSortedDocIdxV1(t *testing.T, sdc client.StrongDocClient,
 		docIDs = append(docIDs, doc.DocID)
 	}
 
-	docIdVerMap, err := ssdi.FindDocIDs(docIDs)
+	docIdVerMap, err := ssdi.FindDocIDs(term, docIDs)
 	assert.NilError(t, err)
 
 	for _, doc := range delDocs {
@@ -249,106 +274,4 @@ func TestValidateDeletedSortedDocIdxV1(t *testing.T, sdc client.StrongDocClient,
 
 	err = ssdi.Close()
 	assert.NilError(t, err)
-}
-
-func TestDeleteSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
-	owner common.SearchIdxOwner, docKey, termKey, indexKey *sscrypto.StrongSaltKey,
-	delDocs []*docidx.TestDocumentIdxV1) {
-
-	sources := make([]SearchTermIdxSourceV1, 0, len(delDocs))
-	for _, delDoc := range delDocs {
-		assert.NilError(t, delDoc.CreateDoiAndDti(sdc, docKey))
-		delDoi, err := delDoc.OpenDoi(sdc, docKey)
-		assert.NilError(t, err)
-		defer delDoi.Close()
-		delDti, err := delDoc.OpenDti(sdc, docKey)
-		assert.NilError(t, err)
-		defer delDti.Close()
-
-		source, err := SearchTermIdxSourceDeleteDoc(delDoi, delDti)
-		assert.NilError(t, err)
-		sources = append(sources, source)
-	}
-
-	siw, err := CreateSearchIdxWriterV1(owner, termKey, indexKey, sources)
-	assert.NilError(t, err)
-
-	termErr, err := siw.ProcessAllTerms(sdc, nil)
-	if err != nil {
-		fmt.Println(err.(*errors.Error).ErrorStack())
-	}
-	assert.NilError(t, err)
-
-	for term, err := range termErr {
-		if err != nil {
-			fmt.Println(term, err.(*errors.Error).ErrorStack())
-		}
-		assert.NilError(t, err)
-	}
-}
-
-func TestValidateDeleteSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
-	owner common.SearchIdxOwner, docKey, termKey, indexKey *sscrypto.StrongSaltKey,
-	delDocs []*docidx.TestDocumentIdxV1) {
-
-	delTermsMap := make(map[string][]*docidx.TestDocumentIdxV1) // term -> []testDocs
-
-	for _, doc := range delDocs {
-		dti, err := doc.OpenDti(sdc, docKey)
-		assert.NilError(t, err)
-
-		terms, _, err := dti.(*docidxv1.DocTermIdxV1).ReadAllTerms()
-		assert.NilError(t, err)
-
-		for _, term := range terms {
-			delTermsMap[term] = append(delTermsMap[term], doc)
-		}
-
-		err = dti.Close()
-		assert.NilError(t, err)
-
-	}
-
-	for term, docs := range delTermsMap {
-		TestValidateDeletedSearchTermIdxV1(t, sdc, owner, termKey, indexKey, term, docs)
-		TestValidateDeletedSortedDocIdxV1(t, sdc, owner, termKey, indexKey, term, docs)
-	}
-}
-
-func TestCleanupSearchIndexes(owner common.SearchIdxOwner, numToKeep int) error {
-	searchIdxPath := path.Clean(fmt.Sprintf("%v/%v/sidx", common.GetSearchIdxPathPrefix(), owner))
-
-	termDirInfos, err := ioutil.ReadDir(searchIdxPath)
-	if err != nil {
-		return err
-	}
-
-	for _, termDirInfo := range termDirInfos {
-		if !termDirInfo.IsDir() {
-			continue
-		}
-
-		termDirPath := path.Clean(fmt.Sprintf("%v/%v", searchIdxPath, termDirInfo.Name()))
-		updateIdInfos, err := ioutil.ReadDir(termDirPath)
-		if err != nil {
-			return err
-		}
-
-		// Sort by update time
-		sort.Slice(updateIdInfos, func(i, j int) bool {
-			return updateIdInfos[i].ModTime().Before(updateIdInfos[j].ModTime())
-		})
-
-		keep := utils.Min(numToKeep, len(updateIdInfos))
-		removeDirInfos := updateIdInfos[len(updateIdInfos)-keep:]
-		for _, removeDirInfo := range removeDirInfos {
-			removeDirPath := path.Clean(fmt.Sprintf("%v/%v", termDirPath, removeDirInfo.Name()))
-			err := os.RemoveAll(removeDirPath)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }

@@ -48,7 +48,7 @@ type PhraseSearchDocV1 struct {
 }
 
 func OpenPhraseSearchV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, terms []string,
-	termKey, indexKey *sscrypto.StrongSaltKey) (*PhraseSearchV1, error) {
+	termKey, indexKey *sscrypto.StrongSaltKey, searchIndexVer uint32) (*PhraseSearchV1, error) {
 
 	analyzer, err := utils.OpenBleveAnalyzer()
 	if err != nil {
@@ -64,7 +64,7 @@ func OpenPhraseSearchV1(sdc client.StrongDocClient, owner common.SearchIdxOwner,
 		searchTerms[i] = string(tokens[0].Term)
 	}
 
-	reader, err := searchidx.OpenSearchTermIndex(sdc, owner, searchTerms, termKey, indexKey)
+	reader, err := searchidx.OpenSearchTermIndex(sdc, owner, searchTerms, termKey, indexKey, searchIndexVer)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +89,7 @@ func (search *PhraseSearchV1) GetNextResult() (*PhraseSearchResultV1, error) {
 	}
 
 	stiData, err := search.reader.ReadNextData()
+	//fmt.Println("ReadNextData", stiData, err)
 	if err != nil {
 		if err != io.EOF {
 			return nil, err
@@ -96,6 +97,8 @@ func (search *PhraseSearchV1) GetNextResult() (*PhraseSearchResultV1, error) {
 	}
 
 	err = search.mergeStiData(stiData)
+	//fmt.Println("mergeStiData", err)
+
 	if err != nil {
 		return nil, err
 	}

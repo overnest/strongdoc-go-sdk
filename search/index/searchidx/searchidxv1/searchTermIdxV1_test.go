@@ -120,7 +120,7 @@ func TestSearchTermIdxBatchRemoveString(t *testing.T) {
 
 func TestSearchTermIdxSimpleV1(t *testing.T) {
 	// ================================ Prev Test ================================
-	sdc := prevTest(t)
+	sdc := common.PrevTest(t)
 
 	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 	term := "term1"

@@ -327,6 +327,6 @@ func RemoveTestDocumentsDocIdx(sdc client.StrongDocClient, docs []*TestDocumentI
 }
 
 // clean all tmp files
-func CleanupTemporaryDocumentIndex() error {
+func CleanupTestDocumentsTmpFiles() error {
 	return os.RemoveAll(common.TEMP_DOC_IDX_BASE)
 }

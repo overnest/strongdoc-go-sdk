@@ -229,26 +229,6 @@ func (blk *SearchSortDocIdxBlkV1) formatToBlockData() *SearchSortDocIdxBlkV1 {
 	return blk
 }
 
-// Serialize the block
-func (blk *SearchSortDocIdxBlkV1) Serialize() ([]byte, error) {
-	for blk.predictedJSONSize > blk.maxDataSize {
-		blk.removeHighTerm()
-	}
-
-	docIDs := blk.docIDTree.Keys()
-	blk.DocIDVers = make([]*DocIDVerV1, len(docIDs))
-	for i, id := range docIDs {
-		docID := id.(string)
-		blk.DocIDVers[i] = &DocIDVerV1{docID, blk.docIDVerMap[docID]}
-	}
-
-	b, err := json.Marshal(blk)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	return b, nil
-}
-
 func (blk *SearchSortDocIdxBlkV1) formatFromBlockData() (*SearchSortDocIdxBlkV1, error) {
 	if blk.docIDVerMap == nil {
 		blk.docIDVerMap = make(map[string]uint64)
@@ -272,25 +252,6 @@ func (blk *SearchSortDocIdxBlkV1) formatFromBlockData() (*SearchSortDocIdxBlkV1,
 	}
 
 	return blk, nil
-}
-
-// Serialize the struct
-func (vo *DocIDVerV1) Serialize() ([]byte, error) {
-	b, err := json.Marshal(vo)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-	return b, nil
-}
-
-// Deserialize the struct
-func (vo *DocIDVerV1) Deserialize(data []byte) (*DocIDVerV1, error) {
-	err := json.Unmarshal(data, vo)
-	if err != nil {
-		return nil, errors.New(err)
-	}
-
-	return vo, nil
 }
 
 // IsFull shows whether the block is full

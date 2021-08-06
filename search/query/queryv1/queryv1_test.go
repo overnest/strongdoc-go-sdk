@@ -1,6 +1,8 @@
 package queryv1
 
 import (
+	"fmt"
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/searchidxv2"
 	"io"
 	"path/filepath"
 	"sort"
@@ -34,10 +36,12 @@ import (
 //                  The Great Gatsby, The Happy Prince, Jungle Book, Picture of Dorian Gray, Secret Garden,
 //                  The Sign Of The Four, The Strong Case Of Dr Jekyll and Mr Hyde, Ulysses, War and Peace
 
+const searchIndexTestVersion = common.STI_V2
+
 //  TODO only available for localTest
 func TestPhraseSearchV1(t *testing.T) {
-	sdc, owner, _, termKey, indexKey, docs := setup(t)
-	defer cleanup()
+	sdc, owner, _, termKey, indexKey, docs := setup(t, searchIndexTestVersion)
+	defer cleanup(sdc, owner, docs)
 
 	phrases := [][]string{
 		{"almost", "no", "restrictions"},
@@ -47,14 +51,16 @@ func TestPhraseSearchV1(t *testing.T) {
 	}
 
 	for _, phrase := range phrases {
+		fmt.Println("phrase", phrase)
 		// Do Search
-		reader, err := OpenPhraseSearchV1(sdc, owner, phrase, termKey, indexKey)
+		reader, err := OpenPhraseSearchV1(sdc, owner, phrase, termKey, indexKey, searchIndexTestVersion)
 		assert.NilError(t, err)
 
 		var searchResult *PhraseSearchResultV1 = nil
 		for err == nil {
 			var newResult *PhraseSearchResultV1 = nil
 			newResult, err = reader.GetNextResult()
+			//fmt.Println("newResult=", newResult, "err=", err)
 			if err != nil {
 				assert.Equal(t, err, io.EOF)
 			}
@@ -63,9 +69,11 @@ func TestPhraseSearchV1(t *testing.T) {
 		}
 
 		reader.Close()
+		//fmt.Println("searchResult", searchResult)
 
 		// Do Grep
 		grepResult := filterGrep(t, phrase, docs)
+		fmt.Println("grepResult", grepResult)
 
 		// Compare Results
 		for _, doc := range docs {
@@ -83,8 +91,8 @@ func TestPhraseSearchV1(t *testing.T) {
 }
 
 func TestTermSearchV1(t *testing.T) {
-	sdc, owner, _, termKey, indexKey, docs := setup(t)
-	defer cleanup()
+	sdc, owner, _, termKey, indexKey, docs := setup(t, searchIndexTestVersion)
+	defer cleanup(sdc, owner, docs)
 
 	termList := [][]string{
 		{"restrictions", "doesnotexist", "sclerites", "paarige"},
@@ -92,7 +100,7 @@ func TestTermSearchV1(t *testing.T) {
 
 	for _, terms := range termList {
 		// Do Search
-		reader, err := OpenTermSearchV1(sdc, owner, terms, termKey, indexKey)
+		reader, err := OpenTermSearchV1(sdc, owner, terms, termKey, indexKey, searchIndexTestVersion)
 		assert.NilError(t, err)
 
 		var searchResult *TermSearchResultV1 = nil
@@ -132,8 +140,8 @@ func TestTermSearchV1(t *testing.T) {
 }
 
 func TestQueryTermsAndV1(t *testing.T) {
-	sdc, owner, _, termKey, indexKey, docs := setup(t)
-	defer cleanup()
+	sdc, owner, _, termKey, indexKey, docs := setup(t, searchIndexTestVersion)
+	defer cleanup(sdc, owner, docs)
 
 	termList := [][]string{
 		{"restrictions", "sclerites"},
@@ -143,7 +151,7 @@ func TestQueryTermsAndV1(t *testing.T) {
 	}
 
 	for _, terms := range termList {
-		queryResult, err := QueryTermsAndV1(sdc, owner, terms, termKey, indexKey)
+		queryResult, err := QueryTermsAndV1(sdc, owner, terms, termKey, indexKey, searchIndexTestVersion)
 		assert.NilError(t, err)
 
 		queryResultMap := make(map[string]bool)
@@ -174,8 +182,8 @@ func TestQueryTermsAndV1(t *testing.T) {
 }
 
 func TestQueryTermsOrV1(t *testing.T) {
-	sdc, owner, _, termKey, indexKey, docs := setup(t)
-	defer cleanup()
+	sdc, owner, _, termKey, indexKey, docs := setup(t, searchIndexTestVersion)
+	defer cleanup(sdc, owner, docs)
 
 	termList := [][]string{
 		{"restrictions", "sclerites"},
@@ -186,7 +194,7 @@ func TestQueryTermsOrV1(t *testing.T) {
 	}
 
 	for _, terms := range termList {
-		queryResult, err := QueryTermsOrV1(sdc, owner, terms, termKey, indexKey)
+		queryResult, err := QueryTermsOrV1(sdc, owner, terms, termKey, indexKey, searchIndexTestVersion)
 		assert.NilError(t, err)
 
 		queryResultMap := make(map[string]bool)
@@ -207,8 +215,8 @@ func TestQueryTermsOrV1(t *testing.T) {
 }
 
 func TestQueryResultsAnd(t *testing.T) {
-	sdc, owner, _, termKey, indexKey, _ := setup(t)
-	defer cleanup()
+	sdc, owner, _, termKey, indexKey, docs := setup(t, searchIndexTestVersion)
+	defer cleanup(sdc, owner, docs)
 
 	queryList := []QueryCompV1{
 		NewQueryCompV1(qcommon.TermAnd, []string{"membrane"}, nil),
@@ -234,11 +242,11 @@ func performSearchOp(t *testing.T, sdc client.StrongDocClient, owner common.Sear
 
 	switch queryComp.GetOp() {
 	case qcommon.TermAnd:
-		queryResult, err := QueryTermsAndV1(sdc, owner, queryComp.GetTerms(), termKey, indexKey)
+		queryResult, err := QueryTermsAndV1(sdc, owner, queryComp.GetTerms(), termKey, indexKey, searchIndexTestVersion)
 		assert.NilError(t, err)
 		return queryResult
 	case qcommon.TermOr:
-		queryResult, err := QueryTermsOrV1(sdc, owner, queryComp.GetTerms(), termKey, indexKey)
+		queryResult, err := QueryTermsOrV1(sdc, owner, queryComp.GetTerms(), termKey, indexKey, searchIndexTestVersion)
 		assert.NilError(t, err)
 		return queryResult
 	case qcommon.QueryAnd:
@@ -269,30 +277,40 @@ func filterGrep(t *testing.T, terms []string, docs []*docidx.TestDocumentIdxV1) 
 	return result
 }
 
-func setup(t *testing.T) (sdc client.StrongDocClient, owner common.SearchIdxOwner,
+func setup(t *testing.T, ver uint32) (sdc client.StrongDocClient, owner common.SearchIdxOwner,
 	docKey, termKey, indexKey *sscrypto.StrongSaltKey, docs []*docidx.TestDocumentIdxV1) {
-
+	defer fmt.Println("========================= finish set up =========================")
 	numDocs := 10
 	sdc = prevTest(t)
 	owner = common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 
-	keys, err := searchidxv1.TestGetKeys()
+	keys, err := common.TestGetKeys()
 	assert.NilError(t, err)
-	docKey, termKey, indexKey = keys[searchidxv1.TestDocKeyID], keys[searchidxv1.TestTermKeyID],
-		keys[searchidxv1.TestIndexKeyID]
+	docKey, termKey, indexKey = keys[common.TestDocKeyID], keys[common.TestTermKeyID],
+		keys[common.TestIndexKeyID]
 	assert.Assert(t, docKey != nil && termKey != nil && indexKey != nil)
 
 	docs, err = docidx.InitTestDocuments(numDocs, false)
 	assert.NilError(t, err)
-	searchidxv1.TestCreateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, nil, docs)
-	searchidxv1.TestValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, docs)
 
+	switch ver {
+	case common.STI_V1:
+		searchidxv1.TestCreateDocIndexAndSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, nil, docs)
+		searchidxv1.TestValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, docs)
+	case common.STI_V2:
+		searchidxv2.TestCreateDocIndexAndSearchIdxV2(t, sdc, owner, docKey, termKey, indexKey, nil, docs)
+		searchidxv2.TestValidateSearchIdxV2(t, sdc, owner, docKey, termKey, indexKey, docs)
+	default:
+		err = fmt.Errorf("invalid version")
+		return
+	}
 	return
 }
 
-func cleanup() {
-	docidx.CleanupTemporaryDocumentIndex()
-	common.CleanupTemporarySearchIndex()
+func cleanup(sdc client.StrongDocClient, owner common.SearchIdxOwner, docs []*docidx.TestDocumentIdxV1) {
+	docidx.CleanupTestDocumentsTmpFiles()
+	docidx.RemoveTestDocumentsDocIdx(sdc, docs)
+	common.RemoveSearchIndex(sdc, owner)
 }
 
 func prevTest(t *testing.T) client.StrongDocClient {

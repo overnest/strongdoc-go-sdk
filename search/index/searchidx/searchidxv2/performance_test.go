@@ -1,4 +1,4 @@
-package searchidxv1
+package searchidxv2
 
 import (
 	"fmt"
@@ -13,10 +13,6 @@ import (
 	"testing"
 )
 
-// Experiment1
-// test single file search one-batch terms index generation processing time with different batch size
-// x : batch size
-// y : processing time
 func TestSIDExp1(t *testing.T) {
 	// ================================ Prev Test ================================
 	sdc := common.PrevTest(t)
@@ -27,75 +23,16 @@ func TestSIDExp1(t *testing.T) {
 	// ================================ Generate Doc index ================================
 	indexKey, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
-	docIDs, docVers := common.TestDocIndexGeneration(t, sdc, indexKey, 1)
+	docIDs, docVers := common.TestDocIndexGeneration(t, sdc, indexKey, 10)
 
 	// ================================ Generate Search index ================================
 
-	for i := 1; i <= 300; i += 10 {
-		common.STI_TERM_BATCH_SIZE = i
-		event := utils.NewTimeEvent(fmt.Sprintf("test %d", i), output)
-		testSearchIndexOneBatchGeneration(t, sdc, owner, event, docIDs, docVers, indexKey)
-		event.Output()
-	}
-
-}
-
-// Experiment2
-// test multiple files search index all terms generation processing time with different batch size
-// x : batch size
-// y1 : single file processing time
-// y2 : two files processing time
-func TestSIDExp2(t *testing.T) {
-	// ================================ Prev Test ================================
-	sdc := common.PrevTest(t)
-	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "ownerID123")
-	output := "result2.txt"
-	os.Remove(output)
-
-	// ================================ Generate Doc index ================================
-	indexKey, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
-	assert.NilError(t, err)
-	docIDs, docVers := common.TestDocIndexGeneration(t, sdc, indexKey, 2)
-
-	// ================================ Generate Search index ================================
-	for i := 1; i <= 25; i++ {
-		common.STI_TERM_BATCH_SIZE = i
-
-		// single file
-		event := utils.NewTimeEvent(fmt.Sprintf("test %v", i), output)
-		testSearchIndexAllBatchesGeneration(t, sdc, owner, event, []string{docIDs[0]}, []uint64{docVers[0]}, indexKey)
-		event.Output()
-
-		// two files
-		event = utils.NewTimeEvent(fmt.Sprintf("test %v", i), output)
-		testSearchIndexAllBatchesGeneration(t, sdc, owner, event, docIDs, docVers, indexKey)
-		event.Output()
-	}
-
-}
-
-// Experiment3
-// test search index all terms generation processing time with different batch size
-func TestSIDExp3(t *testing.T) {
-	// ================================ Prev Test ================================
-	sdc := common.PrevTest(t)
-	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "ownerID123")
-
-	output := "result3.txt"
-	os.Remove(output)
-
-	// ================================ Generate Doc index ================================
-	indexKey, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
-	assert.NilError(t, err)
-	docIDs, docVers := common.TestDocIndexGeneration(t, sdc, indexKey, 1)
-
-	// ================================ Generate Search index ================================
-	for i := 151; i <= 300; i += 10 {
-		common.STI_TERM_BATCH_SIZE = i
-		event := utils.NewTimeEvent(fmt.Sprintf("test %d", i), output)
-		testSearchIndexAllBatchesGeneration(t, sdc, owner, event, docIDs, docVers, indexKey)
-		event.Output()
-	}
+	common.STI_TERM_BATCH_SIZE_V2 = 10
+	common.HASH_MOD_VAL = 1000
+	event := utils.NewTimeEvent(fmt.Sprintf("test_batchSize_%d", common.STI_TERM_BATCH_SIZE_V2), output)
+	testSearchIndexAllBatchesGeneration(t, sdc, owner, nil, docIDs, docVers, indexKey)
+	testSearchIndexOneBatchGeneration(t, sdc, owner, nil, docIDs, docVers, indexKey)
+	event.Output()
 
 }
 
@@ -124,7 +61,7 @@ func testSearchIndexGeneration(t *testing.T, sdc client.StrongDocClient, owner c
 	e2 := utils.AddSubEvent(event, "CreateSearchIdxWriterV1")
 	termKey, err := sscrypto.GenerateKey(sscrypto.Type_HMACSha512)
 	assert.NilError(t, err)
-	siw, err := CreateSearchIdxWriterV1(owner, termKey, indexKey, sources)
+	siw, err := CreateSearchIdxWriterV2(owner, termKey, indexKey, sources)
 	utils.EndEvent(e2)
 	assert.NilError(t, err)
 
@@ -149,7 +86,7 @@ func testSearchIndexGeneration(t *testing.T, sdc client.StrongDocClient, owner c
 }
 
 func createSearchIndexSources(sdc client.StrongDocClient, docIDs []string, docVers []uint64, indexKey *sscrypto.StrongSaltKey) (
-	sources []SearchTermIdxSourceV1, err error) {
+	sources []SearchTermIdxSourceV2, err error) {
 	for idx, docID := range docIDs {
 		var doi common2.DocOffsetIdx
 		doi, err = docidx.OpenDocOffsetIdx(sdc, docID, docVers[idx], indexKey)
@@ -163,7 +100,7 @@ func createSearchIndexSources(sdc client.StrongDocClient, docIDs []string, docVe
 			fmt.Println("fail to open term index ")
 			return
 		}
-		var source SearchTermIdxSourceV1
+		var source SearchTermIdxSourceV2
 		source, err = SearchTermIdxSourceCreateDoc(doi, dti)
 		if err != nil {
 			fmt.Println("fail to create source")

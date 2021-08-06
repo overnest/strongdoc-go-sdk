@@ -14,7 +14,7 @@ import (
 
 func TestSearchTermUpdateIDsV1(t *testing.T) {
 	// ================================ Prev Test ================================
-	sdc := prevTest(t)
+	sdc := common.PrevTest(t)
 	idCount := 10
 	updateIDs := make([]string, idCount)
 	term := "myTerm"
@@ -46,12 +46,12 @@ func TestSearchIdxWriterV1(t *testing.T) {
 	versions := 3
 	numDocs := 10
 	delDocs := 4
-	sdc := prevTest(t)
+	sdc := common.PrevTest(t)
 	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 
-	keys, err := TestGetKeys()
+	keys, err := common.TestGetKeys()
 	assert.NilError(t, err)
-	docKey, termKey, indexKey := keys[TestDocKeyID], keys[TestTermKeyID], keys[TestIndexKeyID]
+	docKey, termKey, indexKey := keys[common.TestDocKeyID], keys[common.TestTermKeyID], keys[common.TestIndexKeyID]
 	assert.Assert(t, docKey != nil && termKey != nil && indexKey != nil)
 
 	firstDocs, err := docidx.InitTestDocuments(numDocs, false)
@@ -63,9 +63,9 @@ func TestSearchIdxWriterV1(t *testing.T) {
 		docVers[i][0] = doc
 	}
 
-	TestCreateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, nil, firstDocs)
+	TestCreateDocIndexAndSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, nil, firstDocs)
 	TestValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, firstDocs)
-	defer docidx.CleanupTemporaryDocumentIndex()
+	defer docidx.CleanupTestDocumentsTmpFiles()
 	defer common.CleanupTemporarySearchIndex()
 
 	// err = TestCleanupSearchIndexes(owner, 1)
@@ -89,7 +89,7 @@ func TestSearchIdxWriterV1(t *testing.T) {
 			oldDocs = append(oldDocs, oldDoc)
 		}
 
-		TestCreateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, oldDocs, newDocs)
+		TestCreateDocIndexAndSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, oldDocs, newDocs)
 		TestValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, newDocs)
 	}
 

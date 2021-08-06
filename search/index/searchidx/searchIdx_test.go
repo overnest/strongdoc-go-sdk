@@ -4,14 +4,11 @@ import (
 	"io"
 	"testing"
 
-	"github.com/overnest/strongdoc-go-sdk/api"
-	"github.com/overnest/strongdoc-go-sdk/client"
 	docidx "github.com/overnest/strongdoc-go-sdk/search/index/docidx"
-	dicommon "github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
+	docIndexCommon "github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/searchidxv1"
-	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 
 	"gotest.tools/assert"
@@ -22,21 +19,21 @@ func TestSearchIdxWriterV1(t *testing.T) {
 	numDocs := 10
 	numTerms := 5
 	// delDocs := 4
-	sdc := prevTest(t)
+	sdc := common.PrevTest(t)
 	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 
-	keys, err := searchidxv1.TestGetKeys()
+	keys, err := common.TestGetKeys()
 	assert.NilError(t, err)
-	docKey, termKey, indexKey := keys[searchidxv1.TestDocKeyID], keys[searchidxv1.TestTermKeyID],
-		keys[searchidxv1.TestIndexKeyID]
+	docKey, termKey, indexKey := keys[common.TestDocKeyID], keys[common.TestTermKeyID],
+		keys[common.TestIndexKeyID]
 	assert.Assert(t, docKey != nil && termKey != nil && indexKey != nil)
 
 	docs, err := docidx.InitTestDocuments(numDocs, false)
 	assert.NilError(t, err)
 
-	searchidxv1.TestCreateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, nil, docs)
+	searchidxv1.TestCreateDocIndexAndSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, nil, docs)
 	searchidxv1.TestValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, docs)
-	defer docidx.CleanupTemporaryDocumentIndex()
+	defer docidx.CleanupTestDocumentsTmpFiles()
 	defer common.CleanupTemporarySearchIndex()
 
 	origTermDocs := make(map[string]map[string]uint64) // term -> (docID->docVer)
@@ -46,7 +43,7 @@ func TestSearchIdxWriterV1(t *testing.T) {
 		assert.NilError(t, err)
 
 		switch dti.GetDtiVersion() {
-		case dicommon.DTI_V1:
+		case docIndexCommon.DTI_V1:
 			dtiv1 := dti.(*docidxv1.DocTermIdxV1)
 			err = nil
 			for err == nil {
@@ -84,7 +81,7 @@ func TestSearchIdxWriterV1(t *testing.T) {
 	//
 	// Test STI
 	//
-	stiReader, err := OpenSearchTermIndex(sdc, owner, terms, termKey, indexKey)
+	stiReader, err := OpenSearchTermIndex(sdc, owner, terms, termKey, indexKey, common.STI_V1)
 	assert.NilError(t, err)
 	defer stiReader.Close()
 
@@ -120,7 +117,7 @@ func TestSearchIdxWriterV1(t *testing.T) {
 	//
 	// Test SSDI
 	//
-	ssdiReader, err := OpenSearchSortedDocIndex(sdc, owner, terms, termKey, indexKey)
+	ssdiReader, err := OpenSearchSortedDocIndex(sdc, owner, terms, termKey, indexKey, common.STI_V1)
 	assert.NilError(t, err)
 	defer ssdiReader.Close()
 
@@ -153,18 +150,4 @@ func TestSearchIdxWriterV1(t *testing.T) {
 		assert.DeepEqual(t, origTermDocs[term], docIDVer)
 	}
 
-}
-
-func prevTest(t *testing.T) client.StrongDocClient {
-	if utils.TestLocal {
-		return nil
-	}
-	// register org and admin
-	sdc, orgs, users := testUtils.PrevTest(t, 1, 1)
-	testUtils.DoRegistration(t, sdc, orgs, users)
-	// login
-	user := users[0][0]
-	err := api.Login(sdc, user.UserID, user.Password, user.OrgID)
-	assert.NilError(t, err)
-	return sdc
 }

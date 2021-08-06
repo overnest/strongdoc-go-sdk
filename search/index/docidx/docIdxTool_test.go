@@ -16,7 +16,7 @@ import (
 func TestTools(t *testing.T) {
 	// ================================ Prev Test ================================
 	sdc := prevTest(t)
-	defer CleanupTemporaryDocumentIndex()
+	defer CleanupTestDocumentsTmpFiles()
 	// ================================ Generate Doc Indexes ================================
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
@@ -135,7 +135,7 @@ func TestCreateModifiedDoc(t *testing.T) {
 
 	// ================================ Prev Test ================================
 	sdc := prevTest(t)
-	defer CleanupTemporaryDocumentIndex()
+	defer CleanupTestDocumentsTmpFiles()
 	// ================================ Test Doc Modified Indexes ================================
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)

@@ -35,7 +35,7 @@ type TermSearchResultV1 struct {
 }
 
 func OpenTermSearchV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, terms []string,
-	termKey, indexKey *sscrypto.StrongSaltKey) (*TermSearchV1, error) {
+	termKey, indexKey *sscrypto.StrongSaltKey, ssdiVer uint32) (*TermSearchV1, error) {
 
 	analyzer, err := utils.OpenBleveAnalyzer()
 	if err != nil {
@@ -53,7 +53,7 @@ func OpenTermSearchV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, t
 		searchToOrigTerms[searchTerms[i]] = term
 	}
 
-	reader, err := searchidx.OpenSearchSortedDocIndex(sdc, owner, searchTerms, termKey, indexKey)
+	reader, err := searchidx.OpenSearchSortedDocIndex(sdc, owner, searchTerms, termKey, indexKey, ssdiVer)
 	if err != nil {
 		return nil, err
 	}

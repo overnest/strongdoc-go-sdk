@@ -3,25 +3,27 @@ package common
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"path"
-	"sync"
-
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"github.com/shengdoushi/base58"
+	"hash/fnv"
+	"io"
+	"os"
+	"path"
+	"sync"
 )
 
 const (
 	STI_BLOCK_V1  = uint32(1)
+	STI_BLOCK_V2  = uint32(2)
 	STI_BLOCK_VER = STI_BLOCK_V1
 
 	STI_BLOCK_SIZE_MAX = uint64(1024 * 1024 * 5) // 5MB
 	// STI_BLOCK_MARGIN_PERCENT = uint64(10)              // 10% margin
 
 	STI_V1  = uint32(1)
+	STI_V2  = uint32(2)
 	STI_VER = STI_V1
 	//STI_TERM_BATCH_SIZE = 1000 // Process terms in batches of 1000
 
@@ -29,10 +31,14 @@ const (
 	SSDI_BLOCK_MARGIN_PERCENT = uint64(10)       // 10% margin
 
 	SSDI_V1  = uint32(1)
+	SSDI_V2  = uint32(2)
 	SSDI_VER = SSDI_V1
 )
 
 var STI_TERM_BATCH_SIZE = 200 // Process terms in batches of 1000
+
+var STI_TERM_BATCH_SIZE_V2 = 10 // Process hashedTerms in batch of 10
+var HASH_MOD_VAL = 1000
 
 // GetSearchIdxPathPrefix gets the search index path prefix
 func GetSearchIdxPathPrefix() string {
@@ -219,4 +225,19 @@ func CreateTermHmac(term string, termKey *sscrypto.StrongSaltKey) (string, error
 	}
 
 	return base58.Encode(hmac, base58.BitcoinAlphabet), nil
+}
+
+//////////////////////////////////////////////////////////////////
+//
+//                       Term Hash
+//
+//////////////////////////////////////////////////////////////////
+func hashStringToInt(s string, modVal int) int {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	number := h.Sum32()
+	return int(number) % modVal
+}
+func HashTerm(term string) string {
+	return fmt.Sprintf("%v", hashStringToInt(term, HASH_MOD_VAL))
 }

@@ -2,6 +2,7 @@ package searchidxv1
 
 import (
 	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"gotest.tools/assert"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestSearchTermIdxSourceTextFileV1(t *testing.T) {
 	// ================================ Prev Test ================================
-	testClient := prevTest(t)
+	testClient := common.PrevTest(t)
 	docID1 := "DOC1"
 	docVer1 := uint64(1)
 	//docID2 := "DOC2"
