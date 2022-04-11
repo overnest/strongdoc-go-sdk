@@ -1,16 +1,17 @@
 package docidx
 
 import (
+	"io"
+	"os"
+	"sort"
+	"testing"
+
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"gotest.tools/assert"
-	"io"
-	"os"
-	"sort"
-	"testing"
 )
 
 func TestTermIdxBlockV1(t *testing.T) {
@@ -29,7 +30,7 @@ func TestTermIdxBlockV1(t *testing.T) {
 	assert.NilError(t, err)
 	defer sourceFile.Close()
 
-	for true {
+	for {
 		sourceFile.Seek(0, utils.SeekSet)
 
 		dtib := docidxv1.CreateDocTermIdxBlkV1(prevHighTerm, common.DTI_BLOCK_SIZE_MAX)
@@ -64,6 +65,7 @@ func TestTermIdxBlockV1(t *testing.T) {
 // test create term source
 func TestTermIdxSourcesV1(t *testing.T) {
 	// ================================ Prev Test ================================
+	common.EnableLocalDocIdx() // Comment out to enable testing against remote server
 	testClient := prevTest(t)
 
 	docID := "docID100"
@@ -72,7 +74,7 @@ func TestTermIdxSourcesV1(t *testing.T) {
 	sourceFilepath, err := utils.FetchFileLoc(sourceFileName)
 	assert.NilError(t, err)
 
-	defer common.RemoveDocIndexes(testClient, docID)
+	defer common.RemoveDocIdxs(testClient, docID)
 	// ================================ Generate doc term index ================================
 	// Open source file
 	sourceFile, err := utils.OpenLocalFile(sourceFilepath)
@@ -142,11 +144,12 @@ func gatherTermsFromSource(t *testing.T, source docidxv1.DocTermSourceV1) []stri
 // test create term index
 func TestTermIdxV1(t *testing.T) {
 	// ================================ Prev Test ================================
+	common.EnableLocalDocIdx() // Comment out to enable testing against remote server
 	testClient := prevTest(t)
 
 	docID := "DocID1"
 	docVer := uint64(1)
-	defer common.RemoveDocIndexes(testClient, docID)
+	defer common.RemoveDocIdxs(testClient, docID)
 
 	sourceFileName := "./testDocuments/enwik8.txt.gz"
 	sourceFilepath, err := utils.FetchFileLoc(sourceFileName)
@@ -254,12 +257,13 @@ func createTermIndexAndGetTerms(sdc client.StrongDocClient, docID string, docVer
 // test term index diff
 func TestTermIdxDiffV1(t *testing.T) {
 	// ================================ Prev Test ================================
+	common.EnableLocalDocIdx() // Comment out to enable testing against remote server
 	testClient := prevTest(t)
 
 	docID := "DocIDsomething"
 	docVer1 := uint64(1)
 	docVer2 := uint64(2)
-	defer common.RemoveDocIndexes(testClient, docID)
+	defer common.RemoveDocIdxs(testClient, docID)
 
 	sourcefilepath1, err := utils.FetchFileLoc("./testDocuments/enwik8.uniq.txt.gz")
 	assert.NilError(t, err)

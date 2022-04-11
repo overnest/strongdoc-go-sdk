@@ -2,17 +2,18 @@ package searchidxv2
 
 import (
 	"fmt"
+	"io"
+	"sort"
+
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 	didxcommon "github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 	didxv1 "github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
-	"io"
-	"sort"
 )
 
 //////////////////////////////////////////////////////////////////
 //
-//                   Search HashedTerm Index Source V2
+//                 Search Term Index Source V2
 //
 //////////////////////////////////////////////////////////////////
 

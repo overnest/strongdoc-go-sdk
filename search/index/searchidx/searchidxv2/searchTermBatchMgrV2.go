@@ -1,14 +1,13 @@
 package searchidxv2
 
 import (
-	"github.com/emirpasic/gods/trees/binaryheap"
+	"io"
+	"sort"
+
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
-	"io"
-	"sort"
-	"strings"
 )
 
 const copyLen = 10
@@ -23,7 +22,7 @@ func removeString(stringList []string, i int) []string {
 
 //////////////////////////////////////////////////////////////////
 //
-//                   Search HashedTerm Batch Manager V2
+//               Search Term Batch Manager V2
 //
 //////////////////////////////////////////////////////////////////
 
@@ -32,187 +31,185 @@ type SearchTermBatchMgrV2 struct {
 	SearchIdxSources []SearchTermIdxSourceV2
 	TermKey          *sscrypto.StrongSaltKey
 	IndexKey         *sscrypto.StrongSaltKey
+	BatchSize        uint32
+	BucketCount      uint32
 	delDocs          *DeletedDocsV2 // global delete list
-	termHeap         *binaryheap.Heap
+	termBucketList   []*SearchTermBucket
 }
 
-type SearchTermBatchSources struct {
+type SearchTermBucket struct {
+	BucketID    string
+	TermKey     *sscrypto.StrongSaltKey
+	IndexKey    *sscrypto.StrongSaltKey
+	TermSources []*SearchTermSources
+}
+
+type SearchTermSources struct {
 	Term       string // plain term
+	HTerm      string // HMAC term
 	AddSources []SearchTermIdxSourceV2
 	DelSources []SearchTermIdxSourceV2
 	delDocs    *DeletedDocsV2 // global delete list
 }
 
-type SearchTermBatchElement struct {
-	HashedTerm  string
-	TermKey     *sscrypto.StrongSaltKey
-	IndexKey    *sscrypto.StrongSaltKey
-	TermSources []*SearchTermBatchSources
-}
-
-var batchSourceComparator func(a, b interface{}) int = func(a, b interface{}) int {
-	if a == nil && b == nil {
-		return 0
-	}
-	if a == nil {
-		return 1
-	}
-	if b == nil {
-		return -1
-	}
-	wa := a.(*SearchTermBatchElement)
-	wb := b.(*SearchTermBatchElement)
-	return strings.Compare(wa.HashedTerm, wb.HashedTerm) // not necessary to sort
-}
-
 func CreateSearchTermBatchMgrV2(owner common.SearchIdxOwner, sources []SearchTermIdxSourceV2,
-	termKey, indexKey *sscrypto.StrongSaltKey, delDocs *DeletedDocsV2) (*SearchTermBatchMgrV2, error) {
+	termKey, indexKey *sscrypto.StrongSaltKey, batchSize uint32, bucketCount uint32,
+	delDocs *DeletedDocsV2) (*SearchTermBatchMgrV2, error) {
 
 	mgr := &SearchTermBatchMgrV2{
-		Owner:    owner,
-		TermKey:  termKey,
-		IndexKey: indexKey,
-		delDocs:  delDocs,
-		termHeap: binaryheap.NewWith(batchSourceComparator)}
+		Owner:          owner,
+		TermKey:        termKey,
+		IndexKey:       indexKey,
+		BatchSize:      batchSize,
+		BucketCount:    bucketCount,
+		delDocs:        delDocs,
+		termBucketList: make([]*SearchTermBucket, 0, 100)}
 
-	termSourcesMap := make(map[string]*SearchTermBatchSources) // term -> termSources
+	termSourcesMap := make(map[string]*SearchTermSources) // term -> termSources
 	for _, source := range sources {
 		for _, term := range source.GetAllTerms() {
-			stbs := termSourcesMap[term]
-			if stbs == nil {
-				stbs = &SearchTermBatchSources{
+			termSources := termSourcesMap[term]
+			if termSources == nil {
+				hterm, err := common.CreateTermHmac(term, termKey)
+				if err != nil {
+					return nil, err
+				}
+				termSources = &SearchTermSources{
 					Term:       term,
+					HTerm:      hterm,
 					AddSources: make([]SearchTermIdxSourceV2, 0, 10),
 					DelSources: make([]SearchTermIdxSourceV2, 0, 10),
 					delDocs:    delDocs}
-				termSourcesMap[term] = stbs
+				termSourcesMap[term] = termSources
 			}
-			stbs.AddSources = append(stbs.AddSources, source)
+			termSources.AddSources = append(termSources.AddSources, source)
 		}
 
 		for _, term := range source.GetDelTerms() {
-			stbs := termSourcesMap[term]
-			if stbs == nil {
-				stbs = &SearchTermBatchSources{
+			termSources := termSourcesMap[term]
+			if termSources == nil {
+				hterm, err := common.CreateTermHmac(term, termKey)
+				if err != nil {
+					return nil, err
+				}
+				termSources = &SearchTermSources{
 					Term:       term,
+					HTerm:      hterm,
 					AddSources: make([]SearchTermIdxSourceV2, 0, 10),
 					DelSources: make([]SearchTermIdxSourceV2, 0, 10),
 					delDocs:    delDocs}
-				termSourcesMap[term] = stbs
+				termSourcesMap[term] = termSources
 			}
-			stbs.DelSources = append(stbs.DelSources, source)
+			termSources.DelSources = append(termSources.DelSources, source)
 		}
 	}
 
-	batchElementMap := make(map[string]*SearchTermBatchElement) // hashedTerm -> batchElement
+	bucketIDMap := make(map[string]*SearchTermBucket) // bucketID -> SearchTermBucket
 	for term, termSources := range termSourcesMap {
-		hashedTerm := common.HashTerm(term)
-		batchElement := batchElementMap[hashedTerm]
-		if batchElement == nil {
-			batchElement = &SearchTermBatchElement{
-				HashedTerm: hashedTerm,
-				IndexKey:   indexKey,
-				TermKey:    termKey,
+		termBucketID := common.TermBucketID(term, bucketCount)
+		termBucket := bucketIDMap[termBucketID]
+		if termBucket == nil {
+			termBucket = &SearchTermBucket{
+				BucketID: termBucketID,
+				IndexKey: indexKey,
+				TermKey:  termKey,
 			}
-			batchElementMap[hashedTerm] = batchElement
-			mgr.termHeap.Push(batchElement)
+			bucketIDMap[termBucketID] = termBucket
+			mgr.termBucketList = append(mgr.termBucketList, termBucket)
 		}
-		batchElement.TermSources = append(batchElement.TermSources, termSources)
+		termBucket.TermSources = append(termBucket.TermSources, termSources)
 	}
 	return mgr, nil
 }
 
 //////////////////////////////////////////////////////////////////
 //
-//                    Search HashedTerm Batch V2
+//                    Search Term Batch V2
 //
 //////////////////////////////////////////////////////////////////
 type SearchTermIdxTermInfo struct {
 	term       string // plain term
+	hterm      string // HMAC term
 	AddSources []SearchTermIdxSourceV2
 	DelSources []SearchTermIdxSourceV2
 	delDocMap  map[string]bool //
 }
+
 type SearchTermBatchV2 struct {
 	Owner                     common.SearchIdxOwner                              // owner
 	SourceList                []SearchTermIdxSourceV2                            // all docs
 	termList                  []string                                           // all terms
-	hashedTermList            []string                                           // all hashed terms
-	HashedTermToWriter        map[string]*SearchTermIdxWriterV2                  // hashedTerm -> index writer
-	HashedTermToTerms         map[string][]*SearchTermIdxTermInfo                // hashedTerm -> terms mapped to this hashedTerm
-	sourceToHashTerms         map[SearchTermIdxSourceV2][]string                 // source -> hashedTerms
-	sourceToHashedTermWriters map[SearchTermIdxSourceV2][]*SearchTermIdxWriterV2 // source -> hashedTerm writers
+	bucketIDList              []string                                           // all bucketIDs
+	BucketIDToWriter          map[string]*SearchTermIdxWriterV2                  // bucketID -> index writer
+	BucketIDToTerms           map[string][]*SearchTermIdxTermInfo                // bucketID -> terms mapped to this bucket
+	sourceToBucketIDs         map[SearchTermIdxSourceV2][]string                 // source -> []bucketID
+	sourceToTermBucketWriters map[SearchTermIdxSourceV2][]*SearchTermIdxWriterV2 // source -> termBucket writers
 }
 
-func (mgr *SearchTermBatchMgrV2) GetNextTermBatch(sdc client.StrongDocClient, batchSize int) (*SearchTermBatchV2, error) {
+func (mgr *SearchTermBatchMgrV2) GetNextTermBatch(sdc client.StrongDocClient) (*SearchTermBatchV2, error) {
+	batchSize := utils.Min(len(mgr.termBucketList), int(mgr.BatchSize))
 
-	// pop out batch elements
-	var sources []*SearchTermBatchElement
-	for i := 0; i < batchSize; i++ {
-		s, _ := mgr.termHeap.Pop()
-		if s == nil {
-			break
-		}
-		source := s.(*SearchTermBatchElement)
-		sources = append(sources, source)
-	}
+	// The term bucket batch to process
+	termBuckets := mgr.termBucketList[:batchSize]
+	mgr.termBucketList = mgr.termBucketList[batchSize:]
 
-	return CreateSearchTermBatchV2(sdc, mgr.Owner, sources)
+	return CreateSearchTermBatchV2(sdc, mgr.Owner, termBuckets)
 }
 
 // TODO: optimization
 func CreateSearchTermBatchV2(sdc client.StrongDocClient, owner common.SearchIdxOwner,
-	batchElements []*SearchTermBatchElement) (*SearchTermBatchV2, error) {
+	termBucketBatch []*SearchTermBucket) (*SearchTermBatchV2, error) {
 	batch := &SearchTermBatchV2{
-		Owner:              owner,
-		SourceList:         nil,                                     // all docs
-		HashedTermToWriter: make(map[string]*SearchTermIdxWriterV2), // hashedTerm -> writer
-		sourceToHashTerms:  nil,
-		termList:           nil, // all terms
-		hashedTermList:     nil, // all hashed terms
-		HashedTermToTerms:  nil,
+		Owner:             owner,
+		SourceList:        nil,                                     // all docs
+		BucketIDToWriter:  make(map[string]*SearchTermIdxWriterV2), // bucketID -> writer
+		BucketIDToTerms:   nil,
+		sourceToBucketIDs: nil,
+		termList:          nil, // all terms
+		bucketIDList:      nil, // all bucket IDs
 	}
 
-	sourceToHashTermsMap := make(map[SearchTermIdxSourceV2]map[string]bool)
-	for _, batchElement := range batchElements {
-		hashedTerm := batchElement.HashedTerm
-		for _, term := range batchElement.TermSources {
+	// TermSource -> TermBucketID -> bool
+	sourceToBucketIDsMap := make(map[SearchTermIdxSourceV2]map[string]bool)
+	for _, termBucket := range termBucketBatch {
+		termBucketID := termBucket.BucketID
+		for _, term := range termBucket.TermSources {
 			for _, source := range term.AddSources {
-				if _, ok := sourceToHashTermsMap[source]; !ok {
-					sourceToHashTermsMap[source] = make(map[string]bool)
+				if _, ok := sourceToBucketIDsMap[source]; !ok {
+					sourceToBucketIDsMap[source] = make(map[string]bool)
 				}
-				sourceToHashTermsMap[source][hashedTerm] = true
+				sourceToBucketIDsMap[source][termBucketID] = true
 			}
 		}
 	}
 
-	// source -> hashTerms
-	sourceToHashTerms := make(map[SearchTermIdxSourceV2][]string)
-	for source, hashTermsMap := range sourceToHashTermsMap {
-		var hashTerms []string
-		if hashTermsMap != nil && len(hashTermsMap) > 0 {
-			for hashTerm, _ := range hashTermsMap {
-				hashTerms = append(hashTerms, hashTerm)
+	// TermSource -> []TermBucketID
+	sourceToBucketIDsList := make(map[SearchTermIdxSourceV2][]string)
+	for source, bucketIDMap := range sourceToBucketIDsMap {
+		var bucketIDsList []string
+		if len(bucketIDMap) > 0 {
+			for bucketID := range bucketIDMap {
+				bucketIDsList = append(bucketIDsList, bucketID)
 			}
 		}
-		sourceToHashTerms[source] = hashTerms
+		sourceToBucketIDsList[source] = bucketIDsList
 	}
-	batch.sourceToHashTerms = sourceToHashTerms
+	batch.sourceToBucketIDs = sourceToBucketIDsList
 
 	// sourceList
-	batch.SourceList = make([]SearchTermIdxSourceV2, 0, len(batch.sourceToHashTerms))
-	for sis := range batch.sourceToHashTerms {
-		batch.SourceList = append(batch.SourceList, sis)
+	batch.SourceList = make([]SearchTermIdxSourceV2, 0, len(batch.sourceToBucketIDs))
+	for stis := range batch.sourceToBucketIDs {
+		batch.SourceList = append(batch.SourceList, stis)
 	}
 
-	// HashedTermToTerms
-	hashedTermToTerms := make(map[string][]*SearchTermIdxTermInfo)
-	hashTermToAllDelDocsMap := make(map[string]map[string]map[string]bool)
-	for _, batchElement := range batchElements {
+	// BucketID -> []SearchTermIdxTermInfo
+	bucketIDToTerms := make(map[string][]*SearchTermIdxTermInfo)
+	// BucketID -> Term -> DocID -> bool
+	bucketIDToAllDelDocsMap := make(map[string]map[string]map[string]bool)
+	for _, termBucket := range termBucketBatch {
 		var terms []*SearchTermIdxTermInfo
-		hashTermToAllDelDocsMap[batchElement.HashedTerm] = make(map[string]map[string]bool)
-		for _, termSource := range batchElement.TermSources {
-
+		bucketIDToAllDelDocsMap[termBucket.BucketID] = make(map[string]map[string]bool)
+		for _, termSource := range termBucket.TermSources {
 			delDocMap := make(map[string]bool)
 			if termSource.DelSources != nil {
 				for _, ds := range termSource.DelSources {
@@ -228,57 +225,55 @@ func CreateSearchTermBatchV2(sdc client.StrongDocClient, owner common.SearchIdxO
 
 			termInfo := &SearchTermIdxTermInfo{
 				term:       termSource.Term,
+				hterm:      termSource.HTerm,
 				AddSources: termSource.AddSources,
 				DelSources: termSource.DelSources,
 				delDocMap:  delDocMap,
 			}
 			terms = append(terms, termInfo)
-			hashTermToAllDelDocsMap[batchElement.HashedTerm][termSource.Term] = delDocMap
+			bucketIDToAllDelDocsMap[termBucket.BucketID][termSource.Term] = delDocMap
 		}
-		hashedTermToTerms[batchElement.HashedTerm] = terms
-
+		bucketIDToTerms[termBucket.BucketID] = terms
 	}
-	batch.HashedTermToTerms = hashedTermToTerms
+	batch.BucketIDToTerms = bucketIDToTerms
 
-	// HashedTermToWriter
+	// BucketIDToWriter
 	var allTerms []string
-	var allHashedTerms []string
-	for _, batchElement := range batchElements {
-
-		allHashedTerms = append(allHashedTerms, batchElement.HashedTerm)
-		// create term index writer for every hashedTerm
+	var allBucketIDs []string
+	for _, termBucket := range termBucketBatch {
+		allBucketIDs = append(allBucketIDs, termBucket.BucketID)
+		// create term index writer for every bucketID
 		writer, err := CreateSearchTermIdxWriterV2(sdc, owner,
-			batchElement.HashedTerm, batchElement.TermSources,
-			hashTermToAllDelDocsMap[batchElement.HashedTerm],
-			batchElement.TermKey, batchElement.IndexKey)
+			termBucket.BucketID, termBucket.TermSources,
+			bucketIDToAllDelDocsMap[termBucket.BucketID],
+			termBucket.TermKey, termBucket.IndexKey)
 		if err != nil {
 			return nil, err
 		}
 		// collect all terms
-		for _, term := range batchElement.TermSources {
+		for _, term := range termBucket.TermSources {
 			allTerms = append(allTerms, term.Term)
 
 		}
-
-		batch.HashedTermToWriter[batchElement.HashedTerm] = writer
+		batch.BucketIDToWriter[termBucket.BucketID] = writer
 	}
 	//sort.Strings(allTerms)
 	batch.termList = allTerms
-	sort.Strings(allHashedTerms)
-	batch.hashedTermList = allHashedTerms
+	sort.Strings(allBucketIDs)
+	batch.bucketIDList = allBucketIDs
 
-	sourceToHashedTermWriters := make(map[SearchTermIdxSourceV2][]*SearchTermIdxWriterV2)
-	for source, hashTermsMap := range sourceToHashTermsMap {
-		var hashTermWriters []*SearchTermIdxWriterV2
-		if hashTermsMap != nil && len(hashTermsMap) > 0 {
-			for hashTerm, _ := range hashTermsMap {
-				hashTermWriter := batch.HashedTermToWriter[hashTerm]
-				hashTermWriters = append(hashTermWriters, hashTermWriter)
+	sourceToTermBucketIndexWriters := make(map[SearchTermIdxSourceV2][]*SearchTermIdxWriterV2)
+	for source, bucketIDMap := range sourceToBucketIDsMap {
+		var termBucketIndexWriters []*SearchTermIdxWriterV2
+		if len(bucketIDMap) > 0 {
+			for bucketID := range bucketIDMap {
+				termBucketIndexWriter := batch.BucketIDToWriter[bucketID]
+				termBucketIndexWriters = append(termBucketIndexWriters, termBucketIndexWriter)
 			}
 		}
-		sourceToHashedTermWriters[source] = hashTermWriters
+		sourceToTermBucketIndexWriters[source] = termBucketIndexWriters
 	}
-	batch.sourceToHashedTermWriters = sourceToHashedTermWriters
+	batch.sourceToTermBucketWriters = sourceToTermBucketIndexWriters
 
 	return batch, nil
 }
@@ -425,7 +420,7 @@ func (batch *SearchTermBatchV2) processStiBatchParaReading(readToWriteChan chan<
 			}
 
 			if blk != nil && len(blk.TermOffset) > 0 {
-				for _, hashedTermWriter := range batch.sourceToHashedTermWriters[source] {
+				for _, hashedTermWriter := range batch.sourceToTermBucketWriters[source] {
 					blkList := hashedTermWriterToBlks[hashedTermWriter]
 					if blkList == nil {
 						blkList = make([]*SearchTermIdxSourceBlockV2, 0, 1)
@@ -488,7 +483,7 @@ func (batch *SearchTermBatchV2) processStiBatchParaWriting(
 						} else {
 							stiwChan <- &SearchTermIdxWriterRespV2{stibs, processedDocs, nil}
 						}
-					}(batch.HashedTermToTerms[hashedTermWriter.HashedTerm],
+					}(batch.BucketIDToTerms[hashedTermWriter.HashedTerm],
 						hashedTermWriter,
 						blkList,
 						hashedTermChan)
@@ -864,7 +859,7 @@ func (batch *SearchTermBatchV2) processStiAll(event *utils.TimeEvent) (
 	}
 
 	stiwToChan := make(map[*SearchTermIdxWriterV2](chan closeStiwResp))
-	for _, stiw := range batch.HashedTermToWriter {
+	for _, stiw := range batch.BucketIDToWriter {
 		stiwChan := make(chan closeStiwResp)
 		stiwToChan[stiw] = stiwChan
 		go func(stiw *SearchTermIdxWriterV2, stiwChan chan closeStiwResp) {
@@ -935,7 +930,7 @@ type SearchTermIdxWriterV2 struct {
 }
 
 func CreateSearchTermIdxWriterV2(sdc client.StrongDocClient, owner common.SearchIdxOwner,
-	hashedTerm string, termSources []*SearchTermBatchSources,
+	hashedTerm string, termSources []*SearchTermSources,
 	termDelDocMap map[string]map[string]bool,
 	termKey, indexKey *sscrypto.StrongSaltKey) (*SearchTermIdxWriterV2, error) {
 
@@ -1112,5 +1107,5 @@ func (stiw *SearchTermIdxWriterV2) GetUpdateID() string {
 }
 
 func (batch *SearchTermBatchV2) IsEmpty() bool {
-	return (len(batch.HashedTermToWriter) == 0)
+	return (len(batch.BucketIDToWriter) == 0)
 }

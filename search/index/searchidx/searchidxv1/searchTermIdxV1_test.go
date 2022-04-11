@@ -2,14 +2,15 @@ package searchidxv1
 
 import (
 	"fmt"
+	"io"
+	"math/rand"
+	"testing"
+
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	"github.com/overnest/strongsalt-common-go/blocks"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
-	"io"
-	"math/rand"
-	"testing"
 
 	"gotest.tools/assert"
 )
@@ -120,6 +121,7 @@ func TestSearchTermIdxBatchRemoveString(t *testing.T) {
 
 func TestSearchTermIdxSimpleV1(t *testing.T) {
 	// ================================ Prev Test ================================
+	common.EnableAllLocal()
 	sdc := common.PrevTest(t)
 
 	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")

@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"io"
 	"os"
 
@@ -10,32 +9,8 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
-const (
-	TEMP_DOC_IDX_BASE = "/tmp/document"
-)
-
-// return /tmp/document/index/<docID>
-func buildDocIdxBasePath(docID string) string {
-	return fmt.Sprintf("/%v/index/%v", TEMP_DOC_IDX_BASE, docID)
-}
-
-// return /tmp/document/index/<docID>/<docVer>
-func buildDocIdxPath(docID string, docVer uint64) string {
-	return fmt.Sprintf("%v/%v", buildDocIdxBasePath(docID), docVer)
-}
-
-// return /tmp/document/index/<docID>/<docVer>/offsetIdx
-func buildDocOffsetIdxPath(docID string, docVer uint64) string {
-	return fmt.Sprintf("%v/offsetIdx", buildDocIdxPath(docID, docVer))
-}
-
-// return /tmp/document/index/<docID>/<docVer>/termIdx
-func buildDocTermIdxPath(docID string, docVer uint64) string {
-	return fmt.Sprintf("%v/termIdx", buildDocIdxPath(docID, docVer))
-}
-
 func OpenDocOffsetIdxWriter(sdc client.StrongDocClient, docID string, docVer uint64) (outputWriter io.WriteCloser, err error) {
-	if utils.TestLocal {
+	if LocalDocIdx() {
 		outputWriter, err = utils.MakeDirAndCreateFile(buildDocOffsetIdxPath(docID, docVer))
 	} else {
 		outputWriter, err = api.NewDocOffsetIdxWriter(sdc, docID, docVer)
@@ -44,7 +19,7 @@ func OpenDocOffsetIdxWriter(sdc client.StrongDocClient, docID string, docVer uin
 }
 
 func OpenDocTermIdxWriter(sdc client.StrongDocClient, docID string, docVer uint64) (outputWriter io.WriteCloser, err error) {
-	if utils.TestLocal {
+	if LocalDocIdx() {
 		outputWriter, err = utils.MakeDirAndCreateFile(buildDocTermIdxPath(docID, docVer))
 	} else {
 		outputWriter, err = api.NewDocTermIdxWriter(sdc, docID, docVer)
@@ -53,7 +28,7 @@ func OpenDocTermIdxWriter(sdc client.StrongDocClient, docID string, docVer uint6
 }
 
 func OpenDocOffsetIdxReader(sdc client.StrongDocClient, docID string, docVer uint64) (reader io.ReadCloser, err error) {
-	if utils.TestLocal {
+	if LocalDocIdx() {
 		reader, err = utils.OpenLocalFile(buildDocOffsetIdxPath(docID, docVer))
 	} else {
 		reader, err = api.NewDocOffsetIdxReader(sdc, docID, docVer)
@@ -62,7 +37,7 @@ func OpenDocOffsetIdxReader(sdc client.StrongDocClient, docID string, docVer uin
 }
 
 func OpenDocTermIdxReader(sdc client.StrongDocClient, docID string, docVer uint64) (reader io.ReadCloser, err error) {
-	if utils.TestLocal {
+	if LocalDocIdx() {
 		reader, err = utils.OpenLocalFile(buildDocTermIdxPath(docID, docVer))
 	} else {
 		reader, err = api.NewDocTermIdxReader(sdc, docID, docVer)
@@ -71,8 +46,8 @@ func OpenDocTermIdxReader(sdc client.StrongDocClient, docID string, docVer uint6
 }
 
 // remove all version of doc indexes
-func RemoveDocIndexes(sdc client.StrongDocClient, docID string) error {
-	if utils.TestLocal {
+func RemoveDocIdxs(sdc client.StrongDocClient, docID string) error {
+	if LocalDocIdx() {
 		return os.RemoveAll(buildDocIdxBasePath(docID))
 	} else {
 		return api.RemoveDocIndexesAllVersions(sdc, docID)
@@ -80,7 +55,7 @@ func RemoveDocIndexes(sdc client.StrongDocClient, docID string) error {
 }
 
 func GetDocTermIndexSize(sdc client.StrongDocClient, docID string, docVer uint64) (uint64, error) {
-	if utils.TestLocal {
+	if LocalDocIdx() {
 		path := buildDocTermIdxPath(docID, docVer)
 		return utils.GetLocalFileSize(path)
 	} else {

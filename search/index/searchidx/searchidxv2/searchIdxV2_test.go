@@ -1,14 +1,16 @@
 package searchidxv2
 
 import (
+	"testing"
+
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	"gotest.tools/assert"
-	"testing"
 )
 
 func TestCreateSearchIdx(t *testing.T) {
+	common.EnableAllLocal()
 	sdc := common.PrevTest(t)
 	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 	numDocs := 10
@@ -18,15 +20,16 @@ func TestCreateSearchIdx(t *testing.T) {
 		keys[common.TestIndexKeyID]
 	assert.Assert(t, docKey != nil && termKey != nil && indexKey != nil)
 
-	docs, err := docidx.InitTestDocuments(numDocs, false)
+	docs, err := docidx.InitTestDocumentIdx(numDocs, false)
 	assert.NilError(t, err)
-	defer docidx.RemoveTestDocumentsDocIdx(sdc, docs)
+	defer docidx.RemoveTestDocumentIdxs(sdc, docs)
 	defer common.RemoveSearchIndex(sdc, owner)
 	TestCreateDocIndexAndSearchIdxV2(t, sdc, owner, docKey, termKey, indexKey, nil, docs)
 	TestValidateSearchIdxV2(t, sdc, owner, docKey, termKey, indexKey, docs)
 }
 
 func TestUpdateSearchIdx(t *testing.T) {
+	common.EnableAllLocal()
 	sdc := common.PrevTest(t)
 	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 
@@ -40,9 +43,9 @@ func TestUpdateSearchIdx(t *testing.T) {
 	addTerms := 10
 	deleteTerms := 10
 
-	oldDocs, err := docidx.InitTestDocuments(numDocs, false)
+	oldDocs, err := docidx.InitTestDocumentIdx(numDocs, false)
 	assert.NilError(t, err)
-	defer docidx.RemoveTestDocumentsDocIdx(sdc, oldDocs)
+	defer docidx.RemoveTestDocumentIdxs(sdc, oldDocs)
 
 	var newDocs []*docidx.TestDocumentIdxV1
 	for _, doc := range oldDocs {

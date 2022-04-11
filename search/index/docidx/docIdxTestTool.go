@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	docBasePath   = common.TEMP_DOC_IDX_BASE + "/doc"
+	docBasePath   = common.LOCAL_DOC_IDX_BASE + "/doc"
 	docDocPathFmt = docBasePath + "/%v/%v/doc/%v"
 )
 
@@ -34,7 +34,7 @@ type TestDocumentIdxV1 struct {
 	DeletedTerms map[string]bool
 }
 
-func InitTestDocuments(numDocs int, random bool) ([]*TestDocumentIdxV1, error) {
+func InitTestDocumentIdx(numDocs int, random bool) ([]*TestDocumentIdxV1, error) {
 	files, err := ioutil.ReadDir(utils.GetInitialTestDocumentDir())
 	if err != nil {
 		return nil, errors.New(err)
@@ -316,9 +316,9 @@ func (doc *TestDocumentIdxV1) OpenDti(sdc client.StrongDocClient, key *sscrypto.
 	return dti, nil
 }
 
-func RemoveTestDocumentsDocIdx(sdc client.StrongDocClient, docs []*TestDocumentIdxV1) error {
+func RemoveTestDocumentIdxs(sdc client.StrongDocClient, docs []*TestDocumentIdxV1) error {
 	for _, doc := range docs {
-		err := common.RemoveDocIndexes(sdc, doc.DocID)
+		err := common.RemoveDocIdxs(sdc, doc.DocID)
 		if err != nil {
 			return err
 		}
@@ -328,5 +328,5 @@ func RemoveTestDocumentsDocIdx(sdc client.StrongDocClient, docs []*TestDocumentI
 
 // clean all tmp files
 func CleanupTestDocumentsTmpFiles() error {
-	return os.RemoveAll(common.TEMP_DOC_IDX_BASE)
+	return os.RemoveAll(common.LOCAL_DOC_IDX_BASE)
 }

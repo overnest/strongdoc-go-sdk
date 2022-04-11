@@ -18,36 +18,8 @@ func NewUpdateIDV1() string {
 	return fmt.Sprintf("%x", time.Now().UnixNano())
 }
 
-//////////////////////////////////////////////////////////////////
-//
-//                     Local Testing Path
-//
-//////////////////////////////////////////////////////////////////
-
-// getSearchIdxPathPrefix gets the search index path prefix
-// return /tmp/search/<owner>/sidx
-func getSearchIdxPathPrefix(owner SearchIdxOwner) string {
-	return fmt.Sprintf("/tmp/search/%v/sidx", owner)
-}
-
-// getSearchIdxPath gets the base path of the search index
-// return /tmp/search/<owner>/sidx/<termID>/updateID
-func getSearchIdxPath(owner SearchIdxOwner, termID, updateID string) string {
-	return fmt.Sprintf("%v/%v/%v", getSearchIdxPathPrefix(owner), termID, updateID)
-}
-
-//  return /tmp/search/<owner>/sidx/<termID>/updateID/searchterm
-func getSearchTermIdxPath(owner SearchIdxOwner, termID, updateID string) string {
-	return fmt.Sprintf("%v/searchterm", getSearchIdxPath(owner, termID, updateID))
-}
-
-//  return /tmp/search/<owner>/sidx/<termID>/updateID/sortdoc
-func getSearchSortDocIdxPath(owner SearchIdxOwner, termID, updateID string) string {
-	return fmt.Sprintf("%v/sortdoc", getSearchIdxPath(owner, termID, updateID))
-}
-
 func OpenSearchTermIndexReader(sdc client.StrongDocClient, owner SearchIdxOwner, termID string, updateID string) (io.ReadCloser, uint64, error) {
-	if utils.TestLocal {
+	if LocalSearchIdx() {
 		path := getSearchTermIdxPath(owner, termID, updateID)
 		reader, err := os.Open(path)
 		if err != nil {
@@ -63,8 +35,8 @@ func OpenSearchTermIndexReader(sdc client.StrongDocClient, owner SearchIdxOwner,
 		}
 
 		return reader, uint64(stat.Size()), nil
-
 	}
+
 	reader, err := api.NewSearchTermIdxReader(sdc, owner.GetOwnerType(), termID, updateID)
 	if err != nil {
 		return nil, 0, err
@@ -78,7 +50,7 @@ func OpenSearchTermIndexReader(sdc client.StrongDocClient, owner SearchIdxOwner,
 }
 
 func OpenSearchSortDocIndexReader(sdc client.StrongDocClient, owner SearchIdxOwner, termID string, updateID string) (io.ReadCloser, uint64, error) {
-	if utils.TestLocal {
+	if LocalSearchIdx() {
 		path := getSearchSortDocIdxPath(owner, termID, updateID)
 		reader, err := os.Open(path)
 		if err != nil {
@@ -109,7 +81,7 @@ func OpenSearchSortDocIndexReader(sdc client.StrongDocClient, owner SearchIdxOwn
 }
 
 func OpenSearchSortDocIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwner, termHmac string, updateID string) (io.WriteCloser, error) {
-	if utils.TestLocal {
+	if LocalSearchIdx() {
 		path := getSearchSortDocIdxPath(owner, termHmac, updateID)
 		return utils.MakeDirAndCreateFile(path)
 	}
@@ -117,7 +89,7 @@ func OpenSearchSortDocIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwn
 }
 
 func OpenSearchTermIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwner, termHmac string) (writer io.WriteCloser, updateID string, err error) {
-	if utils.TestLocal {
+	if LocalSearchIdx() {
 		updateID = NewUpdateIDV1()
 		path := getSearchTermIdxPath(owner, termHmac, updateID)
 		writer, err = utils.MakeDirAndCreateFile(path)
@@ -133,7 +105,7 @@ func OpenSearchTermIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwner,
 //////////////////////////////////////////////////////////////////
 
 func GetUpdateIDs(sdc client.StrongDocClient, owner SearchIdxOwner, termID string) ([]string, error) {
-	if utils.TestLocal {
+	if LocalSearchIdx() {
 		path := getSearchIdxPath(owner, termID, "")
 
 		files, err := ioutil.ReadDir(path)
@@ -185,7 +157,7 @@ func GetLatestUpdateID(sdc client.StrongDocClient, owner SearchIdxOwner, termID 
 
 // remove owner's all search indexes(term + sortedDoc)
 func RemoveSearchIndex(sdc client.StrongDocClient, owner SearchIdxOwner) error {
-	if utils.TestLocal {
+	if LocalSearchIdx() {
 		return os.RemoveAll(getSearchIdxPathPrefix(owner))
 	} else {
 		return api.RemoveSearchIndexes(sdc, owner.GetOwnerType())

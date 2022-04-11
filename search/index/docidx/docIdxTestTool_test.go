@@ -21,7 +21,7 @@ func TestTools(t *testing.T) {
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	docs, err := InitTestDocuments(10, false)
+	docs, err := InitTestDocumentIdx(10, false)
 	assert.NilError(t, err)
 
 	// Create the indexes
@@ -34,7 +34,7 @@ func TestTools(t *testing.T) {
 		validateDocDti(t, sdc, key, doc, terms)
 	}
 	// ================================ Remove Doc Indexes ================================
-	RemoveTestDocumentsDocIdx(sdc, docs)
+	RemoveTestDocumentIdxs(sdc, docs)
 }
 
 // validate doi, return sorted term list
@@ -140,10 +140,10 @@ func TestCreateModifiedDoc(t *testing.T) {
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
 
-	docs, err := InitTestDocuments(documents, false)
+	docs, err := InitTestDocumentIdx(documents, false)
 	assert.NilError(t, err)
 	oldDoc := docs[0]
-	defer RemoveTestDocumentsDocIdx(sdc, docs)
+	defer RemoveTestDocumentIdxs(sdc, docs)
 
 	err = oldDoc.CreateDoiAndDti(sdc, key)
 	assert.NilError(t, err)

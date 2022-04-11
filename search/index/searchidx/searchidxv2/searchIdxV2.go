@@ -1,13 +1,14 @@
 package searchidxv2
 
 import (
+	"io"
+
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
-	"io"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -53,7 +54,7 @@ func CreateSearchIdxWriterV2(owner common.SearchIdxOwner, termKey, indexKey *ssc
 
 	var err error
 	searchIdx.batchMgr, err = CreateSearchTermBatchMgrV2(owner, sources, termKey, indexKey,
-		searchIdx.delDocs)
+		common.STI_TERM_BATCH_SIZE_V2, common.STI_TERM_BUCKET_COUNT, searchIdx.delDocs)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +66,7 @@ func CreateSearchIdxWriterV2(owner common.SearchIdxOwner, termKey, indexKey *ssc
 func (idx *SearchIdxV2) ProcessBatchTerms(sdc client.StrongDocClient, event *utils.TimeEvent) (map[string]error, error) {
 	emptyResult := make(map[string]error) // term -> error
 
-	termBatch, err := idx.batchMgr.GetNextTermBatch(sdc, common.STI_TERM_BATCH_SIZE_V2)
+	termBatch, err := idx.batchMgr.GetNextTermBatch(sdc)
 	if err != nil {
 		return emptyResult, err
 	}

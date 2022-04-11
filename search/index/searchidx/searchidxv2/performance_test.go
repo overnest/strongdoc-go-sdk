@@ -2,6 +2,9 @@ package searchidxv2
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 	common2 "github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
@@ -9,8 +12,6 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"gotest.tools/assert"
-	"os"
-	"testing"
 )
 
 func TestSIDExp1(t *testing.T) {
@@ -27,7 +28,8 @@ func TestSIDExp1(t *testing.T) {
 
 	// ================================ Generate Search index ================================
 
-	common.STI_TERM_BATCH_SIZE_V2 = 10
+	// common.STI_TERM_BATCH_SIZE_V2 = 10
+	// batchSize = uint32(10)
 	common.HASH_MOD_VAL = 1000
 	event := utils.NewTimeEvent(fmt.Sprintf("test_batchSize_%d", common.STI_TERM_BATCH_SIZE_V2), output)
 	testSearchIndexAllBatchesGeneration(t, sdc, owner, nil, docIDs, docVers, indexKey)

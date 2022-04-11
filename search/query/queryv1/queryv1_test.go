@@ -1,12 +1,14 @@
 package queryv1
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/searchidxv2"
 	"io"
 	"path/filepath"
 	"sort"
 	"testing"
+
+	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/searchidxv2"
 
 	"github.com/overnest/strongdoc-go-sdk/api"
 	"github.com/overnest/strongdoc-go-sdk/client"
@@ -18,6 +20,7 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 
+	"github.com/kr/pretty"
 	"gotest.tools/assert"
 )
 
@@ -69,11 +72,11 @@ func TestPhraseSearchV1(t *testing.T) {
 		}
 
 		reader.Close()
-		//fmt.Println("searchResult", searchResult)
+		fmt.Println("searchResult", jsonPrint(searchResult))
 
 		// Do Grep
 		grepResult := filterGrep(t, phrase, docs)
-		fmt.Println("grepResult", grepResult)
+		//fmt.Println("grepResult", grepResult)
 
 		// Compare Results
 		for _, doc := range docs {
@@ -214,27 +217,30 @@ func TestQueryTermsOrV1(t *testing.T) {
 	}
 }
 
-func TestQueryResultsAnd(t *testing.T) {
+func TestQueryResultsAndOr(t *testing.T) {
 	sdc, owner, _, termKey, indexKey, docs := setup(t, searchIndexTestVersion)
 	defer cleanup(sdc, owner, docs)
 
 	queryList := []QueryCompV1{
-		NewQueryCompV1(qcommon.TermAnd, []string{"membrane"}, nil),
+		NewQueryCompV1(qcommon.TermOr, []string{"membrane", "restrictions"}, nil),
 		NewQueryCompV1(qcommon.TermAnd, []string{"sclerites", "murexide"}, nil),
 	}
 
 	for _, queryComp := range queryList {
 		result := performSearchOp(t, sdc, owner, queryComp, termKey, indexKey)
 		queryComp.SetResult(result)
+		pretty.Println("queryComp", queryComp)
 	}
 
 	queryAnd := NewQueryCompV1(qcommon.QueryAnd, nil, queryList)
 	resultAnd := performSearchOp(t, sdc, owner, queryAnd, termKey, indexKey)
 	assert.Equal(t, len(resultAnd.GetDocVers()), 1)
+	pretty.Println("resultAnd", resultAnd)
 
 	queryOr := NewQueryCompV1(qcommon.QueryOr, nil, queryList)
 	resultOr := performSearchOp(t, sdc, owner, queryOr, termKey, indexKey)
-	assert.Equal(t, len(resultOr.GetDocVers()), 1)
+	assert.Equal(t, len(resultOr.GetDocVers()), 10)
+	pretty.Println("resultOr", resultOr)
 }
 
 func performSearchOp(t *testing.T, sdc client.StrongDocClient, owner common.SearchIdxOwner,
@@ -281,6 +287,8 @@ func setup(t *testing.T, ver uint32) (sdc client.StrongDocClient, owner common.S
 	docKey, termKey, indexKey *sscrypto.StrongSaltKey, docs []*docidx.TestDocumentIdxV1) {
 	defer fmt.Println("========================= finish set up =========================")
 	numDocs := 10
+
+	common.EnableAllLocal()
 	sdc = prevTest(t)
 	owner = common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 
@@ -290,7 +298,7 @@ func setup(t *testing.T, ver uint32) (sdc client.StrongDocClient, owner common.S
 		keys[common.TestIndexKeyID]
 	assert.Assert(t, docKey != nil && termKey != nil && indexKey != nil)
 
-	docs, err = docidx.InitTestDocuments(numDocs, false)
+	docs, err = docidx.InitTestDocumentIdx(numDocs, false)
 	assert.NilError(t, err)
 
 	switch ver {
@@ -299,24 +307,25 @@ func setup(t *testing.T, ver uint32) (sdc client.StrongDocClient, owner common.S
 		searchidxv1.TestValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, docs)
 	case common.STI_V2:
 		searchidxv2.TestCreateDocIndexAndSearchIdxV2(t, sdc, owner, docKey, termKey, indexKey, nil, docs)
-		searchidxv2.TestValidateSearchIdxV2(t, sdc, owner, docKey, termKey, indexKey, docs)
+		// searchidxv2.TestValidateSearchIdxV2(t, sdc, owner, docKey, termKey, indexKey, docs)
 	default:
-		err = fmt.Errorf("invalid version")
-		return
+		assert.Assert(t, false, "Invalid version")
 	}
 	return
 }
 
 func cleanup(sdc client.StrongDocClient, owner common.SearchIdxOwner, docs []*docidx.TestDocumentIdxV1) {
 	docidx.CleanupTestDocumentsTmpFiles()
-	docidx.RemoveTestDocumentsDocIdx(sdc, docs)
+	docidx.RemoveTestDocumentIdxs(sdc, docs)
 	common.RemoveSearchIndex(sdc, owner)
 }
 
 func prevTest(t *testing.T) client.StrongDocClient {
-	if utils.TestLocal {
+	assert.Assert(t, !common.PartialLocal(), "Does not support partial localized testing")
+	if common.AllLocal() {
 		return nil
 	}
+
 	// register org and admin
 	sdc, orgs, users := testUtils.PrevTest(t, 1, 1)
 	testUtils.DoRegistration(t, sdc, orgs, users)
@@ -325,4 +334,13 @@ func prevTest(t *testing.T) client.StrongDocClient {
 	err := api.Login(sdc, user.UserID, user.Password, user.OrgID)
 	assert.NilError(t, err)
 	return sdc
+}
+
+func jsonPrint(v interface{}) string {
+	j, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return ""
+	}
+
+	return string(j)
 }

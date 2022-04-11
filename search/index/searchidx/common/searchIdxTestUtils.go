@@ -2,19 +2,19 @@ package common
 
 import (
 	"fmt"
-	"github.com/go-errors/errors"
-	"github.com/overnest/strongdoc-go-sdk/api"
-	"github.com/overnest/strongdoc-go-sdk/client"
-	"github.com/overnest/strongdoc-go-sdk/search/index/docidx"
-	docIndexCommon "github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
-	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
-	"github.com/overnest/strongdoc-go-sdk/utils"
-	sscrypto "github.com/overnest/strongsalt-crypto-go"
-	"gotest.tools/assert"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
+
+	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/api"
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx"
+	docIdxCommon "github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
+	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
+	sscrypto "github.com/overnest/strongsalt-crypto-go"
+	"gotest.tools/assert"
 )
 
 const (
@@ -23,11 +23,87 @@ const (
 	TestIndexKeyID = "indexKey"
 )
 
+const (
+	LOCAL_SEARCH_IDX_BASE = "/tmp/strongdoc/search"
+	LOCAL_SAVED_KEYS      = "/tmp/strongdoc/savedKeys"
+)
+
+var (
+	localSearchIdx = false
+	savedKeyPath   = path.Clean(LOCAL_SAVED_KEYS)
+)
+
+//////////////////////////////////////////////////////////////////
+//
+//                     Local Testing Path
+//
+//////////////////////////////////////////////////////////////////
+
+// The production search index and version will be stored in S3 at the following location:
+//    <bucket>/<orgID/userID>/sidx/<term>/<updateID>/docoffset
+//    <bucket>/<orgID/userID>/sidx/<term>/<updateID>/sorteddoc
+//    <bucket>/<orgID/userID>/sidx/<term>/<updateID>/start_time
+//    <bucket>/<orgID/userID>/sidx/<term>/<updateID>/end_time
+
+// getSearchIdxPathPrefix gets the search index path prefix
+// return LOCAL_SEARCH_IDX_BASE/<owner>/sidx
+func getSearchIdxPathPrefix(owner SearchIdxOwner) string {
+	return fmt.Sprintf("%v/%v/sidx", LOCAL_SEARCH_IDX_BASE, owner)
+}
+
+// getSearchIdxPath gets the base path of the search index
+// return LOCAL_SEARCH_IDX_BASE/<owner>/sidx/<termID>/updateID
+func getSearchIdxPath(owner SearchIdxOwner, termID, updateID string) string {
+	return fmt.Sprintf("%v/%v/%v", getSearchIdxPathPrefix(owner), termID, updateID)
+}
+
+//  return LOCAL_SEARCH_IDX_BASE/<owner>/sidx/<termID>/updateID/searchterm
+func getSearchTermIdxPath(owner SearchIdxOwner, termID, updateID string) string {
+	return fmt.Sprintf("%v/searchterm", getSearchIdxPath(owner, termID, updateID))
+}
+
+//  return LOCAL_SEARCH_IDX_BASE/<owner>/sidx/<termID>/updateID/sortdoc
+func getSearchSortDocIdxPath(owner SearchIdxOwner, termID, updateID string) string {
+	return fmt.Sprintf("%v/sortdoc", getSearchIdxPath(owner, termID, updateID))
+}
+
+func LocalSearchIdx() bool {
+	return localSearchIdx
+}
+
+func EnableLocalSearchIdx() {
+	localSearchIdx = true
+}
+
+func DisableLocalSearchIdx() {
+	localSearchIdx = false
+}
+
+func AllLocal() bool {
+	return (docIdxCommon.LocalDocIdx() && LocalSearchIdx())
+}
+
+func PartialLocal() bool {
+	return (docIdxCommon.LocalDocIdx() != LocalSearchIdx())
+}
+
+func EnableAllLocal() {
+	docIdxCommon.EnableLocalDocIdx()
+	EnableLocalSearchIdx()
+}
+
+func DisableAllLocal() {
+	docIdxCommon.DisableLocalDocIdx()
+	DisableLocalSearchIdx()
+}
+
 func TestDocIndexGeneration(t *testing.T, sdc client.StrongDocClient, indexKey *sscrypto.StrongSaltKey, num int) (docIDs []string, docVers []uint64) {
 	// remove existing doc indexes
-	docs, err := docidx.InitTestDocuments(num, false)
+	docs, err := docidx.InitTestDocumentIdx(num, false)
+	assert.NilError(t, err)
+
 	for _, doc := range docs {
-		docIndexCommon.RemoveDocIndexes(sdc, doc.DocID)
+		docIdxCommon.RemoveDocIdxs(sdc, doc.DocID)
 	}
 
 	// generate doc indexes
@@ -41,9 +117,10 @@ func TestDocIndexGeneration(t *testing.T, sdc client.StrongDocClient, indexKey *
 }
 
 func PrevTest(t *testing.T) client.StrongDocClient {
-	if utils.TestLocal {
+	if LocalSearchIdx() {
 		return nil
 	}
+
 	// register org and admin
 	sdc, orgs, users := testUtils.PrevTest(t, 1, 1)
 	testUtils.DoRegistration(t, sdc, orgs, users)
@@ -53,8 +130,6 @@ func PrevTest(t *testing.T) client.StrongDocClient {
 	assert.NilError(t, err)
 	return sdc
 }
-
-var savedKeyPath string = path.Clean("/tmp/savedKeys")
 
 func TestSaveKeys(keyMap map[string]*sscrypto.StrongSaltKey) error {
 	if err := os.MkdirAll(savedKeyPath, 0770); err != nil {

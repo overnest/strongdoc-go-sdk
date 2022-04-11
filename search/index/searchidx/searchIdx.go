@@ -39,8 +39,8 @@ func GetTermIDs(terms []string, termKey *sscrypto.StrongSaltKey, stiVersion uint
 		}
 	case common.STI_V2:
 		for _, term := range terms {
-			hashedTerm := common.HashTerm(term)
-			termID, err := common.CreateTermHmac(hashedTerm, termKey)
+			bucketID := common.TermBucketID(term, common.STI_TERM_BUCKET_COUNT)
+			termID, err := common.CreateTermHmac(bucketID, termKey)
 			if err != nil {
 				return nil, err
 			}
@@ -215,8 +215,8 @@ func OpenSearchTermIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner
 				return nil, errors.New(err)
 			}
 
-			hashedTerm := common.HashTerm(terms[0])
-			stiv2, err := searchidxv2.OpenSearchTermIdxPrivV2(owner, hashedTerm, termID, updateID, termKey,
+			bucketID := common.TermBucketID(terms[0], common.STI_TERM_BUCKET_COUNT)
+			stiv2, err := searchidxv2.OpenSearchTermIdxPrivV2(owner, bucketID, termID, updateID, termKey,
 				indexKey, reader, plainHdr, 0, uint64(plainHdrSize), size)
 			if err != nil {
 				return nil, err
@@ -656,7 +656,8 @@ func OpenSearchSortedDocIndex(sdc client.StrongDocClient, owner common.SearchIdx
 				return nil, errors.New(err)
 			}
 
-			ssdiv2, err := searchidxv2.OpenSearchSortDocIdxPrivV2(owner, common.HashTerm(terms[0]), termID, updateID,
+			bucketID := common.TermBucketID(terms[0], common.STI_TERM_BUCKET_COUNT)
+			ssdiv2, err := searchidxv2.OpenSearchSortDocIdxPrivV2(owner, bucketID, termID, updateID,
 				termKey, indexKey, reader, plainHdr, 0, uint64(plainHdrSize), size)
 			if err != nil {
 				return nil, err

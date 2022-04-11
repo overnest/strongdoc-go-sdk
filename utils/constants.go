@@ -17,6 +17,4 @@ const (
 	// Owner type
 	OwnerOrg  OwnerType = "OWNER_ORG"
 	OwnerUser OwnerType = "OWNER_USER"
-
-	TestLocal bool = true
 )

@@ -14,6 +14,7 @@ import (
 
 func TestSearchTermUpdateIDsV1(t *testing.T) {
 	// ================================ Prev Test ================================
+	common.EnableAllLocal()
 	sdc := common.PrevTest(t)
 	idCount := 10
 	updateIDs := make([]string, idCount)
@@ -46,6 +47,7 @@ func TestSearchIdxWriterV1(t *testing.T) {
 	versions := 3
 	numDocs := 10
 	delDocs := 4
+	common.EnableAllLocal()
 	sdc := common.PrevTest(t)
 	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 
@@ -54,7 +56,7 @@ func TestSearchIdxWriterV1(t *testing.T) {
 	docKey, termKey, indexKey := keys[common.TestDocKeyID], keys[common.TestTermKeyID], keys[common.TestIndexKeyID]
 	assert.Assert(t, docKey != nil && termKey != nil && indexKey != nil)
 
-	firstDocs, err := docidx.InitTestDocuments(numDocs, false)
+	firstDocs, err := docidx.InitTestDocumentIdx(numDocs, false)
 	assert.NilError(t, err)
 
 	docVers := make([][]*docidx.TestDocumentIdxV1, len(firstDocs))

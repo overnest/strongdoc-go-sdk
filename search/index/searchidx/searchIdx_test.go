@@ -19,6 +19,7 @@ func TestSearchIdxWriterV1(t *testing.T) {
 	numDocs := 10
 	numTerms := 5
 	// delDocs := 4
+	common.EnableAllLocal()
 	sdc := common.PrevTest(t)
 	owner := common.CreateSearchIdxOwner(utils.OwnerUser, "owner1")
 
@@ -28,7 +29,7 @@ func TestSearchIdxWriterV1(t *testing.T) {
 		keys[common.TestIndexKeyID]
 	assert.Assert(t, docKey != nil && termKey != nil && indexKey != nil)
 
-	docs, err := docidx.InitTestDocuments(numDocs, false)
+	docs, err := docidx.InitTestDocumentIdx(numDocs, false)
 	assert.NilError(t, err)
 
 	searchidxv1.TestCreateDocIndexAndSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, nil, docs)

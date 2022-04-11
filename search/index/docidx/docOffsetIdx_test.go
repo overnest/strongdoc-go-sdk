@@ -1,6 +1,9 @@
 package docidx
 
 import (
+	"io"
+	"testing"
+
 	"github.com/overnest/strongdoc-go-sdk/api"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
@@ -9,8 +12,6 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"gotest.tools/assert"
-	"io"
-	"testing"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -27,11 +28,12 @@ import (
 
 func TestDocOffsetIdx(t *testing.T) {
 	// ================================ Prev Test ================================
+	common.EnableLocalDocIdx() // Comment out to enable testing against remote server
 	testClient := prevTest(t)
 
 	docID := "docID100"
 	docVer := uint64(100)
-	defer common.RemoveDocIndexes(testClient, docID)
+	defer common.RemoveDocIdxs(testClient, docID)
 
 	sourceFileName := "./testDocuments/enwik8.txt.gz"
 	sourceFilepath, err := utils.FetchFileLoc(sourceFileName)
@@ -109,9 +111,10 @@ func findTermLocationV1(block *docidxv1.DocOffsetIdxBlkV1, term string, loc uint
 }
 
 func prevTest(t *testing.T) client.StrongDocClient {
-	if utils.TestLocal {
+	if common.LocalDocIdx() {
 		return nil
 	}
+
 	// register org and admin
 	sdc, orgs, users := testUtils.PrevTest(t, 1, 1)
 	testUtils.DoRegistration(t, sdc, orgs, users)

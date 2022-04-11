@@ -1,10 +1,11 @@
 package searchidxv1
 
 import (
+	"testing"
+
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"gotest.tools/assert"
-	"testing"
 
 	docidx "github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 	didxcommon "github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
@@ -14,6 +15,7 @@ import (
 
 func TestSearchTermIdxSourceTextFileV1(t *testing.T) {
 	// ================================ Prev Test ================================
+	common.EnableAllLocal()
 	testClient := common.PrevTest(t)
 	docID1 := "DOC1"
 	docVer1 := uint64(1)
@@ -29,7 +31,7 @@ func TestSearchTermIdxSourceTextFileV1(t *testing.T) {
 	//sourceFilePath4, err := utils.FetchFileLoc("./testDocuments/doc2.chg.txt.gz")
 	//assert.NilError(t, err)
 
-	defer didxcommon.RemoveDocIndexes(testClient, docID1)
+	defer didxcommon.RemoveDocIdxs(testClient, docID1)
 	// defer didxcommon.RemoveDocIndexes(testClient, docID2)
 
 	// ================================ Generate doc index (offset + term) ================================

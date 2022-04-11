@@ -3,15 +3,16 @@ package common
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-errors/errors"
-	"github.com/overnest/strongdoc-go-sdk/utils"
-	sscrypto "github.com/overnest/strongsalt-crypto-go"
-	"github.com/shengdoushi/base58"
 	"hash/fnv"
 	"io"
 	"os"
 	"path"
 	"sync"
+
+	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/utils"
+	sscrypto "github.com/overnest/strongsalt-crypto-go"
+	"github.com/shengdoushi/base58"
 )
 
 const (
@@ -33,12 +34,16 @@ const (
 	SSDI_V1  = uint32(1)
 	SSDI_V2  = uint32(2)
 	SSDI_VER = SSDI_V1
+
+	STI_TERM_BATCH_SIZE_V2 uint32 = 10 // Process termBuckets in batch of 10
+	STI_TERM_BUCKET_COUNT  uint32 = 100
 )
 
 var STI_TERM_BATCH_SIZE = 200 // Process terms in batches of 1000
 
-var STI_TERM_BATCH_SIZE_V2 = 10 // Process hashedTerms in batch of 10
-var HASH_MOD_VAL = 1000
+// var STI_TERM_BATCH_SIZE_V2 uint32 = 10 // Process termBuckets in batch of 10
+// var STI_TERM_BUCKET_COUNT uint32 = 100
+var HASH_MOD_VAL = 100
 
 // GetSearchIdxPathPrefix gets the search index path prefix
 func GetSearchIdxPathPrefix() string {
@@ -238,6 +243,13 @@ func hashStringToInt(s string, modVal int) int {
 	number := h.Sum32()
 	return int(number) % modVal
 }
+
 func HashTerm(term string) string {
 	return fmt.Sprintf("%v", hashStringToInt(term, HASH_MOD_VAL))
+}
+
+func TermBucketID(term string, buckets uint32) string {
+	h := fnv.New32a()
+	h.Write([]byte(term))
+	return fmt.Sprintf("%v", h.Sum32()%buckets)
 }

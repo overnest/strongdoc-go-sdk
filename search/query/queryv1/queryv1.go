@@ -311,28 +311,23 @@ func queryResultsAndV1(results []QueryResultV1, prevDocVer QueryDocVerV1) []Quer
 		return queryResult
 	}
 
-	result := results[0]
-	docVers := result.GetDocVers()
-	for len(docVers) > 0 {
-		docVer := docVers[0]
-
-		if prevDocVer != nil {
-			comp := strings.Compare(prevDocVer.GetDocID(), docVer.GetDocID())
-			if comp == 0 {
-				if len(results) == 1 { // last result
-					queryResult = append(queryResult, docVer)
-				} else {
-					queryResult = append(queryResult, queryResultsAndV1(results[1:], docVer)...)
-				}
-			} else if comp > 0 {
-				break
+	docIDMap := make(map[string]int)
+	docIDVer := make(map[string]QueryDocVerV1)
+	for _, result := range results {
+		docVers := result.GetDocVers()
+		for _, docVer := range docVers {
+			docIDMap[docVer.GetDocID()] = docIDMap[docVer.GetDocID()] + 1
+			prevDocVer := docIDVer[docVer.GetDocID()]
+			if prevDocVer == nil || prevDocVer.GetDocVer() < docVer.GetDocVer() {
+				docIDVer[docVer.GetDocID()] = docVer
 			}
-		} else {
-			queryResult = append(queryResult, queryResultsAndV1(results[1:], docVer)...)
 		}
+	}
 
-		docVers = docVers[1:]
-		result.SetDocVers(docVers)
+	for docID, docCount := range docIDMap {
+		if docCount == len(results) {
+			queryResult = append(queryResult, docIDVer[docID])
+		}
 	}
 
 	return queryResult
