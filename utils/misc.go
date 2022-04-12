@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -247,4 +248,13 @@ func Grep(dir string, terms []string, removeNewline bool) (map[string][]uint64, 
 	}
 
 	return docMap, nil
+}
+
+func JsonPrint(v interface{}) string {
+	j, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return ""
+	}
+
+	return string(j)
 }

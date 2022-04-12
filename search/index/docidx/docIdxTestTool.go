@@ -62,7 +62,7 @@ func InitTestDocumentIdx(numDocs int, random bool) ([]*TestDocumentIdxV1, error)
 			continue
 		}
 
-		doc, err := createDocumentIdx(file.Name(), file.Name(), 1)
+		doc, err := CreateDocumentIdx(file.Name(), file.Name(), 1)
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +76,7 @@ func InitTestDocumentIdx(numDocs int, random bool) ([]*TestDocumentIdxV1, error)
 	return documents, nil
 }
 
-func createDocumentIdx(name, id string, ver uint64) (*TestDocumentIdxV1, error) {
+func CreateDocumentIdx(name, id string, ver uint64) (*TestDocumentIdxV1, error) {
 	filePath := path.Join(utils.GetInitialTestDocumentDir(), name)
 	doc := &TestDocumentIdxV1{
 		DocFileName:  name,
@@ -91,7 +91,7 @@ func createDocumentIdx(name, id string, ver uint64) (*TestDocumentIdxV1, error) 
 }
 
 func createNewDocumentIdx(oldDoc *TestDocumentIdxV1, addTerms map[string]bool, deleteTerms map[string]bool) (newDoc *TestDocumentIdxV1, err error) {
-	newDoc, err = createDocumentIdx(oldDoc.DocFileName, oldDoc.DocID, oldDoc.DocVer+1)
+	newDoc, err = CreateDocumentIdx(oldDoc.DocFileName, oldDoc.DocID, oldDoc.DocVer+1)
 	if err != nil {
 		return
 	}
