@@ -45,13 +45,9 @@ func UploadDocument(cred *Credential, fileNames []string) ([]string, error) {
 	documents := make([]*docidx.TestDocumentIdxV1, 0, len(fileNames))
 
 	for _, filename := range fileNames {
-		filePath, err := utils.FetchFileLoc(filename)
-		if err != nil {
-			return nil, err
-		}
 		doc := &docidx.TestDocumentIdxV1{
 			DocFileName:  filename,
-			DocFilePath:  filePath,
+			DocFilePath:  filename,
 			DocID:        filename,
 			DocVer:       1,
 			AddedTerms:   make(map[string]bool),
