@@ -2,11 +2,12 @@ package utils
 
 import (
 	"compress/gzip"
-	"github.com/go-errors/errors"
 	"io"
 	"mime"
 	"net/http"
 	"regexp"
+
+	"github.com/go-errors/errors"
 )
 
 const (
@@ -18,11 +19,11 @@ const (
 // FileType is the file type
 type FileType string
 
-var mimeGzip = regexp.MustCompilePOSIX(`^application\/.*gzip$`)
-var mimeText = regexp.MustCompilePOSIX(`^text\/plain$`)
+var MimeGzip = regexp.MustCompilePOSIX(`^application\/.*gzip$`)
+var MimeText = regexp.MustCompilePOSIX(`^text\/plain$`)
 
-// getFileType get the file type
-func getFileType(source Source) (fileType FileType, err error) {
+// GetFileType get the file type
+func GetFileType(source Source) (fileType FileType, err error) {
 	// Only the first 512 bytes are used to sniff the content type.
 	buffer := make([]byte, 512)
 	n, err := source.Read(buffer)
@@ -36,9 +37,9 @@ func getFileType(source Source) (fileType FileType, err error) {
 		return
 	}
 
-	if mimeText.MatchString(mediaType) {
+	if MimeText.MatchString(mediaType) {
 		fileType = FT_TEXT
-	} else if mimeGzip.MatchString(mediaType) {
+	} else if MimeGzip.MatchString(mediaType) {
 		fileType = FT_GZIP
 	} else {
 		fileType = FT_UNKNWON
@@ -46,19 +47,19 @@ func getFileType(source Source) (fileType FileType, err error) {
 	return
 }
 
-// getFileTypeAndReaderCloser get fileType, reader and Closer
-func getFileTypeAndReaderCloser(source Source) (fileType FileType, reader io.Reader, closer io.Closer, err error) {
-	fileType, err = getFileType(source)
+// GetFileTypeAndReaderCloser get fileType, reader and Closer
+func GetFileTypeAndReaderCloser(source Source) (fileType FileType, reader io.Reader, closer io.Closer, err error) {
+	fileType, err = GetFileType(source)
 	if err != nil {
 		return
 	}
 
-	reader, closer, err = resetFile(fileType, source)
+	reader, closer, err = ResetFile(fileType, source)
 	return
 }
 
-// resetFile resets a file to be read again
-func resetFile(fileType FileType, source Source) (io.Reader, io.Closer, error) {
+// ResetFile resets a file to be read again
+func ResetFile(fileType FileType, source Source) (io.Reader, io.Closer, error) {
 	//  data source seek to file beginning
 	_, err := source.Seek(0, SeekSet)
 	if err != nil {

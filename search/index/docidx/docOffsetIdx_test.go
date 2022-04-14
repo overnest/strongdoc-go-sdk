@@ -8,6 +8,7 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
@@ -73,7 +74,7 @@ func TestDocOffsetIdx(t *testing.T) {
 }
 
 func testDocOffsetIdxV1(t *testing.T, doiVersion common.DocOffsetIdx, sourceFile utils.Source) {
-	tokenizer, err := utils.OpenBleveTokenizer(sourceFile)
+	tokenizer, err := tokenizer.OpenBleveTokenizer(sourceFile)
 	assert.NilError(t, err)
 
 	doi, ok := doiVersion.(*docidxv1.DocOffsetIdxV1)

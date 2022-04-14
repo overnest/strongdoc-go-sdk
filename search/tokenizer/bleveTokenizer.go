@@ -1,4 +1,4 @@
-package utils
+package tokenizer
 
 import (
 	"github.com/blevesearch/bleve/analysis"
@@ -11,11 +11,12 @@ import (
 	bleveUnicode "github.com/blevesearch/bleve/analysis/tokenizer/unicode"
 	"github.com/blevesearch/bleve/analysis/tokenizer/whitespace"
 	"github.com/blevesearch/bleve/registry"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
 //////////////////////////////////////////////////////////////////
 //
-//               BleveAnalyzer
+//                          BleveAnalyzer
 //
 //////////////////////////////////////////////////////////////////
 // tokenizer type
@@ -78,7 +79,7 @@ func openBleveAnalyzer(tokenizerType Tokenizer_Type, filterTypes ...Token_Filter
 
 //////////////////////////////////////////////////////////////////
 //
-//               BleveTokenizer
+//                         BleveTokenizer
 //
 //////////////////////////////////////////////////////////////////
 type BleveTokenizer interface {
@@ -95,7 +96,7 @@ type bleveTokenizer struct {
 }
 
 // OpenBleveTokenizer opens a tokenizer
-func OpenBleveTokenizer(source Source) (BleveTokenizer, error) {
+func OpenBleveTokenizer(source utils.Source) (BleveTokenizer, error) {
 	// init storage
 	storage, err := openStorage(source)
 	if err != nil {

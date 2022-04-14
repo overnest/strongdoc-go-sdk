@@ -2,9 +2,11 @@ package docidx
 
 import (
 	//"encoding/json"
+	"io"
+
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
-	"io"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/utils"
@@ -34,7 +36,7 @@ func CreateAndSaveDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer 
 
 func CreateAndSaveDocOffsetIdxWithOffset(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
 	sourceData utils.Source, initOffset int64) error {
-	tokenizer, err := utils.OpenBleveTokenizer(sourceData)
+	tokenizer, err := tokenizer.OpenBleveTokenizer(sourceData)
 	if err != err {
 		return err
 	}

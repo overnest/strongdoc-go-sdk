@@ -8,7 +8,7 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
-	"github.com/overnest/strongdoc-go-sdk/utils"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 )
 
@@ -37,7 +37,7 @@ type TermSearchResultV1 struct {
 func OpenTermSearchV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, terms []string,
 	termKey, indexKey *sscrypto.StrongSaltKey, ssdiVer uint32) (*TermSearchV1, error) {
 
-	analyzer, err := utils.OpenBleveAnalyzer()
+	analyzer, err := tokenizer.OpenBleveAnalyzer()
 	if err != nil {
 		return nil, err
 	}

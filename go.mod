@@ -10,6 +10,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de // indirect
 	github.com/overnest/strongsalt-common-go v0.0.6-0.20210614174042-4ccbb40a1dbe
 	github.com/overnest/strongsalt-crypto-go v0.0.0-20210111191944-23542459b77c
 	github.com/pkg/errors v0.9.1

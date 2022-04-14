@@ -7,7 +7,9 @@ import (
 )
 
 // create and save document offset index and term index
-func CreateAndSaveDocIndexes(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey, sourceData utils.Source) error {
+func CreateAndSaveDocIndexes(sdc client.StrongDocClient, docID string, docVer uint64,
+	key *sscrypto.StrongSaltKey, sourceData utils.Source) error {
+
 	err := CreateAndSaveDocOffsetIdx(sdc, docID, docVer, key, sourceData)
 	if err != nil {
 		return err

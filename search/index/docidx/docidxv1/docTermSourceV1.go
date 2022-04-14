@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
@@ -19,12 +20,12 @@ type DocTermSourceV1 interface {
 // Text File Source
 //
 type docTermSourceTextFileV1 struct {
-	tokenizer utils.BleveTokenizer
+	tokenizer tokenizer.BleveTokenizer
 }
 
 // OpenDocTermSourceTextFileV1 opens the text file Document Term Source V1
 func OpenDocTermSourceTextFileV1(source utils.Source) (*docTermSourceTextFileV1, error) {
-	tokenizer, err := utils.OpenBleveTokenizer(source)
+	tokenizer, err := tokenizer.OpenBleveTokenizer(source)
 	if err != nil {
 		return nil, errors.New(err)
 	}

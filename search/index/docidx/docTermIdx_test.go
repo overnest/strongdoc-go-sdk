@@ -9,6 +9,7 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"gotest.tools/assert"
@@ -35,7 +36,7 @@ func TestTermIdxBlockV1(t *testing.T) {
 
 		dtib := docidxv1.CreateDocTermIdxBlkV1(prevHighTerm, common.DTI_BLOCK_SIZE_MAX)
 
-		tokenizer, err := utils.OpenBleveTokenizer(sourceFile)
+		tokenizer, err := tokenizer.OpenBleveTokenizer(sourceFile)
 		assert.NilError(t, err)
 
 		for token, _, err := tokenizer.NextToken(); err != io.EOF; token, _, err = tokenizer.NextToken() {
@@ -127,7 +128,7 @@ func TestTermIdxSourcesV1(t *testing.T) {
 
 func gatherTermsFromSource(t *testing.T, source docidxv1.DocTermSourceV1) []string {
 	terms := make([]string, 0, 10000000)
-	for true {
+	for {
 		term, _, err := source.GetNextTerm()
 		if term != "" {
 			terms = append(terms, term)

@@ -1,22 +1,19 @@
-package utils
+package tokenizer
 
 import (
 	"bufio"
 	"bytes"
 	"io"
 	"unicode"
+
+	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
 //////////////////////////////////////////////////////////////////
 //
-//               storage for tokenizer
+//                  storage for tokenizer
 //
 //////////////////////////////////////////////////////////////////
-
-type Source interface {
-	Read(p []byte) (n int, err error)
-	Seek(offset int64, whence int) (int64, error)
-}
 
 type Storage interface {
 	nextRawToken() ([]byte, rune, error)
@@ -25,14 +22,14 @@ type Storage interface {
 }
 
 type storage struct {
-	fileType FileType
-	source   Source
+	fileType utils.FileType
+	source   utils.Source
 	bReader  *bufio.Reader
 	closer   io.Closer
 }
 
-func openStorage(source Source) (Storage, error) {
-	fileType, reader, closer, err := getFileTypeAndReaderCloser(source)
+func openStorage(source utils.Source) (Storage, error) {
+	fileType, reader, closer, err := utils.GetFileTypeAndReaderCloser(source)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +92,7 @@ func (storage *storage) reset() error {
 	if err != nil {
 		return err
 	}
-	reader, closer, err := resetFile(storage.fileType, storage.source)
+	reader, closer, err := utils.ResetFile(storage.fileType, storage.source)
 	if err != nil {
 		return err
 	}

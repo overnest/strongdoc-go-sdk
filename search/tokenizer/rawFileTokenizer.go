@@ -1,10 +1,11 @@
-package utils
+package tokenizer
 
 import (
 	"io"
 	"strings"
 
 	"github.com/blevesearch/bleve/analysis"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
 // RawFileTokenizer tokenizes a file
@@ -22,13 +23,16 @@ type rawFileTokenizer struct {
 }
 
 // OpenRawFileTokenizer opens a reader for tokenization
-func OpenRawFileTokenizer(source Source) (RawFileTokenizer, error) {
+func OpenRawFileTokenizer(source utils.Source) (RawFileTokenizer, error) {
 	storage, err := openStorage(source)
 	if err != nil {
 		return nil, err
 	}
 
 	analyzer, err := OpenBleveAnalyzer()
+	if err != nil {
+		return nil, err
+	}
 
 	return &rawFileTokenizer{
 		storage:  storage,
@@ -96,7 +100,7 @@ func (tokenizer *rawFileTokenizer) GetAllPureTerms() ([]string, error) {
 		}
 	}
 	var terms []string
-	for term, _ := range pureTermsMap {
+	for term := range pureTermsMap {
 		if !unpureTermsMap[term] {
 			terms = append(terms, term)
 		}

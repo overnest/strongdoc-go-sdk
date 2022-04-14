@@ -2,12 +2,12 @@ package queryv1
 
 import (
 	"github.com/go-errors/errors"
-	"github.com/overnest/strongdoc-go-sdk/utils"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 )
 
 // Use the same analyzer on the query terms
 func AnalyzeTerms(terms []string) ([]string, map[string]string, error) {
-	analyzer, err := utils.OpenBleveAnalyzer()
+	analyzer, err := tokenizer.OpenBleveAnalyzer()
 	if err != nil {
 		return nil, nil, err
 	}

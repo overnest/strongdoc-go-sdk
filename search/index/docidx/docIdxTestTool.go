@@ -16,6 +16,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 )
@@ -113,7 +114,7 @@ func (doc *TestDocumentIdxV1) getPureTerms() ([]string, error) {
 		return nil, err
 	}
 	defer file.Close()
-	tokenizer, err := utils.OpenRawFileTokenizer(file)
+	tokenizer, err := tokenizer.OpenRawFileTokenizer(file)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +130,7 @@ func writeNewDoc(oldDoc *TestDocumentIdxV1, newDoc *TestDocumentIdxV1) error {
 		return err
 	}
 	defer oldDocFile.Close()
-	tokenizer, err := utils.OpenRawFileTokenizer(oldDocFile)
+	tokenizer, err := tokenizer.OpenRawFileTokenizer(oldDocFile)
 	if err != nil {
 		return err
 	}
@@ -267,14 +268,13 @@ func (doc *TestDocumentIdxV1) CreateDoi(sdc client.StrongDocClient, key *sscrypt
 	}
 	defer file.Close()
 
-	tokenizer, err := utils.OpenRawFileTokenizer(file)
+	tokenizer, err := tokenizer.OpenRawFileTokenizer(file)
 	if err != nil {
 		return err
 	}
 	defer tokenizer.Close()
 
 	doi, err := CreateDocOffsetIdx(sdc, doc.DocID, doc.DocVer, key, 0)
-
 	if err != nil {
 		return err
 	}
@@ -293,6 +293,7 @@ func (doc *TestDocumentIdxV1) CreateDoi(sdc client.StrongDocClient, key *sscrypt
 			wordCounter++
 		}
 	}
+
 	return nil
 }
 

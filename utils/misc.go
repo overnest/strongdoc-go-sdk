@@ -14,6 +14,11 @@ import (
 	"github.com/go-errors/errors"
 )
 
+type Source interface {
+	Read(p []byte) (n int, err error)
+	Seek(offset int64, whence int) (int64, error)
+}
+
 // open local file with read-write mode (overwrite existing file)
 func OpenLocalFile(filepath string) (*os.File, error) {
 	return os.OpenFile(filepath, os.O_RDWR, 0755)
@@ -203,7 +208,7 @@ func Grep(dir string, terms []string, removeNewline bool) (map[string][]uint64, 
 				}
 				defer f.Close()
 
-				_, reader, _, err := getFileTypeAndReaderCloser(f)
+				_, reader, _, err := GetFileTypeAndReaderCloser(f)
 				if err != nil {
 					result.err = err
 					channel <- result

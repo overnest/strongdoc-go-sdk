@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	"gotest.tools/assert"
 )
@@ -30,7 +31,7 @@ func TestTermIdxBlockV1(t *testing.T) {
 		sourceFile.Seek(0, utils.SeekSet)
 		dtib := CreateDockTermIdxBlkV1(prevHighTerm, prevHighTermCount)
 
-		tokenizer, err := utils.OpenBleveTokenizer(sourceFile)
+		tokenizer, err := tokenizer.OpenBleveTokenizer(sourceFile)
 		assert.NilError(t, err)
 
 		for token, _, err := tokenizer.NextToken(); err != io.EOF; token, _, err = tokenizer.NextToken() {

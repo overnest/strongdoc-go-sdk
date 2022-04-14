@@ -1,4 +1,4 @@
-package utils
+package tokenizer
 
 import (
 	"fmt"
@@ -10,28 +10,29 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/overnest/strongdoc-go-sdk/utils"
 	"gotest.tools/assert"
 )
 
 func TestRegex(t *testing.T) {
 	regexGoodMap := map[*regexp.Regexp][]string{
-		mimeGzip: {
+		utils.MimeGzip: {
 			"application/x-gzip",
 			"application/gzip",
 		},
-		mimeText: {
+		utils.MimeText: {
 			"text/plain",
 		},
 	}
 
 	regexGoodBad := map[*regexp.Regexp][]string{
-		mimeGzip: {
+		utils.MimeGzip: {
 			"application/x-gzipp",
 			"application/x-gzipp",
 			"application/gzipabc",
 			"applications/gzip",
 		},
-		mimeText: {
+		utils.MimeText: {
 			"text/plainn",
 			"ttext/plainn",
 			"text//plain",
@@ -146,10 +147,10 @@ func TestBleveTokenizer(t *testing.T) {
 	parsedTokens := int(100)
 	testFileName := "./testDocuments/enwik8.txt.gz"
 
-	path, err := FetchFileLoc(testFileName)
+	path, err := utils.FetchFileLoc(testFileName)
 	assert.NilError(t, err)
 
-	file, err := OpenLocalFile(path)
+	file, err := utils.OpenLocalFile(path)
 	assert.NilError(t, err)
 
 	tokenizer, err := OpenBleveTokenizer(file)
@@ -191,7 +192,7 @@ func TestBleveTokenizer(t *testing.T) {
 }
 
 func TestBlevePaulTokenizer(t *testing.T) {
-	files, err := ioutil.ReadDir(GetInitialTestDocumentDir())
+	files, err := ioutil.ReadDir(utils.GetInitialTestDocumentDir())
 	assert.NilError(t, err)
 
 	chans := make([]chan map[string]bool, len(files))
@@ -203,9 +204,9 @@ func TestBlevePaulTokenizer(t *testing.T) {
 		chans[i] = make(chan map[string]bool)
 		go func(f os.FileInfo, c chan map[string]bool) {
 			defer close(c)
-			path := path.Join(GetInitialTestDocumentDir(), f.Name())
+			path := path.Join(utils.GetInitialTestDocumentDir(), f.Name())
 
-			file, err := OpenLocalFile(path)
+			file, err := utils.OpenLocalFile(path)
 			assert.NilError(t, err)
 
 			tokenizer, err := OpenBleveTokenizer(file)

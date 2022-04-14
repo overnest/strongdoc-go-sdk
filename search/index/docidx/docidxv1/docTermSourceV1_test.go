@@ -23,7 +23,7 @@ func TestDocTermSourceTextFileV1(t *testing.T) {
 
 	terms := make([]string, 0, 1000000)
 
-	for true {
+	for {
 		term, _, err := dts.GetNextTerm()
 		if term != "" {
 			terms = append(terms, term)
@@ -39,7 +39,7 @@ func TestDocTermSourceTextFileV1(t *testing.T) {
 	assert.NilError(t, err)
 
 	i := 0
-	for true {
+	for {
 		term, _, err := dts.GetNextTerm()
 		if term != "" {
 			assert.Equal(t, terms[i], term)

@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"gotest.tools/assert"
@@ -15,6 +17,7 @@ import (
 
 func TestTools(t *testing.T) {
 	// ================================ Prev Test ================================
+	common.EnableLocalDocIdx() // Comment out to enable testing against remote server
 	sdc := prevTest(t)
 	defer CleanupTestDocumentsTmpFiles()
 	// ================================ Generate Doc Indexes ================================
@@ -64,7 +67,7 @@ func validateDocDoi(t *testing.T, sdc client.StrongDocClient, key *sscrypto.Stro
 
 	sourceData, err := utils.OpenLocalFile(doc.DocFilePath)
 	assert.NilError(t, err)
-	tokenizer, err := utils.OpenRawFileTokenizer(sourceData)
+	tokenizer, err := tokenizer.OpenRawFileTokenizer(sourceData)
 	assert.NilError(t, err)
 
 	// Validate the DOI

@@ -7,7 +7,7 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
-	"github.com/overnest/strongdoc-go-sdk/utils"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 )
@@ -50,7 +50,7 @@ type PhraseSearchDocV1 struct {
 func OpenPhraseSearchV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, terms []string,
 	termKey, indexKey *sscrypto.StrongSaltKey, searchIndexVer uint32) (*PhraseSearchV1, error) {
 
-	analyzer, err := utils.OpenBleveAnalyzer()
+	analyzer, err := tokenizer.OpenBleveAnalyzer()
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +130,21 @@ func (search *PhraseSearchV1) GetNextResult() (*PhraseSearchResultV1, error) {
 
 	for docID, docOffsets := range termData.docOffsets {
 		if docOffsets == nil {
+			continue
+		}
+
+		// If there is only 1 term, then just use all offsets
+		if len(search.terms) == 1 {
+			if len(docOffsets.offsets) > 0 {
+				searchDoc := &PhraseSearchDocV1{
+					DocID:         docOffsets.docID,
+					DocVer:        docOffsets.docVer,
+					PhraseOffsets: docOffsets.offsets,
+				}
+
+				result.Docs = append(result.Docs, searchDoc)
+				result.DocMap[searchDoc.DocID] = searchDoc
+			}
 			continue
 		}
 
