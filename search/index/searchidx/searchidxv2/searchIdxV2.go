@@ -101,19 +101,9 @@ func (idx *SearchIdxV2) ProcessAllTerms(sdc client.StrongDocClient, event *utils
 	return finalResult, nil
 }
 
-// GetUpdateIdsV2 returns the list of available update IDs for a specific owner + term in
-// reverse chronological order. The most recent update ID will come first
-func GetUpdateIdsV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, hashedTerm string, termKey *sscrypto.StrongSaltKey) ([]string, error) {
-	termHmac, err := common.CreateTermHmac(hashedTerm, termKey)
-	if err != nil {
-		return nil, err
-	}
-	return GetUpdateIdsHmacV2(sdc, owner, termHmac)
-}
-
 // GetLatestUpdateIDV2 returns the latest update IDs for a specific owner + term
-func GetLatestUpdateIDV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, hashedTerm string, termKey *sscrypto.StrongSaltKey) (string, error) {
-	ids, err := GetUpdateIdsV2(sdc, owner, hashedTerm, termKey)
+func GetLatestUpdateIDV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, bucketID string) (string, error) {
+	ids, err := GetUpdateIdsV2(sdc, owner, bucketID)
 	if err != nil {
 		return "", err
 	}
@@ -125,8 +115,8 @@ func GetLatestUpdateIDV2(sdc client.StrongDocClient, owner common.SearchIdxOwner
 	return ids[0], nil
 }
 
-// GetUpdateIdsHmacV2 returns the list of available update IDs for a specific owner + term in
+// GetUpdateIdsV2 returns the list of available update IDs for a specific owner + term in
 // reverse chronological order. The most recent update ID will come first
-func GetUpdateIdsHmacV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, termHmac string) ([]string, error) {
-	return common.GetUpdateIDs(sdc, owner, termHmac)
+func GetUpdateIdsV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, bucketID string) ([]string, error) {
+	return common.GetUpdateIDs(sdc, owner, bucketID)
 }

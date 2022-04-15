@@ -80,22 +80,22 @@ func OpenSearchSortDocIndexReader(sdc client.StrongDocClient, owner SearchIdxOwn
 	return reader, size, nil
 }
 
-func OpenSearchSortDocIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwner, termHmac string, updateID string) (io.WriteCloser, error) {
+func OpenSearchSortDocIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwner, termID string, updateID string) (io.WriteCloser, error) {
 	if LocalSearchIdx() {
-		path := getSearchSortDocIdxPath(owner, termHmac, updateID)
+		path := getSearchSortDocIdxPath(owner, termID, updateID)
 		return utils.MakeDirAndCreateFile(path)
 	}
-	return api.NewSearchSortedDocIdxWriter(sdc, owner.GetOwnerType(), termHmac, updateID)
+	return api.NewSearchSortedDocIdxWriter(sdc, owner.GetOwnerType(), termID, updateID)
 }
 
-func OpenSearchTermIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwner, termHmac string) (writer io.WriteCloser, updateID string, err error) {
+func OpenSearchTermIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwner, termID string) (writer io.WriteCloser, updateID string, err error) {
 	if LocalSearchIdx() {
 		updateID = NewUpdateIDV1()
-		path := getSearchTermIdxPath(owner, termHmac, updateID)
+		path := getSearchTermIdxPath(owner, termID, updateID)
 		writer, err = utils.MakeDirAndCreateFile(path)
 		return
 	}
-	return api.NewSearchTermIdxWriter(sdc, owner.GetOwnerType(), termHmac)
+	return api.NewSearchTermIdxWriter(sdc, owner.GetOwnerType(), termID)
 }
 
 //////////////////////////////////////////////////////////////////

@@ -132,14 +132,15 @@ func TestValidateSearchIdxV2(t *testing.T, sdc client.StrongDocClient,
 func TestValidateSearchTermIdxV2(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
 	term string, docLocMap map[*docidx.TestDocumentIdxV1][]uint64) {
-	// bucketID := common.HashTerm(term)
-	bucketID := common.TermBucketID(term, TEST_BUCKET_COUNT)
 
-	updateID, err := GetLatestUpdateIDV2(sdc, owner, bucketID, termKey)
+	termID, err := common.GetTermID(term, termKey, TEST_BUCKET_COUNT, common.STI_V2)
+	assert.NilError(t, err)
+
+	updateID, err := GetLatestUpdateIDV2(sdc, owner, termID)
 	assert.NilError(t, err)
 
 	// open term index
-	sti, err := OpenSearchTermIdxV2(sdc, owner, bucketID, termKey, indexKey, updateID)
+	sti, err := OpenSearchTermIdxV2(sdc, owner, termID, termKey, indexKey, updateID)
 	assert.NilError(t, err)
 
 	for err == nil {
@@ -187,13 +188,14 @@ func TestValidateSearchTermIdxV2(t *testing.T, sdc client.StrongDocClient,
 func TestValidateDeletedSearchTermIdxV2(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
 	term string, delDocs []*docidx.TestDocumentIdxV1) {
-	// bucketID := common.HashTerm(term)
-	bucketID := common.TermBucketID(term, TEST_BUCKET_COUNT)
 
-	updateID, err := GetLatestUpdateIDV2(sdc, owner, bucketID, termKey)
+	termID, err := common.GetTermID(term, termKey, TEST_BUCKET_COUNT, common.STI_V2)
 	assert.NilError(t, err)
 
-	sti, err := OpenSearchTermIdxV2(sdc, owner, bucketID, termKey, indexKey, updateID)
+	updateID, err := GetLatestUpdateIDV2(sdc, owner, termID)
+	assert.NilError(t, err)
+
+	sti, err := OpenSearchTermIdxV2(sdc, owner, termID, termKey, indexKey, updateID)
 	assert.NilError(t, err)
 
 	for err == nil {
@@ -224,13 +226,14 @@ func TestValidateDeletedSearchTermIdxV2(t *testing.T, sdc client.StrongDocClient
 func TestValidateSortedDocIdxV2(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
 	term string, docLocMap map[*docidx.TestDocumentIdxV1][]uint64) {
-	// bucketID := common.HashTerm(term)
-	bucketID := common.TermBucketID(term, TEST_BUCKET_COUNT)
 
-	updateID, err := GetLatestUpdateIDV2(sdc, owner, bucketID, termKey)
+	termID, err := common.GetTermID(term, termKey, TEST_BUCKET_COUNT, common.STI_V2)
 	assert.NilError(t, err)
 
-	ssdi, err := OpenSearchSortDocIdxV2(sdc, owner, bucketID, termKey, indexKey, updateID)
+	updateID, err := GetLatestUpdateIDV2(sdc, owner, termID)
+	assert.NilError(t, err)
+
+	ssdi, err := OpenSearchSortDocIdxV2(sdc, owner, termID, termKey, indexKey, updateID)
 	assert.NilError(t, err)
 
 	docIDs := make([]string, 0, len(docLocMap))
@@ -258,13 +261,13 @@ func TestValidateDeletedSortedDocIdxV2(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
 	term string, delDocs []*docidx.TestDocumentIdxV1) {
 
-	// bucketID := common.HashTerm(term)
-	bucketID := common.TermBucketID(term, TEST_BUCKET_COUNT)
-
-	updateIDs, err := GetUpdateIdsV2(sdc, owner, bucketID, termKey)
+	termID, err := common.GetTermID(term, termKey, TEST_BUCKET_COUNT, common.STI_V2)
 	assert.NilError(t, err)
 
-	ssdi, err := OpenSearchSortDocIdxV2(sdc, owner, bucketID, termKey, indexKey, updateIDs[0])
+	updateIDs, err := GetUpdateIdsV2(sdc, owner, termID)
+	assert.NilError(t, err)
+
+	ssdi, err := OpenSearchSortDocIdxV2(sdc, owner, termID, termKey, indexKey, updateIDs[0])
 	if err != nil {
 		assert.Equal(t, err, os.ErrNotExist)
 		return

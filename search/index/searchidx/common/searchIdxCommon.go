@@ -253,3 +253,37 @@ func TermBucketID(term string, buckets uint32) string {
 	h.Write([]byte(term))
 	return fmt.Sprintf("%v", h.Sum32()%buckets)
 }
+
+//////////////////////////////////////////////////////////////////
+//
+//                          Term ID
+//
+//////////////////////////////////////////////////////////////////
+// return termID -> [original terms list]
+func GetTermIDs(terms []string, termKey *sscrypto.StrongSaltKey, bucketCount uint32, stiVersion uint32) (map[string][]string, error) {
+	termIDMap := make(map[string][]string) // termID -> list of terms
+	for _, term := range terms {
+		termID, err := GetTermID(term, termKey, bucketCount, stiVersion)
+		if err != nil {
+			return nil, err
+		}
+		termIDMap[termID] = append(termIDMap[termID], term)
+	}
+	return termIDMap, nil
+}
+
+func GetTermID(term string, termKey *sscrypto.StrongSaltKey, bucketCount uint32, stiVersion uint32) (string, error) {
+	switch stiVersion {
+	case STI_V1:
+		return CreateTermHmac(term, termKey)
+	case STI_V2:
+		termHmac, err := CreateTermHmac(term, termKey)
+		if err != nil {
+			return "", err
+		}
+		termID := TermBucketID(termHmac, bucketCount)
+		return termID, nil
+	default:
+		return "", nil
+	}
+}

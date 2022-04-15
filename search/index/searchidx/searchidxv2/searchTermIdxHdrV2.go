@@ -18,7 +18,7 @@ type StiPlainHdrBodyV2 struct {
 	common.StiVersionS
 	KeyType  string
 	Nonce    []byte
-	TermHmac string
+	TermID   string
 	UpdateID string
 }
 

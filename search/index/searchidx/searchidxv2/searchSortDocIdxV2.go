@@ -2,6 +2,10 @@ package searchidxv2
 
 import (
 	"fmt"
+	"io"
+	"sort"
+	"strings"
+
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/crypto"
@@ -11,9 +15,6 @@ import (
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	sscryptointf "github.com/overnest/strongsalt-crypto-go/interfaces"
-	"io"
-	"sort"
-	"strings"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -28,15 +29,15 @@ type ssdiSource interface {
 }
 
 //
-// Sorted Doc Index Source from Search HashedTerm Index
+// Sorted Doc Index Source from Search Term Index
 //
 type ssdiSourceSTI struct {
 	sti *SearchTermIdxV2
 }
 
-func openSsdiSourceFromSTI(sdc client.StrongDocClient, owner common.SearchIdxOwner, hashedTerm string,
+func openSsdiSourceFromSTI(sdc client.StrongDocClient, owner common.SearchIdxOwner, termID string,
 	termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*ssdiSourceSTI, error) {
-	sti, err := OpenSearchTermIdxV2(sdc, owner, hashedTerm, termKey, indexKey, updateID)
+	sti, err := OpenSearchTermIdxV2(sdc, owner, termID, termKey, indexKey, updateID)
 	if err != nil {
 		return nil, err
 	}
@@ -137,12 +138,11 @@ func (source *ssdiSourceDocIdx) ReadNextDocInfos() (termDocVer map[string]map[st
 type SearchSortDocIdxV2 struct {
 	common.SsdiVersionS
 	Owner       common.SearchIdxOwner
-	HashedTerm  string
+	TermID      string
 	TermKey     *sscrypto.StrongSaltKey
 	IndexKey    *sscrypto.StrongSaltKey
 	IndexNonce  []byte
 	InitOffset  uint64
-	termHmac    string
 	updateID    string
 	source      ssdiSource
 	writer      io.WriteCloser
@@ -155,19 +155,18 @@ type SearchSortDocIdxV2 struct {
 }
 
 // CreateSearchSortDocIdxV2 creates a search sorted document index writer V1
-func CreateSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, hashedTerm, updateID string,
+func CreateSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, termID, updateID string,
 	termKey, indexKey *sscrypto.StrongSaltKey, docs map[string]map[string]uint64) (*SearchSortDocIdxV2, error) {
 
 	var err error
 	ssdi := &SearchSortDocIdxV2{
 		SsdiVersionS: common.SsdiVersionS{SsdiVer: common.SSDI_V2},
 		Owner:        owner,
-		HashedTerm:   hashedTerm,
+		TermID:       termID,
 		TermKey:      termKey,
 		IndexKey:     indexKey,
 		IndexNonce:   nil,
 		InitOffset:   0,
-		termHmac:     "",
 		updateID:     updateID,
 		source:       nil,
 		writer:       nil,
@@ -195,18 +194,12 @@ func CreateSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdx
 	if docs != nil {
 		ssdi.source = openSsdiSourceFromSTISource(docs)
 	} else {
-		ssdi.source, err = openSsdiSourceFromSTI(sdc, owner, hashedTerm, termKey, indexKey, updateID)
+		ssdi.source, err = openSsdiSourceFromSTI(sdc, owner, termID, termKey, indexKey, updateID)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	ssdi.termHmac, err = common.CreateTermHmac(hashedTerm, termKey)
-	if err != nil {
-		return nil, err
-	}
-
-	//fmt.Println("hashedTerm", hashedTerm, "termHmac", ssdi.termHmac)
 	_, err = ssdi.createWriter(sdc)
 	if err != nil {
 		return nil, err
@@ -217,7 +210,7 @@ func CreateSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdx
 		SsdiVersionS: common.SsdiVersionS{SsdiVer: common.SSDI_V2},
 		KeyType:      ssdi.IndexKey.Type.Name,
 		Nonce:        ssdi.IndexNonce,
-		TermHmac:     ssdi.termHmac,
+		TermID:       ssdi.TermID,
 		UpdateID:     ssdi.updateID,
 	}
 
@@ -285,7 +278,7 @@ func CreateSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdx
 }
 
 // OpenSearchSortDocIdxV2 opens a search sorted document index reader V1
-func OpenSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, hashedTerm string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchSortDocIdxV2, error) {
+func OpenSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, termID string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchSortDocIdxV2, error) {
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
 		return nil, errors.Errorf("The term key type %v is not a MAC key", termKey.Type.Name)
 	}
@@ -293,11 +286,6 @@ func OpenSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOw
 	if indexKey.Type != sscrypto.Type_XChaCha20 {
 		return nil, errors.Errorf("Index key type %v is not supported. The only supported key type is %v",
 			indexKey.Type.Name, sscrypto.Type_XChaCha20.Name)
-	}
-
-	termID, err := common.CreateTermHmac(hashedTerm, termKey)
-	if err != nil {
-		return nil, err
 	}
 
 	reader, size, err := createSsdiReader(sdc, owner, termID, updateID)
@@ -310,11 +298,11 @@ func OpenSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOw
 		return nil, err
 	}
 
-	return OpenSearchSortDocIdxPrivV2(owner, hashedTerm, termID, updateID, termKey, indexKey,
+	return OpenSearchSortDocIdxPrivV2(owner, termID, updateID, termKey, indexKey,
 		reader, plainHdr, 0, uint64(plainHdrSize), size)
 }
 
-func OpenSearchSortDocIdxPrivV2(owner common.SearchIdxOwner, hashedTerm, termID, updateID string,
+func OpenSearchSortDocIdxPrivV2(owner common.SearchIdxOwner, termID, updateID string,
 	termKey, indexKey *sscrypto.StrongSaltKey, reader io.ReadCloser, plainHdr ssheaders.Header,
 	initOffset, plainHdrSize, endOffset uint64) (*SearchSortDocIdxV2, error) {
 
@@ -342,13 +330,12 @@ func OpenSearchSortDocIdxPrivV2(owner common.SearchIdxOwner, hashedTerm, termID,
 
 	ssdi := &SearchSortDocIdxV2{
 		SsdiVersionS: common.SsdiVersionS{SsdiVer: plainHdrBody.GetSsdiVersion()},
-		HashedTerm:   hashedTerm,
+		TermID:       termID,
 		Owner:        owner,
 		TermKey:      termKey,
 		IndexKey:     indexKey,
 		IndexNonce:   plainHdrBody.Nonce,
 		InitOffset:   0,
-		termHmac:     termID,
 		updateID:     updateID,
 		source:       nil,
 		writer:       nil,
@@ -404,7 +391,7 @@ func (ssdi *SearchSortDocIdxV2) createWriter(sdc client.StrongDocClient) (io.Wri
 		return ssdi.writer, nil
 	}
 
-	writer, err := common.OpenSearchSortDocIndexWriter(sdc, ssdi.Owner, ssdi.termHmac, ssdi.updateID)
+	writer, err := common.OpenSearchSortDocIndexWriter(sdc, ssdi.Owner, ssdi.TermID, ssdi.updateID)
 	if err != nil {
 		return nil, err
 	}
@@ -418,11 +405,11 @@ func (ssdi *SearchSortDocIdxV2) createReader(sdc client.StrongDocClient) (io.Rea
 		return ssdi.reader, ssdi.storeSize, nil
 	}
 
-	return createSsdiReader(sdc, ssdi.Owner, ssdi.termHmac, ssdi.updateID)
+	return createSsdiReader(sdc, ssdi.Owner, ssdi.TermID, ssdi.updateID)
 }
 
-func createSsdiReader(sdc client.StrongDocClient, owner common.SearchIdxOwner, termHmac, updateID string) (io.ReadCloser, uint64, error) {
-	reader, size, err := common.OpenSearchSortDocIndexReader(sdc, owner, termHmac, updateID)
+func createSsdiReader(sdc client.StrongDocClient, owner common.SearchIdxOwner, termID, updateID string) (io.ReadCloser, uint64, error) {
+	reader, size, err := common.OpenSearchSortDocIndexReader(sdc, owner, termID, updateID)
 	if err != nil {
 		return nil, 0, err
 	}

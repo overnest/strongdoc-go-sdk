@@ -9,7 +9,7 @@ import (
 
 //////////////////////////////////////////////////////////////////
 //
-//           Search Sorted Document Index Headers V1
+//           Search Sorted Document Index Headers V2
 //
 //////////////////////////////////////////////////////////////////
 
@@ -18,7 +18,7 @@ type SsdiPlainHdrBodyV1 struct {
 	common.SsdiVersionS
 	KeyType  string
 	Nonce    []byte
-	TermHmac string
+	TermID   string
 	UpdateID string
 }
 

@@ -3,14 +3,15 @@ package searchidxv2
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongsalt-common-go/blocks"
-	"log"
 )
 
 //////////////////////////////////////////////////////////////////
 //
-//                  Search HashedTerm Index Block
+//                  Search Term Index Block
 //
 //////////////////////////////////////////////////////////////////
 
@@ -83,7 +84,7 @@ func (blk *SearchTermIdxBlkV2) AddDocOffset(term, docID string, docVer uint64, o
 
 // AddDocOffsets adds new term offsets to the block
 func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, offsets []uint64) error {
-	if offsets == nil || len(offsets) == 0 {
+	if len(offsets) == 0 {
 		return fmt.Errorf("invalid offset")
 	}
 	// Delete existing DocID entry if it's older than the incoming one
@@ -91,7 +92,7 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 	newSize := blk.predictedJSONSize
 	if docVerOffset == nil {
 		// Need to add new term
-		//{"<HashedTerm>":
+		//{"<Term>":
 		//	{"<docID>":
 		//		{"Version":<docVer>,"Offsets":[<o1>,<o2>,...], }
 		//	}
@@ -137,7 +138,7 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 			}
 		} else if verOffset.Version < docVer {
 			// Update doc version
-			//{"<HashedTerm>":
+			//{"<Term>":
 			//	{"<docID>":
 			//		{"Version":<docVer>,"Offsets":[<o1>,<o2>,...], }} --> update version & offsets
 			//}
@@ -155,7 +156,7 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 		}
 
 	}
-	// append offsets to existing HashedTerm & DocID
+	// append offsets to existing Term & DocID
 	versionOffsets := blk.TermDocVerOffset[term][docID]
 	for _, offset := range offsets {
 		newSize += uint64(len(fmt.Sprintf("%v", offset)) + 1) // +1 is for comma
