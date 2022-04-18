@@ -1,13 +1,15 @@
 package docidxv1
 
 import (
-	"github.com/overnest/strongdoc-go-sdk/client"
 	"io"
+
+	"github.com/overnest/strongdoc-go-sdk/client"
 
 	"github.com/go-errors/errors"
 
 	"github.com/overnest/strongdoc-go-sdk/search/index/crypto"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	ssblocks "github.com/overnest/strongsalt-common-go/blocks"
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
@@ -43,6 +45,7 @@ type DocTermIdxV1 struct {
 	Block         *DocTermIdxBlkV1
 	Source        DocTermSourceV1
 	Store         interface{} // term index reader or writer
+	TokenizerType tokenizer.TokenizerType
 }
 
 // CreateDocTermIdxV1 creates a document term index writer V1
@@ -72,6 +75,7 @@ func CreateDocTermIdxV1(sdc client.StrongDocClient, docID string, docVer uint64,
 
 	cipherHdrBody := &DtiCipherHdrBodyV1{
 		BlockVersionS: common.BlockVersionS{BlockVer: common.DTI_BLOCK_V1},
+		TokenizerType: source.GetTokenizerType(),
 	}
 
 	if midStreamKey, ok := key.Key.(sscryptointf.KeyMidstream); ok {
@@ -141,7 +145,8 @@ func CreateDocTermIdxV1(sdc client.StrongDocClient, docID string, docVer uint64,
 
 	index := &DocTermIdxV1{common.DtiVersionS{DtiVer: common.DTI_V1},
 		docID, docVer, key, plainHdrBody.Nonce, uint64(initOffset),
-		plainHdrBody, cipherHdrBody, blockWriter, nil, nil, source, writer}
+		plainHdrBody, cipherHdrBody, blockWriter, nil, nil, source, writer,
+		cipherHdrBody.TokenizerType}
 	return index, nil
 }
 
@@ -232,7 +237,7 @@ func OpenDocTermIdxPrivV1(key *sscrypto.StrongSaltKey, plainHdrBody *DtiPlainHdr
 	index := &DocTermIdxV1{common.DtiVersionS{DtiVer: plainHdrBody.GetDtiVersion()},
 		plainHdrBody.DocID, plainHdrBody.DocVer, key, plainHdrBody.Nonce,
 		uint64(initOffset), plainHdrBody, cipherHdrBody, nil, blockReader, nil,
-		nil, store}
+		nil, store, cipherHdrBody.TokenizerType}
 	return index, nil
 }
 

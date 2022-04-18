@@ -268,24 +268,24 @@ func (doc *TestDocumentIdxV1) CreateDoi(sdc client.StrongDocClient, key *sscrypt
 	}
 	defer file.Close()
 
-	tokenizer, err := tokenizer.OpenRawFileTokenizer(file)
+	tokenzer, err := tokenizer.OpenRawFileTokenizer(file)
 	if err != nil {
 		return err
 	}
-	defer tokenizer.Close()
+	defer tokenzer.Close()
 
-	doi, err := CreateDocOffsetIdx(sdc, doc.DocID, doc.DocVer, key, 0)
+	doi, err := CreateDocOffsetIdx(sdc, doc.DocID, doc.DocVer, key, 0, tokenizer.TKZER_NONE)
 	if err != nil {
 		return err
 	}
 	defer doi.Close()
 
 	var wordCounter uint64 = 0
-	for token, _, err := tokenizer.NextRawToken(); err != io.EOF; token, _, err = tokenizer.NextRawToken() {
+	for token, _, err := tokenzer.NextRawToken(); err != io.EOF; token, _, err = tokenzer.NextRawToken() {
 		if err != nil && err != io.EOF {
 			return err
 		}
-		for _, term := range tokenizer.Analyze(token) {
+		for _, term := range tokenzer.Analyze(token) {
 			addErr := doi.AddTermOffset(term, wordCounter)
 			if addErr != nil {
 				return addErr

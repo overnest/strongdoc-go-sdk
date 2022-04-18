@@ -11,6 +11,7 @@ import (
 	bleveUnicode "github.com/blevesearch/bleve/analysis/tokenizer/unicode"
 	"github.com/blevesearch/bleve/analysis/tokenizer/whitespace"
 	"github.com/blevesearch/bleve/registry"
+	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
@@ -19,36 +20,38 @@ import (
 //                          BleveAnalyzer
 //
 //////////////////////////////////////////////////////////////////
-// tokenizer type
-type Tokenizer_Type struct {
+type bTokenizerType struct {
 	name   string
 	config map[string]interface{}
 }
 
-var SINGLE = Tokenizer_Type{single.Name, nil}
-var REGEX = Tokenizer_Type{bleveRegex.Name,
+var bttSingle = bTokenizerType{single.Name, nil}
+var bttRegex = bTokenizerType{bleveRegex.Name,
 	map[string]interface{}{
 		"type":   bleveRegex.Name,
 		"regexp": `[0-9a-zA-Z]*`,
 	}}
-var LETTER = Tokenizer_Type{letter.Name, nil}
-var WHITESPACE = Tokenizer_Type{whitespace.Name, nil}
-var UNICODE = Tokenizer_Type{bleveUnicode.Name, nil}
-var WEB = Tokenizer_Type{web.Name, nil}
+var bttLetter = bTokenizerType{letter.Name, nil}
+var bttWhiteSpace = bTokenizerType{whitespace.Name, nil}
+var bttUnicode = bTokenizerType{bleveUnicode.Name, nil}
+var bttWeb = bTokenizerType{web.Name, nil}
 
-// token filter type
-type Token_Filter_Type struct {
+type bTokenFilterType struct {
 	name string
 }
 
-var LOWERCASE = Token_Filter_Type{lowercase.Name}
-var STEMMER = Token_Filter_Type{porter.Name}
+var btftLowercase = bTokenFilterType{lowercase.Name}
+var btftStemmer = bTokenFilterType{porter.Name}
 
 func OpenBleveAnalyzer() (*analysis.Analyzer, error) {
-	return openBleveAnalyzer(REGEX, LOWERCASE, STEMMER)
+	return openBleveAnalyzer(bttRegex, btftLowercase, btftStemmer)
 }
 
-func openBleveAnalyzer(tokenizerType Tokenizer_Type, filterTypes ...Token_Filter_Type) (*analysis.Analyzer, error) {
+func OpenBleveAnalyzerNoStem() (*analysis.Analyzer, error) {
+	return openBleveAnalyzer(bttRegex, btftLowercase)
+}
+
+func openBleveAnalyzer(tokenizerType bTokenizerType, filterTypes ...bTokenFilterType) (*analysis.Analyzer, error) {
 	cache := registry.NewCache()
 
 	var tokenizer analysis.Tokenizer
@@ -84,6 +87,7 @@ func openBleveAnalyzer(tokenizerType Tokenizer_Type, filterTypes ...Token_Filter
 //////////////////////////////////////////////////////////////////
 type BleveTokenizer interface {
 	NextToken() (string, uint64, error)
+	Type() TokenizerType
 	Reset() error
 	Close() error
 }
@@ -93,26 +97,48 @@ type bleveTokenizer struct {
 	wordCounter uint64
 	analyzer    *analysis.Analyzer
 	savedTokens analysis.TokenStream
+	tkzerType   TokenizerType
 }
 
 // OpenBleveTokenizer opens a tokenizer
 func OpenBleveTokenizer(source utils.Source) (BleveTokenizer, error) {
+	return openBleveTokenizer(TKZER_BLEVE, source)
+}
+
+// OpenBleveTokenizerNoStem opens a tokenizer without stemmer
+func OpenBleveTokenizerNoStem(source utils.Source) (BleveTokenizer, error) {
+	return openBleveTokenizer(TKZER_BLEVE_NO_STM, source)
+}
+
+func openBleveTokenizer(tokenizerType TokenizerType, source utils.Source) (BleveTokenizer, error) {
 	// init storage
 	storage, err := openStorage(source)
 	if err != nil {
 		return nil, err
 	}
 
-	// init analyzer
-	analyzer, err := OpenBleveAnalyzer()
-	if err != nil {
-		return nil, err
+	var analyzer *analysis.Analyzer = nil
+
+	switch tokenizerType {
+	case TKZER_BLEVE:
+		analyzer, err = OpenBleveAnalyzer()
+		if err != nil {
+			return nil, err
+		}
+	case TKZER_BLEVE_NO_STM:
+		analyzer, err = OpenBleveAnalyzerNoStem()
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.Errorf("Tokenizer type %v unsupported", tokenizerType)
 	}
 
 	return &bleveTokenizer{
 		storage:     storage,
 		analyzer:    analyzer,
 		wordCounter: 0,
+		tkzerType:   tokenizerType,
 	}, nil
 }
 
@@ -146,4 +172,8 @@ func (token *bleveTokenizer) NextToken() (string, uint64, error) {
 	counter := token.wordCounter
 	token.wordCounter++
 	return first, counter, nil
+}
+
+func (token *bleveTokenizer) Type() TokenizerType {
+	return token.tkzerType
 }

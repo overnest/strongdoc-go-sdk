@@ -36,7 +36,7 @@ func TestTermIdxBlockV1(t *testing.T) {
 
 		dtib := docidxv1.CreateDocTermIdxBlkV1(prevHighTerm, common.DTI_BLOCK_SIZE_MAX)
 
-		tokenizer, err := tokenizer.OpenBleveTokenizer(sourceFile)
+		tokenizer, err := tokenizer.OpenTokenizer(tokenizer.TKZER_BLEVE, sourceFile)
 		assert.NilError(t, err)
 
 		for token, _, err := tokenizer.NextToken(); err != io.EOF; token, _, err = tokenizer.NextToken() {

@@ -24,8 +24,8 @@ import (
 
 // CreateDocOffsetIdx creates a new document offset index for writing
 func CreateDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
-	initOffset int64) (*docidxv1.DocOffsetIdxV1, error) {
-	return docidxv1.CreateDocOffsetIdxV1(sdc, docID, docVer, key, initOffset)
+	initOffset int64, tokenizerType tokenizer.TokenizerType) (*docidxv1.DocOffsetIdxV1, error) {
+	return docidxv1.CreateDocOffsetIdxV1(sdc, docID, docVer, key, initOffset, tokenizerType)
 }
 
 // Create document offset index and writes output
@@ -36,13 +36,13 @@ func CreateAndSaveDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer 
 
 func CreateAndSaveDocOffsetIdxWithOffset(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
 	sourceData utils.Source, initOffset int64) error {
-	tokenizer, err := tokenizer.OpenBleveTokenizer(sourceData)
-	if err != err {
+	tokenizer, err := tokenizer.OpenTokenizer(tokenizer.TKZER_BLEVE, sourceData)
+	if err != nil {
 		return err
 	}
 	defer tokenizer.Close()
 
-	doi, err := CreateDocOffsetIdx(sdc, docID, docVer, key, initOffset)
+	doi, err := CreateDocOffsetIdx(sdc, docID, docVer, key, initOffset, tokenizer.Type())
 	if err != nil {
 		return err
 	}

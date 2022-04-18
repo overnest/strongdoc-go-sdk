@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -46,6 +47,7 @@ func DtiPlainHdrBodyV1Deserialize(data []byte) (*DtiPlainHdrBodyV1, error) {
 // DtiCipherHdrBodyV1 is the ciphertext header for document term index.
 type DtiCipherHdrBodyV1 struct {
 	common.BlockVersionS
+	TokenizerType tokenizer.TokenizerType
 }
 
 func (hdr *DtiCipherHdrBodyV1) serialize() ([]byte, error) {

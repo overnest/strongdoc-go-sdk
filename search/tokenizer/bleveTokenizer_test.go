@@ -56,81 +56,81 @@ func TestRegex(t *testing.T) {
 
 var sampleTests = map[string](map[string][]string){
 	"": {
-		SINGLE.name:     []string{""},
-		LETTER.name:     nil,
-		WHITESPACE.name: nil,
-		REGEX.name:      nil,
-		UNICODE.name:    nil,
-		WEB.name:        nil,
+		bttSingle.name:     []string{""},
+		bttLetter.name:     nil,
+		bttWhiteSpace.name: nil,
+		bttRegex.name:      nil,
+		bttUnicode.name:    nil,
+		bttWeb.name:        nil,
 	},
 	"123 abc 4c5d": {
-		SINGLE.name:     []string{"123 abc 4c5d"},
-		LETTER.name:     []string{"abc", "c", "d"},
-		WHITESPACE.name: []string{"123", "abc", "4c5d"},
-		REGEX.name:      []string{"123", "abc", "4c5d"},
-		UNICODE.name:    []string{"123", "abc", "4c5d"},
-		WEB.name:        []string{"123", "abc", "4c5d"},
+		bttSingle.name:     []string{"123 abc 4c5d"},
+		bttLetter.name:     []string{"abc", "c", "d"},
+		bttWhiteSpace.name: []string{"123", "abc", "4c5d"},
+		bttRegex.name:      []string{"123", "abc", "4c5d"},
+		bttUnicode.name:    []string{"123", "abc", "4c5d"},
+		bttWeb.name:        []string{"123", "abc", "4c5d"},
 	},
 	" Hello World.": {
-		SINGLE.name:     []string{" hello world."},
-		LETTER.name:     []string{"hello", "world"},
-		WHITESPACE.name: []string{"hello", "world."},
-		REGEX.name:      []string{"hello", "world"},
-		UNICODE.name:    []string{"hello", "world"},
-		WEB.name:        []string{"hello", "world"},
+		bttSingle.name:     []string{" hello world."},
+		bttLetter.name:     []string{"hello", "world"},
+		bttWhiteSpace.name: []string{"hello", "world."},
+		bttRegex.name:      []string{"hello", "world"},
+		bttUnicode.name:    []string{"hello", "world"},
+		bttWeb.name:        []string{"hello", "world"},
 	},
 	"Dominique@mcdiabetes.com": {
-		SINGLE.name:     []string{"dominique@mcdiabetes.com"},
-		LETTER.name:     []string{"dominique", "mcdiabetes", "com"},
-		WHITESPACE.name: []string{"dominique@mcdiabetes.com"},
-		REGEX.name:      []string{"dominique", "mcdiabetes", "com"},
-		UNICODE.name:    []string{"dominique", "mcdiabetes.com"},
-		WEB.name:        []string{"d", "ominique@mcdiabetes.com"},
+		bttSingle.name:     []string{"dominique@mcdiabetes.com"},
+		bttLetter.name:     []string{"dominique", "mcdiabetes", "com"},
+		bttWhiteSpace.name: []string{"dominique@mcdiabetes.com"},
+		bttRegex.name:      []string{"dominique", "mcdiabetes", "com"},
+		bttUnicode.name:    []string{"dominique", "mcdiabetes.com"},
+		bttWeb.name:        []string{"d", "ominique@mcdiabetes.com"},
 	},
 	"That http://blevesearch.com": {
-		SINGLE.name:     []string{"that http://blevesearch.com"},
-		LETTER.name:     []string{"that", "http", "blevesearch", "com"},
-		WHITESPACE.name: []string{"that", "http://blevesearch.com"},
-		REGEX.name:      []string{"that", "http", "blevesearch", "com"},
-		UNICODE.name:    []string{"that", "http", "blevesearch.com"},
-		WEB.name:        []string{"that", "http://blevesearch.com"},
+		bttSingle.name:     []string{"that http://blevesearch.com"},
+		bttLetter.name:     []string{"that", "http", "blevesearch", "com"},
+		bttWhiteSpace.name: []string{"that", "http://blevesearch.com"},
+		bttRegex.name:      []string{"that", "http", "blevesearch", "com"},
+		bttUnicode.name:    []string{"that", "http", "blevesearch.com"},
+		bttWeb.name:        []string{"that", "http://blevesearch.com"},
 	},
 	"Hello info@blevesearch.com": {
-		SINGLE.name:     []string{"hello info@blevesearch.com"},
-		LETTER.name:     []string{"hello", "info", "blevesearch", "com"},
-		WHITESPACE.name: []string{"hello", "info@blevesearch.com"},
-		REGEX.name:      []string{"hello", "info", "blevesearch", "com"},
-		UNICODE.name:    []string{"hello", "info", "blevesearch.com"},
-		WEB.name:        []string{"hello", "info@blevesearch.com"},
+		bttSingle.name:     []string{"hello info@blevesearch.com"},
+		bttLetter.name:     []string{"hello", "info", "blevesearch", "com"},
+		bttWhiteSpace.name: []string{"hello", "info@blevesearch.com"},
+		bttRegex.name:      []string{"hello", "info", "blevesearch", "com"},
+		bttUnicode.name:    []string{"hello", "info", "blevesearch.com"},
+		bttWeb.name:        []string{"hello", "info@blevesearch.com"},
 	},
 }
 
 func TestBleveAnalyzer(t *testing.T) {
 	// Single Token: the entire input bytes as a single token
-	testBleveAnalyzer(t, SINGLE, LOWERCASE)
+	testBleveAnalyzer(t, bttSingle, btftLowercase)
 
 	// Letter Token: simply identifies tokens as sequences of Unicode runes that are part of the Letter category
-	testBleveAnalyzer(t, LETTER, LOWERCASE)
+	testBleveAnalyzer(t, bttLetter, btftLowercase)
 
 	// Whitespace: identifies tokens as sequences of Unicode runes that are NOT part of the Space category
-	testBleveAnalyzer(t, WHITESPACE, LOWERCASE)
+	testBleveAnalyzer(t, bttWhiteSpace, btftLowercase)
 
 	// Regular Expression: tokenize input using a configurable regular expression
-	testBleveAnalyzer(t, REGEX, LOWERCASE)
+	testBleveAnalyzer(t, bttRegex, btftLowercase)
 
 	// Unicode Tokenizer: uses the segment library to perform Unicode Text Segmentation on word boundaries
 	// follow: http://www.unicode.org/reports/tr29/#Word_Boundary_Rules
-	testBleveAnalyzer(t, UNICODE, LOWERCASE)
+	testBleveAnalyzer(t, bttUnicode, btftLowercase)
 
 	// Web tokenizer: better support for email, url and web content (regex implementation)
-	testBleveAnalyzer(t, WEB, LOWERCASE)
+	testBleveAnalyzer(t, bttWeb, btftLowercase)
 
 	// ICU tokenizer: uses the ICU library to tokenize the input
 	// better support for some Asian languages by using a dictionary-based approach to identify words
 
 }
 
-func testBleveAnalyzer(t *testing.T, tokenizerType Tokenizer_Type, filter_type ...Token_Filter_Type) {
+func testBleveAnalyzer(t *testing.T, tokenizerType bTokenizerType, filter_type ...bTokenFilterType) {
 	analyzer, err := openBleveAnalyzer(tokenizerType, filter_type...)
 	assert.NilError(t, err)
 	for input, outputs := range sampleTests {

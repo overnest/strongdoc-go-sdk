@@ -74,7 +74,7 @@ func TestDocOffsetIdx(t *testing.T) {
 }
 
 func testDocOffsetIdxV1(t *testing.T, doiVersion common.DocOffsetIdx, sourceFile utils.Source) {
-	tokenizer, err := tokenizer.OpenBleveTokenizer(sourceFile)
+	tokenizer, err := tokenizer.OpenTokenizer(tokenizer.TKZER_BLEVE, sourceFile)
 	assert.NilError(t, err)
 
 	doi, ok := doiVersion.(*docidxv1.DocOffsetIdxV1)

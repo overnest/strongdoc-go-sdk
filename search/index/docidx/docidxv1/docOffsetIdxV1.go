@@ -1,14 +1,16 @@
 package docidxv1
 
 import (
-	"github.com/overnest/strongdoc-go-sdk/client"
 	"io"
 	"sort"
+
+	"github.com/overnest/strongdoc-go-sdk/client"
 
 	"github.com/go-errors/errors"
 
 	"github.com/overnest/strongdoc-go-sdk/search/index/crypto"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	ssblocks "github.com/overnest/strongsalt-common-go/blocks"
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
@@ -43,6 +45,7 @@ type DocOffsetIdxV1 struct {
 	Reader        ssblocks.BlockListReaderV1
 	Block         *DocOffsetIdxBlkV1
 	Store         interface{}
+	TokenizerType tokenizer.TokenizerType
 }
 
 var initDocOffsetIdxV1 = func() interface{} {
@@ -50,7 +53,9 @@ var initDocOffsetIdxV1 = func() interface{} {
 }
 
 // CreateDocOffsetIdxV1 creates a document offset index writer V1
-func CreateDocOffsetIdxV1(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey, initOffset int64) (*DocOffsetIdxV1, error) {
+func CreateDocOffsetIdxV1(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey, initOffset int64,
+	tokenizerType tokenizer.TokenizerType) (*DocOffsetIdxV1, error) {
+
 	var err error
 	writer, err := common.OpenDocOffsetIdxWriter(sdc, docID, docVer)
 	if err != nil {
@@ -72,6 +77,7 @@ func CreateDocOffsetIdxV1(sdc client.StrongDocClient, docID string, docVer uint6
 
 	cipherHdrBody := &DoiCipherHdrBodyV1{
 		BlockVersionS: common.BlockVersionS{BlockVer: common.DOI_BLOCK_V1},
+		TokenizerType: tokenizerType,
 	}
 
 	if midStreamKey, ok := key.Key.(sscryptointf.KeyMidstream); ok {
@@ -141,7 +147,7 @@ func CreateDocOffsetIdxV1(sdc client.StrongDocClient, docID string, docVer uint6
 
 	index := &DocOffsetIdxV1{common.DoiVersionS{DoiVer: common.DOI_V1},
 		docID, docVer, key, plainHdrBody.Nonce, uint64(initOffset),
-		plainHdrBody, cipherHdrBody, blockWriter, nil, nil, writer}
+		plainHdrBody, cipherHdrBody, blockWriter, nil, nil, writer, tokenizerType}
 	return index, nil
 }
 
@@ -231,7 +237,8 @@ func OpenDocOffsetIdxPrivV1(key *sscrypto.StrongSaltKey, plainHdrBody *DoiPlainH
 
 	index := &DocOffsetIdxV1{common.DoiVersionS{DoiVer: plainHdrBody.GetDoiVersion()},
 		plainHdrBody.DocID, plainHdrBody.DocVer, key, plainHdrBody.Nonce,
-		uint64(initOffset), plainHdrBody, cipherHdrBody, nil, blockReader, nil, store}
+		uint64(initOffset), plainHdrBody, cipherHdrBody, nil, blockReader, nil, store,
+		cipherHdrBody.TokenizerType}
 	return index, nil
 }
 

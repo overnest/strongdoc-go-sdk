@@ -13,6 +13,7 @@ import (
 type DocTermSourceV1 interface {
 	// Returns io.EOF error if there are no more terms
 	GetNextTerm() (string, uint64, error)
+	GetTokenizerType() tokenizer.TokenizerType
 	Reset() error
 }
 
@@ -20,12 +21,12 @@ type DocTermSourceV1 interface {
 // Text File Source
 //
 type docTermSourceTextFileV1 struct {
-	tokenizer tokenizer.BleveTokenizer
+	tokenizer tokenizer.Tokenizer
 }
 
 // OpenDocTermSourceTextFileV1 opens the text file Document Term Source V1
 func OpenDocTermSourceTextFileV1(source utils.Source) (*docTermSourceTextFileV1, error) {
-	tokenizer, err := tokenizer.OpenBleveTokenizer(source)
+	tokenizer, err := tokenizer.OpenTokenizer(tokenizer.TKZER_BLEVE, source)
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -35,6 +36,10 @@ func OpenDocTermSourceTextFileV1(source utils.Source) (*docTermSourceTextFileV1,
 
 func (dts *docTermSourceTextFileV1) GetNextTerm() (string, uint64, error) {
 	return dts.tokenizer.NextToken()
+}
+
+func (dts *docTermSourceTextFileV1) GetTokenizerType() tokenizer.TokenizerType {
+	return dts.tokenizer.Type()
 }
 
 func (dts *docTermSourceTextFileV1) Reset() error {
@@ -49,26 +54,30 @@ func (dts *docTermSourceTextFileV1) Close() error {
 // Document Offset Index Source
 //
 type docTermSourceDocOffsetV1 struct {
-	doi      common.DocOffsetIdx
-	termsLoc map[string][]uint64
-	terms    []string
+	doi           common.DocOffsetIdx
+	termsLoc      map[string][]uint64
+	terms         []string
+	tokenizerType tokenizer.TokenizerType
 }
 
 // OpenDocTermSourceDocOffsetV1 opens the Document Offset source
 func OpenDocTermSourceDocOffsetV1(doi common.DocOffsetIdx) (DocTermSourceV1, error) {
+	var tokenizerType tokenizer.TokenizerType = tokenizer.TKZER_NONE
+
 	switch doi.GetDoiVersion() {
 	case common.DOI_V1:
-		_, ok := doi.(*DocOffsetIdxV1)
+		doiv1, ok := doi.(*DocOffsetIdxV1)
 		if !ok {
 			return nil, errors.Errorf("Document offset index is not version %v",
 				doi.GetDoiVersion())
 		}
+		tokenizerType = doiv1.TokenizerType
 	default:
 		return nil, errors.Errorf("Document offset index version %v is not supported",
 			doi.GetDoiVersion())
 	}
 
-	return &docTermSourceDocOffsetV1{doi, make(map[string][]uint64), nil}, nil
+	return &docTermSourceDocOffsetV1{doi, make(map[string][]uint64), nil, tokenizerType}, nil
 }
 
 // GetNextTerm gets the next term from the DOI source
@@ -126,6 +135,10 @@ func (dts *docTermSourceDocOffsetV1) GetNextTerm() (term string, loc uint64, err
 		return "", 0, errors.Errorf("Document offset index version %v is not supported",
 			dts.doi.GetDoiVersion())
 	}
+}
+
+func (dts *docTermSourceDocOffsetV1) GetTokenizerType() tokenizer.TokenizerType {
+	return dts.tokenizerType
 }
 
 func (dts *docTermSourceDocOffsetV1) Reset() error {

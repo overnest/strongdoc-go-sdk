@@ -14,6 +14,7 @@ import (
 func TestTermIdxBlockV1(t *testing.T) {
 	sourceFileName := "./testDocuments/enwik8.txt.gz"
 	sourceFilePath, err := utils.FetchFileLoc(sourceFileName)
+	assert.NilError(t, err)
 
 	outputFileName := "/tmp/blockSortOutput.txt"
 	outfile, err := os.Create(outputFileName)
@@ -26,12 +27,14 @@ func TestTermIdxBlockV1(t *testing.T) {
 	total := 0
 
 	sourceFile, err := os.Open(sourceFilePath)
+	assert.NilError(t, err)
 	defer sourceFile.Close()
-	for true {
+
+	for {
 		sourceFile.Seek(0, utils.SeekSet)
 		dtib := CreateDockTermIdxBlkV1(prevHighTerm, prevHighTermCount)
 
-		tokenizer, err := tokenizer.OpenBleveTokenizer(sourceFile)
+		tokenizer, err := tokenizer.OpenTokenizer(tokenizer.TKZER_BLEVE, sourceFile)
 		assert.NilError(t, err)
 
 		for token, _, err := tokenizer.NextToken(); err != io.EOF; token, _, err = tokenizer.NextToken() {
