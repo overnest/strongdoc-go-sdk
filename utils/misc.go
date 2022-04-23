@@ -67,7 +67,7 @@ func BinarySearchU64(list []uint64, val uint64) int {
 
 	left := 0
 	right := len(list) - 1
-	for true {
+	for {
 		mid := (left + right) / 2
 		if list[mid] == val {
 			return mid
@@ -92,8 +92,6 @@ func BinarySearchU64(list []uint64, val uint64) int {
 			}
 		}
 	}
-
-	return -1
 }
 
 // Min returns the minimum value
@@ -153,6 +151,35 @@ func DiffSliceString(slice1 []string, slice2 []string) []string {
 	}
 
 	return diffStr
+}
+
+// MapStringSlice transforms the input string slice into an output string slice by
+// applying a map function to each element of the slice. If the mapFunc returns "",
+// then the element is excluded from the output slice
+func MapStringSlice(input []string, mapFunc func(string, ...interface{}) (string, error), misc ...interface{}) ([]string, error) {
+	index := 0
+	for _, in := range input {
+		out, err := mapFunc(in, misc...)
+		if err != nil {
+			return nil, err
+		}
+		if len(out) > 0 || len(in) <= 0 {
+			input[index] = out
+			index++
+		}
+	}
+	return input[:index], nil
+}
+
+func MapStringSliceDup(input []string, mapFunc func(string, ...interface{}) (string, error), misc ...interface{}) (output []string, err error) {
+	output, err = MapStringSlice(CloneStringSlice(input), mapFunc, misc...)
+	return
+}
+
+func CloneStringSlice(input []string) (output []string) {
+	output = make([]string, len(input))
+	copy(output, input)
+	return
 }
 
 func Grep(dir string, terms []string, removeNewline bool) (map[string][]uint64, error) { // Document -> TermOffsets in bytes

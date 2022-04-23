@@ -9,6 +9,7 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/searchidxv1"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/searchidxv2"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
@@ -19,6 +20,15 @@ import (
 const (
 	STI_EOF = uint64(0)
 )
+
+//////////////////////////////////////////////////////////////////
+//
+//                     Get Term Tokenizer
+//
+//////////////////////////////////////////////////////////////////
+func GetSearchTermAnalyzer() (tokenizer.Analyzer, error) {
+	return tokenizer.OpenAnalyzer(tokenizer.TKZER_BLEVE)
+}
 
 //////////////////////////////////////////////////////////////////
 //
@@ -59,29 +69,31 @@ type stiTermDoc struct {
 }
 
 type stiData struct {
-	termDoc map[string]StiDocOffsets // term -> stiTermDoc
+	termDoc map[string]StiDocOffsets // term -> StiDocOffsets
 	termEof map[string]bool          // term -> eof(bool)
 }
 
 type stiReader struct {
-	reader  io.ReadCloser
-	size    uint64
-	version uint32
-	termID  string
-	terms   []string
-	termMap map[string]bool
-	stiV1   *searchidxv1.SearchTermIdxV1
-	stiV2   *searchidxv2.SearchTermIdxV2
+	reader        io.ReadCloser
+	size          uint64
+	version       uint32
+	termID        string
+	analzdTerms   []string            // analyzed terms
+	origTerms     []string            // original terms
+	origToAnalzd  map[string]string   // original term -> analyzed term
+	analzdToOrigs map[string][]string // analyzed term -> []original term
+	analyzer      tokenizer.Analyzer
+	stiV1         *searchidxv1.SearchTermIdxV1
+	stiV2         *searchidxv2.SearchTermIdxV2
 }
 
 type stiBulkReader struct {
-	terms         []string
-	stiReaders    []*stiReader
-	termInfoMap   map[string]*stiReader
-	termIdInfoMap map[string]*stiReader
+	analzdTerms []string
+	stiReaders  []*stiReader
+	analyzer    tokenizer.Analyzer
 }
 
-func OpenSearchTermIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner, terms []string,
+func OpenSearchTermIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner, origTerms []string,
 	termKey, indexKey *sscrypto.StrongSaltKey, stiVersion uint32) (StiReader, error) {
 
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
@@ -93,262 +105,171 @@ func OpenSearchTermIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner
 			indexKey.Type.Name, sscrypto.Type_XChaCha20.Name)
 	}
 
-	// termID -> list of terms
-	termIDMap, err := common.GetTermIDs(terms, termKey, common.STI_TERM_BUCKET_COUNT, stiVersion)
+	analyzer, err := GetSearchTermAnalyzer()
 	if err != nil {
 		return nil, err
 	}
 
-	bReader := &stiBulkReader{
-		terms:         terms,
-		stiReaders:    make([]*stiReader, 0, len(termIDMap)),
-		termInfoMap:   make(map[string]*stiReader),
-		termIdInfoMap: make(map[string]*stiReader),
+	analzdTerms, _, analzdToOrigs, err := common.AnalyzeTerms(origTerms, analyzer)
+	if err != nil {
+		return nil, err
 	}
 
-	for termID, terms := range termIDMap {
-		updateID, err := common.GetLatestUpdateID(sdc, owner, termID)
+	// termID -> list of terms
+	termIDMap, err := common.GetTermIDs(analzdTerms, termKey, common.STI_TERM_BUCKET_COUNT, stiVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	bulkReader := &stiBulkReader{
+		analzdTerms: analzdTerms,
+		stiReaders:  make([]*stiReader, 0, len(termIDMap)),
+		analyzer:    analyzer,
+	}
+
+	for termID, analyzedTerms := range termIDMap {
+		var readerOrigTerms []string = nil
+		for _, analyzedTerm := range analyzedTerms {
+			readerOrigTerms = append(readerOrigTerms, analzdToOrigs[analyzedTerm]...)
+		}
+		err := bulkReader.initStiReader(sdc, owner, termID, readerOrigTerms,
+			termKey, indexKey, stiVersion)
 		if err != nil && err != os.ErrNotExist {
 			return nil, err
 		}
+	} // for termID, analyzedTerms := range termIDMap
 
-		var size uint64 = 0
-		var reader io.ReadCloser = nil
-		if err == nil {
-			reader, size, err = common.OpenSearchTermIndexReader(sdc, owner, termID, updateID)
-			if err != nil && err != os.ErrNotExist {
-				return nil, err
-			}
-		}
-
-		if err == os.ErrNotExist {
-			bReader.termIdInfoMap[termID] = nil
-			for _, term := range terms {
-				bReader.termInfoMap[term] = nil
-			}
-			continue
-		}
-
-		stiRdr := &stiReader{
-			reader:  reader,
-			size:    size,
-			version: stiVersion,
-			termID:  termID,
-			terms:   terms,
-			termMap: make(map[string]bool),
-		}
-
-		for _, term := range terms {
-			stiRdr.termMap[term] = true
-		}
-
-		plainHdr, plainHdrSize, err := ssheaders.DeserializePlainHdrStream(reader)
-		if err != nil {
-			return nil, err
-		}
-
-		plainHdrBodyData, err := plainHdr.GetBody()
-		if err != nil {
-			return nil, err
-		}
-
-		version, err := common.DeserializeStiVersion(plainHdrBodyData)
-		if err != nil {
-			return nil, err
-		}
-
-		switch version.GetStiVersion() {
-		case common.STI_V1:
-			stiRdr.version = common.STI_V1
-
-			// Parse plaintext header body
-			plainHdrBody := &searchidxv1.StiPlainHdrBodyV1{}
-			plainHdrBody, err := plainHdrBody.Deserialize(plainHdrBodyData)
-			if err != nil {
-				return nil, errors.New(err)
-			}
-
-			stiv1, err := searchidxv1.OpenSearchTermIdxPrivV1(owner, terms[0], termID, updateID, termKey,
-				indexKey, reader, plainHdr, 0, uint64(plainHdrSize), size)
-			if err != nil {
-				return nil, err
-			}
-
-			stiRdr.stiV1 = stiv1
-
-		case common.STI_V2:
-			stiRdr.version = common.STI_V2
-
-			plainHdrBody := &searchidxv1.StiPlainHdrBodyV1{}
-			plainHdrBody, err := plainHdrBody.Deserialize(plainHdrBodyData)
-			if err != nil {
-				return nil, errors.New(err)
-			}
-
-			stiv2, err := searchidxv2.OpenSearchTermIdxPrivV2(owner, termID, updateID, termKey,
-				indexKey, reader, plainHdr, 0, uint64(plainHdrSize), size)
-			if err != nil {
-				return nil, err
-			}
-
-			stiRdr.stiV2 = stiv2
-
-		default:
-			return nil, errors.Errorf("Search term index version %v is not supported",
-				version.GetStiVersion())
-		}
-
-		bReader.stiReaders = append(bReader.stiReaders, stiRdr)
-		bReader.termIdInfoMap[termID] = stiRdr
-	} // for termID, terms := range termIDMap
-
-	return bReader, nil
+	return bulkReader, nil
 }
 
-func (reader *stiBulkReader) ReadNextData() (StiData, error) {
+func (bReader *stiBulkReader) initStiReader(sdc client.StrongDocClient, owner common.SearchIdxOwner,
+	termID string, origTerms []string, termKey, indexKey *sscrypto.StrongSaltKey, stiVersion uint32) error {
+
+	updateID, err := common.GetLatestUpdateID(sdc, owner, termID)
+	if err != nil {
+		return err
+	}
+
+	reader, size, err := common.OpenSearchTermIndexReader(sdc, owner, termID, updateID)
+	if err != nil {
+		return err
+	}
+
+	stiRdr := &stiReader{
+		reader:        reader,
+		size:          size,
+		version:       stiVersion,
+		termID:        termID,
+		analzdTerms:   nil,
+		origTerms:     origTerms,
+		origToAnalzd:  make(map[string]string),
+		analzdToOrigs: make(map[string][]string),
+	}
+
+	plainHdr, plainHdrSize, err := ssheaders.DeserializePlainHdrStream(reader)
+	if err != nil {
+		return err
+	}
+
+	plainHdrBodyData, err := plainHdr.GetBody()
+	if err != nil {
+		return err
+	}
+
+	version, err := common.DeserializeStiVersion(plainHdrBodyData)
+	if err != nil {
+		return err
+	}
+
+	switch version.GetStiVersion() {
+	case common.STI_V1:
+		stiRdr.version = common.STI_V1
+
+		// Parse plaintext header body
+		plainHdrBody := &searchidxv1.StiPlainHdrBodyV1{}
+		plainHdrBody, err := plainHdrBody.Deserialize(plainHdrBodyData)
+		if err != nil {
+			return errors.New(err)
+		}
+
+		stiRdrAnalyzer, err := GetSearchTermAnalyzer()
+		if err != nil {
+			return err
+		}
+
+		analyzedTerms := stiRdrAnalyzer.Analyze(origTerms[0])
+		stiv1, err := searchidxv1.OpenSearchTermIdxPrivV1(owner, analyzedTerms[0], termID, updateID, termKey,
+			indexKey, reader, plainHdr, 0, uint64(plainHdrSize), size)
+		if err != nil {
+			return err
+		}
+
+		stiRdr.analyzer = stiRdrAnalyzer
+		stiRdr.stiV1 = stiv1
+	case common.STI_V2:
+		stiRdr.version = common.STI_V2
+
+		plainHdrBody := &searchidxv1.StiPlainHdrBodyV1{}
+		plainHdrBody, err := plainHdrBody.Deserialize(plainHdrBodyData)
+		if err != nil {
+			return errors.New(err)
+		}
+
+		stiv2, err := searchidxv2.OpenSearchTermIdxPrivV2(owner, termID, updateID, termKey,
+			indexKey, reader, plainHdr, 0, uint64(plainHdrSize), size)
+		if err != nil {
+			return err
+		}
+
+		stiRdrAnalyzer, err := tokenizer.OpenAnalyzer(stiv2.TokenizerType)
+		if err != nil {
+			return err
+		}
+
+		stiRdr.analyzer = stiRdrAnalyzer
+		stiRdr.stiV2 = stiv2
+	default:
+		return errors.Errorf("Search term index version %v is not supported",
+			version.GetStiVersion())
+	}
+
+	analzdTerms, origToAnalzd, analzdToOrigs, err := common.AnalyzeTerms(origTerms, stiRdr.analyzer)
+	if err != nil {
+		return err
+	}
+
+	stiRdr.analzdTerms = analzdTerms
+	stiRdr.origToAnalzd = origToAnalzd
+	stiRdr.analzdToOrigs = analzdToOrigs
+
+	bReader.stiReaders = append(bReader.stiReaders, stiRdr)
+
+	return nil
+}
+
+type stiChanResult struct {
+	data *stiData
+	err  error
+}
+
+func (bReader *stiBulkReader) ReadNextData() (StiData, error) {
 	finalData := &stiData{
 		termDoc: make(map[string]StiDocOffsets), // term -> stiTermDoc
 		termEof: make(map[string]bool),          // term -> eof(bool)
 	}
 
-	if len(reader.stiReaders) == 0 {
+	if len(bReader.stiReaders) == 0 {
 		return nil, io.EOF
 	}
 
-	type chanResult struct {
-		data *stiData
-		err  error
-	}
-
-	readerToChan := make(map[*stiReader](chan *chanResult))
-	for _, stiRdr := range reader.stiReaders {
-		channel := make(chan *chanResult)
+	readerToChan := make(map[*stiReader](chan *stiChanResult))
+	for _, stiRdr := range bReader.stiReaders {
+		channel := make(chan *stiChanResult)
 		readerToChan[stiRdr] = channel
 
 		// This executes in a separate thread
-		go func(reader *stiReader, channel chan<- *chanResult) {
-			defer close(channel)
-			result := &chanResult{
-				data: nil,
-				err:  nil,
-			}
-
-			if reader == nil {
-				result.err = io.EOF
-				channel <- result
-				return
-			}
-
-			switch reader.version {
-			case common.STI_V1:
-				blk, err := reader.stiV1.ReadNextBlock()
-				if err != nil {
-					result.err = err
-					if err != io.EOF {
-						channel <- result
-						return
-					}
-				}
-
-				result.data = &stiData{
-					termDoc: make(map[string]StiDocOffsets), // term -> stiTermDoc
-					termEof: make(map[string]bool),          // term -> eof(bool)
-				}
-
-				for _, term := range reader.terms {
-					result.data.termEof[term] = (err == io.EOF)
-				}
-
-				if blk == nil {
-					channel <- result
-					return
-				}
-
-				// TODO: May need to change later
-				term := reader.terms[0]
-				termDoc := &stiTermDoc{
-					docIDs:     make([]string, 0, len(blk.DocVerOffset)),
-					docOffsets: make(map[string]*stiDocOffsets), // docID -> stiDocOffsets
-				}
-				result.data.termDoc[term] = termDoc
-
-				for docID, verOffset := range blk.DocVerOffset {
-					termDoc.docIDs = append(termDoc.docIDs, docID)
-					docOffset := termDoc.docOffsets[docID]
-					if docOffset == nil {
-						docOffset = &stiDocOffsets{
-							docID:   docID,
-							docVer:  verOffset.Version,
-							offsets: make([]uint64, 0, len(verOffset.Offsets)),
-						}
-						termDoc.docOffsets[docID] = docOffset
-					}
-					docOffset.offsets = append(docOffset.offsets, verOffset.Offsets...)
-				}
-
-			case common.STI_V2:
-				blk, err := reader.stiV2.ReadNextBlock()
-				if err != nil {
-					result.err = err
-					if err != io.EOF {
-						channel <- result
-						return
-					}
-				}
-
-				result.data = &stiData{
-					termDoc: make(map[string]StiDocOffsets), // term -> stiTermDoc
-					termEof: make(map[string]bool),          // term -> eof(bool)
-				}
-
-				existTerm := false
-				for _, term := range reader.terms {
-					result.data.termEof[term] = (err == io.EOF)
-					if blk != nil {
-						if _, ok := blk.TermDocVerOffset[term]; ok {
-							existTerm = true
-						}
-					}
-				}
-
-				if blk == nil && !existTerm {
-					channel <- result
-					return
-				}
-
-				termToStiTermDoc := make(map[string]*stiTermDoc)
-				for term, docIDVerOffset := range blk.TermDocVerOffset {
-					if _, ok := termToStiTermDoc[term]; !ok {
-						termToStiTermDoc[term] = &stiTermDoc{
-							docIDs:     make([]string, 0),
-							docOffsets: make(map[string]*stiDocOffsets),
-						}
-						result.data.termDoc[term] = termToStiTermDoc[term]
-					}
-					termDoc := termToStiTermDoc[term]
-					for docID, verOffset := range docIDVerOffset {
-						termDoc.docIDs = append(termDoc.docIDs, docID)
-						docOffset := termDoc.docOffsets[docID]
-						if docOffset == nil {
-							docOffset = &stiDocOffsets{
-								docID:   docID,
-								docVer:  verOffset.Version,
-								offsets: make([]uint64, 0, len(verOffset.Offsets)),
-							}
-							termDoc.docOffsets[docID] = docOffset
-						}
-						docOffset.offsets = append(docOffset.offsets, verOffset.Offsets...)
-					}
-				}
-
-			default:
-				result.err = errors.Errorf("Search term index version %v is not supported",
-					reader.version)
-			}
-
-			channel <- result
-		}(stiRdr, channel)
-	} // for _, stiRdr := range reader.stiReaders
+		go bReader.readStiData(stiRdr, channel)
+	}
 
 	allEOF := true
 	for _, channel := range readerToChan {
@@ -378,18 +299,147 @@ func (reader *stiBulkReader) ReadNextData() (StiData, error) {
 	return finalData, nil
 }
 
-func (reader *stiBulkReader) GetTerms() []string {
-	return reader.terms
+func (bReader *stiBulkReader) readStiData(reader *stiReader, channel chan<- *stiChanResult) {
+	defer close(channel)
+	result := &stiChanResult{
+		data: nil,
+		err:  nil,
+	}
+
+	if reader == nil {
+		result.err = io.EOF
+		channel <- result
+		return
+	}
+
+	switch reader.version {
+	case common.STI_V1:
+		blk, err := reader.stiV1.ReadNextBlock()
+		if err != nil {
+			result.err = err
+			if err != io.EOF {
+				channel <- result
+				return
+			}
+		}
+
+		result.data = &stiData{
+			termDoc: make(map[string]StiDocOffsets), // term -> stiTermDoc
+			termEof: make(map[string]bool),          // term -> eof(bool)
+		}
+
+		for _, term := range reader.analzdTerms {
+			result.data.termEof[term] = (err == io.EOF)
+		}
+
+		if blk == nil {
+			channel <- result
+			return
+		}
+
+		term := reader.analzdTerms[0]
+		termDoc := &stiTermDoc{
+			docIDs:     make([]string, 0, len(blk.DocVerOffset)),
+			docOffsets: make(map[string]*stiDocOffsets), // docID -> stiDocOffsets
+		}
+		result.data.termDoc[term] = termDoc
+
+		for docID, verOffset := range blk.DocVerOffset {
+			termDoc.docIDs = append(termDoc.docIDs, docID)
+			docOffset := termDoc.docOffsets[docID]
+			if docOffset == nil {
+				docOffset = &stiDocOffsets{
+					docID:   docID,
+					docVer:  verOffset.Version,
+					offsets: make([]uint64, 0, len(verOffset.Offsets)),
+				}
+				termDoc.docOffsets[docID] = docOffset
+			}
+			docOffset.offsets = append(docOffset.offsets, verOffset.Offsets...)
+		}
+
+	case common.STI_V2:
+		blk, err := reader.stiV2.ReadNextBlock()
+		if err != nil {
+			result.err = err
+			if err != io.EOF {
+				channel <- result
+				return
+			}
+		}
+
+		result.data = &stiData{
+			termDoc: make(map[string]StiDocOffsets), // term -> stiTermDoc
+			termEof: make(map[string]bool),          // term -> eof(bool)
+		}
+
+		existTerm := false
+		for _, term := range reader.analzdTerms {
+			result.data.termEof[term] = (err == io.EOF)
+			for _, origTerms := range reader.analzdToOrigs[term] {
+				result.data.termEof[origTerms] = result.data.termEof[term]
+			}
+			if blk != nil {
+				if _, ok := blk.TermDocVerOffset[term]; ok {
+					existTerm = true
+				}
+			}
+		}
+
+		if blk == nil && !existTerm {
+			channel <- result
+			return
+		}
+
+		termToStiTermDoc := make(map[string]*stiTermDoc)
+		for term, docIDVerOffset := range blk.TermDocVerOffset {
+			if _, ok := termToStiTermDoc[term]; !ok {
+				termToStiTermDoc[term] = &stiTermDoc{
+					docIDs:     make([]string, 0),
+					docOffsets: make(map[string]*stiDocOffsets),
+				}
+				result.data.termDoc[term] = termToStiTermDoc[term]
+				for _, origTerms := range reader.analzdToOrigs[term] {
+					result.data.termDoc[origTerms] = termToStiTermDoc[term]
+				}
+			}
+			termDoc := termToStiTermDoc[term]
+			for docID, verOffset := range docIDVerOffset {
+				termDoc.docIDs = append(termDoc.docIDs, docID)
+				docOffset := termDoc.docOffsets[docID]
+				if docOffset == nil {
+					docOffset = &stiDocOffsets{
+						docID:   docID,
+						docVer:  verOffset.Version,
+						offsets: make([]uint64, 0, len(verOffset.Offsets)),
+					}
+					termDoc.docOffsets[docID] = docOffset
+				}
+				docOffset.offsets = append(docOffset.offsets, verOffset.Offsets...)
+			}
+		}
+	default:
+		result.err = errors.Errorf("Search term index version %v is not supported",
+			reader.version)
+	}
+
+	channel <- result
 }
 
-func (reader *stiBulkReader) Reset() error {
+func (bReader *stiBulkReader) GetTerms() []string {
+	return bReader.analzdTerms
+}
+
+func (bReader *stiBulkReader) Reset() error {
 	var err error = nil
 
-	for _, stiRdr := range reader.stiReaders {
+	for _, stiRdr := range bReader.stiReaders {
 		if stiRdr != nil {
 			switch stiRdr.version {
 			case common.STI_V1:
 				err = utils.FirstError(err, stiRdr.stiV1.Reset())
+			case common.STI_V2:
+				err = utils.FirstError(err, stiRdr.stiV2.Reset())
 			default:
 				return errors.Errorf("Search term index version %v is not supported",
 					stiRdr.version)
@@ -400,14 +450,16 @@ func (reader *stiBulkReader) Reset() error {
 	return err
 }
 
-func (reader *stiBulkReader) Close() error {
+func (bReader *stiBulkReader) Close() error {
 	var err error = nil
 
-	for _, stiRdr := range reader.stiReaders {
+	for _, stiRdr := range bReader.stiReaders {
 		if stiRdr != nil {
 			switch stiRdr.version {
 			case common.STI_V1:
 				err = utils.FirstError(err, stiRdr.stiV1.Close())
+			case common.STI_V2:
+				err = utils.FirstError(err, stiRdr.stiV2.Close())
 			default:
 				return errors.Errorf("Search term index version %v is not supported",
 					stiRdr.version)
@@ -504,24 +556,26 @@ type ssdiData struct {
 }
 
 type ssdiReader struct {
-	reader  io.ReadCloser
-	size    uint64
-	version uint32
-	termID  string
-	terms   []string
-	termMap map[string]bool
-	ssdiV1  *searchidxv1.SearchSortDocIdxV1
-	ssdiV2  *searchidxv2.SearchSortDocIdxV2
+	reader        io.ReadCloser
+	size          uint64
+	version       uint32
+	termID        string
+	analzdTerms   []string            // analyzed terms
+	origTerms     []string            // original terms
+	origToAnalzd  map[string]string   // original term -> analyzed term
+	analzdToOrigs map[string][]string // analyzed term -> []original term
+	analyzer      tokenizer.Analyzer
+	ssdiV1        *searchidxv1.SearchSortDocIdxV1
+	ssdiV2        *searchidxv2.SearchSortDocIdxV2
 }
 
 type ssdiBulkReader struct {
-	terms         []string
-	ssdiReaders   []*ssdiReader
-	termInfoMap   map[string]*ssdiReader // term -> ssdiReader
-	termIdInfoMap map[string]*ssdiReader // termID -> ssdiReader
+	analzdTerms []string
+	ssdiReaders []*ssdiReader
+	analyzer    tokenizer.Analyzer
 }
 
-func OpenSearchSortedDocIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner, terms []string,
+func OpenSearchSortedDocIndex(sdc client.StrongDocClient, owner common.SearchIdxOwner, origTerms []string,
 	termKey, indexKey *sscrypto.StrongSaltKey, ssdiVersion uint32) (SsdiReader, error) {
 
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
@@ -533,241 +587,171 @@ func OpenSearchSortedDocIndex(sdc client.StrongDocClient, owner common.SearchIdx
 			indexKey.Type.Name, sscrypto.Type_XChaCha20.Name)
 	}
 
-	// termID -> list of terms
-	termIDMap, err := common.GetTermIDs(terms, termKey, common.STI_TERM_BUCKET_COUNT, ssdiVersion)
+	analyzer, err := GetSearchTermAnalyzer()
 	if err != nil {
 		return nil, err
 	}
 
-	bReader := &ssdiBulkReader{
-		terms:         terms,
-		ssdiReaders:   make([]*ssdiReader, 0, len(termIDMap)),
-		termInfoMap:   make(map[string]*ssdiReader),
-		termIdInfoMap: make(map[string]*ssdiReader),
+	analzdTerms, _, analzdToOrigs, err := common.AnalyzeTerms(origTerms, analyzer)
+	if err != nil {
+		return nil, err
 	}
 
-	for termID, terms := range termIDMap {
-		updateID, err := common.GetLatestUpdateID(sdc, owner, termID)
+	// termID -> list of terms
+	termIDMap, err := common.GetTermIDs(analzdTerms, termKey, common.STI_TERM_BUCKET_COUNT, ssdiVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	bulkReader := &ssdiBulkReader{
+		analzdTerms: analzdTerms,
+		ssdiReaders: make([]*ssdiReader, 0, len(termIDMap)),
+		analyzer:    analyzer,
+	}
+
+	for termID, analyzedTerms := range termIDMap {
+		var readerOrigTerms []string = nil
+		for _, analyzedTerm := range analyzedTerms {
+			readerOrigTerms = append(readerOrigTerms, analzdToOrigs[analyzedTerm]...)
+		}
+		err := bulkReader.initSsdiReader(sdc, owner, termID, readerOrigTerms,
+			termKey, indexKey, ssdiVersion)
 		if err != nil && err != os.ErrNotExist {
 			return nil, err
 		}
+	} // for termID, analyzedTerms := range termIDMap
 
-		var size uint64 = 0
-		var reader io.ReadCloser = nil
-		if err == nil {
-			reader, size, err = common.OpenSearchSortDocIndexReader(sdc, owner, termID, updateID)
-			if err != nil && err != os.ErrNotExist {
-				return nil, err
-			}
-		}
-
-		if err == os.ErrNotExist {
-			bReader.termIdInfoMap[termID] = nil
-			for _, term := range terms {
-				bReader.termInfoMap[term] = nil
-			}
-			continue
-		}
-
-		ssdiRdr := &ssdiReader{
-			reader:  reader,
-			size:    size,
-			version: ssdiVersion,
-			termID:  termID,
-			terms:   terms,
-			termMap: make(map[string]bool),
-		}
-
-		for _, term := range terms {
-			ssdiRdr.termMap[term] = true
-		}
-
-		plainHdr, plainHdrSize, err := ssheaders.DeserializePlainHdrStream(reader)
-		if err != nil {
-			return nil, err
-		}
-
-		plainHdrBodyData, err := plainHdr.GetBody()
-		if err != nil {
-			return nil, err
-		}
-
-		version, err := common.DeserializeSsdiVersion(plainHdrBodyData)
-		if err != nil {
-			return nil, err
-		}
-
-		switch version.GetSsdiVersion() {
-		case common.SSDI_V1:
-			ssdiRdr.version = common.SSDI_V1
-
-			// Parse plaintext header body
-			plainHdrBody := &searchidxv1.StiPlainHdrBodyV1{}
-			plainHdrBody, err := plainHdrBody.Deserialize(plainHdrBodyData)
-			if err != nil {
-				return nil, errors.New(err)
-			}
-
-			ssdiv1, err := searchidxv1.OpenSearchSortDocIdxPrivV1(owner, terms[0], termID, updateID,
-				termKey, indexKey, reader, plainHdr, 0, uint64(plainHdrSize), size)
-			if err != nil {
-				return nil, err
-			}
-
-			ssdiRdr.ssdiV1 = ssdiv1
-		case common.SSDI_V2:
-			ssdiRdr.version = common.SSDI_V2
-
-			// Parse plaintext header body
-			plainHdrBody := &searchidxv1.StiPlainHdrBodyV1{}
-			plainHdrBody, err := plainHdrBody.Deserialize(plainHdrBodyData)
-			if err != nil {
-				return nil, errors.New(err)
-			}
-
-			ssdiv2, err := searchidxv2.OpenSearchSortDocIdxPrivV2(owner, termID, updateID,
-				termKey, indexKey, reader, plainHdr, 0, uint64(plainHdrSize), size)
-			if err != nil {
-				return nil, err
-			}
-
-			ssdiRdr.ssdiV2 = ssdiv2
-		default:
-			return nil, errors.Errorf("Search sorted document index version %v is not supported",
-				version.GetSsdiVersion())
-		}
-
-		bReader.ssdiReaders = append(bReader.ssdiReaders, ssdiRdr)
-		bReader.termIdInfoMap[termID] = ssdiRdr
-	} // for termID, terms := range termIDMap
-
-	return bReader, nil
+	return bulkReader, nil
 }
 
-func (reader *ssdiBulkReader) ReadNextData() (SsdiData, error) {
+func (bReader *ssdiBulkReader) initSsdiReader(sdc client.StrongDocClient, owner common.SearchIdxOwner,
+	termID string, origTerms []string, termKey, indexKey *sscrypto.StrongSaltKey, ssdiVersion uint32) error {
+	updateID, err := common.GetLatestUpdateID(sdc, owner, termID)
+	if err != nil {
+		return err
+	}
+
+	reader, size, err := common.OpenSearchSortDocIndexReader(sdc, owner, termID, updateID)
+	if err != nil {
+		return err
+	}
+
+	ssdiRdr := &ssdiReader{
+		reader:        reader,
+		size:          size,
+		version:       ssdiVersion,
+		termID:        termID,
+		analzdTerms:   nil,
+		origTerms:     origTerms,
+		origToAnalzd:  make(map[string]string),
+		analzdToOrigs: make(map[string][]string),
+	}
+
+	plainHdr, plainHdrSize, err := ssheaders.DeserializePlainHdrStream(reader)
+	if err != nil {
+		return err
+	}
+
+	plainHdrBodyData, err := plainHdr.GetBody()
+	if err != nil {
+		return err
+	}
+
+	version, err := common.DeserializeSsdiVersion(plainHdrBodyData)
+	if err != nil {
+		return err
+	}
+
+	switch version.GetSsdiVersion() {
+	case common.SSDI_V1:
+		ssdiRdr.version = common.SSDI_V1
+
+		// Parse plaintext header body
+		plainHdrBody := &searchidxv1.StiPlainHdrBodyV1{}
+		plainHdrBody, err := plainHdrBody.Deserialize(plainHdrBodyData)
+		if err != nil {
+			return errors.New(err)
+		}
+
+		ssdiRdrAnalyzer, err := GetSearchTermAnalyzer()
+		if err != nil {
+			return err
+		}
+
+		analyzedTerms := ssdiRdrAnalyzer.Analyze(origTerms[0])
+		ssdiv1, err := searchidxv1.OpenSearchSortDocIdxPrivV1(owner, analyzedTerms[0], termID, updateID,
+			termKey, indexKey, reader, plainHdr, 0, uint64(plainHdrSize), size)
+		if err != nil {
+			return err
+		}
+
+		ssdiRdr.analyzer = ssdiRdrAnalyzer
+		ssdiRdr.ssdiV1 = ssdiv1
+	case common.SSDI_V2:
+		ssdiRdr.version = common.SSDI_V2
+
+		// Parse plaintext header body
+		plainHdrBody := &searchidxv1.StiPlainHdrBodyV1{}
+		plainHdrBody, err := plainHdrBody.Deserialize(plainHdrBodyData)
+		if err != nil {
+			return errors.New(err)
+		}
+
+		ssdiv2, err := searchidxv2.OpenSearchSortDocIdxPrivV2(owner, termID, updateID,
+			termKey, indexKey, reader, plainHdr, 0, uint64(plainHdrSize), size)
+		if err != nil {
+			return err
+		}
+
+		ssdiRdrAnalyzer, err := tokenizer.OpenAnalyzer(ssdiv2.TokenizerType)
+		if err != nil {
+			return err
+		}
+
+		ssdiRdr.analyzer = ssdiRdrAnalyzer
+		ssdiRdr.ssdiV2 = ssdiv2
+	default:
+		return errors.Errorf("Search sorted document index version %v is not supported",
+			version.GetSsdiVersion())
+	}
+
+	analzdTerms, origToAnalzd, analzdToOrigs, err := common.AnalyzeTerms(origTerms, ssdiRdr.analyzer)
+	if err != nil {
+		return err
+	}
+
+	ssdiRdr.analzdTerms = analzdTerms
+	ssdiRdr.origToAnalzd = origToAnalzd
+	ssdiRdr.analzdToOrigs = analzdToOrigs
+
+	bReader.ssdiReaders = append(bReader.ssdiReaders, ssdiRdr)
+
+	return nil
+}
+
+type ssdiChanResult struct {
+	data *ssdiData
+	err  error
+}
+
+func (bReader *ssdiBulkReader) ReadNextData() (SsdiData, error) {
 	finalData := &ssdiData{
 		termDoc:   make(map[string][]SsdiDoc),          // term -> []SsdiDoc
 		termDocID: make(map[string]map[string]SsdiDoc), // term -> (docID -> ssdiDoc)
 	}
 
-	if len(reader.ssdiReaders) == 0 {
+	if len(bReader.ssdiReaders) == 0 {
 		return nil, io.EOF
 	}
 
-	type chanResult struct {
-		data *ssdiData
-		err  error
-	}
-
-	readerToChan := make(map[*ssdiReader](chan *chanResult))
-	for _, ssdiRdr := range reader.ssdiReaders {
-		channel := make(chan *chanResult)
+	readerToChan := make(map[*ssdiReader](chan *ssdiChanResult))
+	for _, ssdiRdr := range bReader.ssdiReaders {
+		channel := make(chan *ssdiChanResult)
 		readerToChan[ssdiRdr] = channel
 
 		// This executes in a separate thread
-		go func(reader *ssdiReader, channel chan<- *chanResult) {
-			defer close(channel)
-			result := &chanResult{
-				data: nil,
-				err:  nil,
-			}
-
-			if reader == nil {
-				result.err = io.EOF
-				channel <- result
-				return
-			}
-
-			switch reader.version {
-			case common.SSDI_V1:
-				blk, err := reader.ssdiV1.ReadNextBlock()
-				if err != nil {
-					result.err = err
-					if err != io.EOF {
-						channel <- result
-						return
-					}
-				}
-
-				if blk == nil {
-					channel <- result
-					return
-				}
-
-				data := &ssdiData{
-					termDoc:   make(map[string][]SsdiDoc),          // term -> []SddiDoc
-					termDocID: make(map[string]map[string]SsdiDoc), // term -> (docID -> ssdiDoc)
-				}
-				result.data = data
-
-				// TODO: May need to change later
-				term := reader.terms[0]
-				docs := make([]SsdiDoc, 0, len(blk.DocIDVers))
-				docIDMap := make(map[string]SsdiDoc)
-				for _, doc := range blk.DocIDVers {
-					ssdiDoc := &ssdiDoc{doc.DocID, doc.DocVer}
-					docs = append(docs, ssdiDoc)
-					docIDMap[doc.DocID] = ssdiDoc
-				}
-				data.termDoc[term] = docs
-				data.termDocID[term] = docIDMap
-			case common.SSDI_V2:
-				blk, err := reader.ssdiV2.ReadNextBlock()
-				if err != nil {
-					result.err = err
-					if err != io.EOF {
-						channel <- result
-						return
-					}
-				}
-
-				if blk == nil {
-					channel <- result
-					return
-				}
-
-				data := &ssdiData{
-					termDoc:   make(map[string][]SsdiDoc),          // term -> []SddiDoc
-					termDocID: make(map[string]map[string]SsdiDoc), // term -> (docID -> ssdiDoc)
-				}
-				result.data = data
-
-				readerTerms := make(map[string]bool)
-				for _, term := range reader.terms {
-					readerTerms[term] = true
-				}
-
-				for _, termDocIDVer := range blk.TermDocIDVers {
-					term := termDocIDVer.Term
-					docID := termDocIDVer.DocID
-					docVer := termDocIDVer.DocVer
-					if _, exists := readerTerms[term]; !exists {
-						continue
-					}
-
-					ssdiDoc := &ssdiDoc{docID: docID, docVer: docVer}
-
-					// update data.termDoc
-					if _, exists := data.termDoc[term]; !exists {
-						data.termDoc[term] = []SsdiDoc{}
-					}
-					data.termDoc[term] = append(data.termDoc[term], ssdiDoc)
-
-					// update data.termDocID
-					if _, exists := data.termDocID[term]; !exists {
-						data.termDocID[term] = make(map[string]SsdiDoc)
-					}
-					data.termDocID[term][docID] = ssdiDoc
-				}
-
-			default:
-				result.err = errors.Errorf("Search sorted document version %v is not supported",
-					reader.version)
-			}
-
-			channel <- result
-		}(ssdiRdr, channel)
-	} // for _, stiRdr := range reader.stiReaders
+		go bReader.readSsdiData(ssdiRdr, channel)
+	}
 
 	allEOF := true
 	for _, channel := range readerToChan {
@@ -797,10 +781,101 @@ func (reader *ssdiBulkReader) ReadNextData() (SsdiData, error) {
 	return finalData, nil
 }
 
-func (reader *ssdiBulkReader) Reset() error {
+func (bReader *ssdiBulkReader) readSsdiData(reader *ssdiReader, channel chan<- *ssdiChanResult) {
+	defer close(channel)
+	result := &ssdiChanResult{
+		data: &ssdiData{
+			termDoc:   make(map[string][]SsdiDoc),          // term -> []SsdiDoc
+			termDocID: make(map[string]map[string]SsdiDoc), // term -> (docID -> ssdiDoc)
+		},
+		err: nil,
+	}
+
+	if reader == nil {
+		result.err = io.EOF
+		channel <- result
+		return
+	}
+
+	switch reader.version {
+	case common.SSDI_V1:
+		blk, err := reader.ssdiV1.ReadNextBlock()
+		if err != nil {
+			result.err = err
+			if err != io.EOF {
+				channel <- result
+				return
+			}
+		}
+
+		if blk == nil {
+			channel <- result
+			return
+		}
+
+		term := reader.analzdTerms[0]
+		docs := make([]SsdiDoc, 0, len(blk.DocIDVers))
+		docIDMap := make(map[string]SsdiDoc)
+		for _, doc := range blk.DocIDVers {
+			ssdiDoc := &ssdiDoc{doc.DocID, doc.DocVer}
+			docs = append(docs, ssdiDoc)
+			docIDMap[doc.DocID] = ssdiDoc
+		}
+		result.data.termDoc[term] = docs
+		result.data.termDocID[term] = docIDMap
+	case common.SSDI_V2:
+		blk, err := reader.ssdiV2.ReadNextBlock()
+		if err != nil {
+			result.err = err
+			if err != io.EOF {
+				channel <- result
+				return
+			}
+		}
+
+		if blk == nil {
+			channel <- result
+			return
+		}
+
+		for _, termDocIDVer := range blk.TermDocIDVers {
+			term := termDocIDVer.Term
+			docID := termDocIDVer.DocID
+			docVer := termDocIDVer.DocVer
+			if _, exists := reader.analzdToOrigs[term]; !exists {
+				continue
+			}
+
+			ssdiDoc := &ssdiDoc{docID: docID, docVer: docVer}
+
+			// update result.data.termDoc
+			result.data.termDoc[term] = append(result.data.termDoc[term], ssdiDoc)
+
+			// update result.data.termDocID
+			if _, exists := result.data.termDocID[term]; !exists {
+				result.data.termDocID[term] = make(map[string]SsdiDoc)
+			}
+			result.data.termDocID[term][docID] = ssdiDoc
+		}
+
+		for term := range result.data.termDoc {
+			for _, origTerm := range reader.analzdToOrigs[term] {
+				result.data.termDoc[origTerm] = result.data.termDoc[term]
+				result.data.termDocID[origTerm] = result.data.termDocID[term]
+			}
+		}
+	default:
+		result.err = errors.Errorf("Search sorted document version %v is not supported",
+			reader.version)
+	}
+
+	channel <- result
+}
+
+func (bReader *ssdiBulkReader) Reset() error {
 	var err error = nil
 
-	for _, ssdiRdr := range reader.ssdiReaders {
+	for _, ssdiRdr := range bReader.ssdiReaders {
 		if ssdiRdr != nil {
 			switch ssdiRdr.version {
 			case common.STI_V1:
@@ -815,10 +890,10 @@ func (reader *ssdiBulkReader) Reset() error {
 	return err
 }
 
-func (reader *ssdiBulkReader) Close() error {
+func (bReader *ssdiBulkReader) Close() error {
 	var err error = nil
 
-	for _, ssdiRdr := range reader.ssdiReaders {
+	for _, ssdiRdr := range bReader.ssdiReaders {
 		if ssdiRdr != nil {
 			switch ssdiRdr.version {
 			case common.STI_V1:

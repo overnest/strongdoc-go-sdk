@@ -3,11 +3,9 @@ package queryv1
 import (
 	"io"
 
-	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
-	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 )
@@ -50,21 +48,7 @@ type PhraseSearchDocV1 struct {
 func OpenPhraseSearchV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, terms []string,
 	termKey, indexKey *sscrypto.StrongSaltKey, searchIndexVer uint32) (*PhraseSearchV1, error) {
 
-	analyzer, err := tokenizer.OpenBleveAnalyzer()
-	if err != nil {
-		return nil, err
-	}
-
-	searchTerms := make([]string, len(terms))
-	for i, term := range terms {
-		tokens := analyzer.Analyze([]byte(term))
-		if len(tokens) != 1 {
-			return nil, errors.Errorf("The search term %v fails analysis:%v", term, tokens)
-		}
-		searchTerms[i] = string(tokens[0].Term)
-	}
-
-	reader, err := searchidx.OpenSearchTermIndex(sdc, owner, searchTerms, termKey, indexKey, searchIndexVer)
+	reader, err := searchidx.OpenSearchTermIndex(sdc, owner, terms, termKey, indexKey, searchIndexVer)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +56,7 @@ func OpenPhraseSearchV1(sdc client.StrongDocClient, owner common.SearchIdxOwner,
 	phraseSearch := &PhraseSearchV1{
 		sdc:       sdc,
 		owner:     owner,
-		terms:     searchTerms,
+		terms:     reader.GetTerms(),
 		origTerms: terms,
 		termKey:   termKey,
 		indexKey:  indexKey,

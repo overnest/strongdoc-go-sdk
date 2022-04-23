@@ -6,6 +6,7 @@ import (
 
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 )
@@ -33,6 +34,7 @@ type SearchTermBatchMgrV2 struct {
 	IndexKey         *sscrypto.StrongSaltKey
 	BatchSize        uint32
 	BucketCount      uint32
+	TokenizerType    tokenizer.TokenizerType
 	delDocs          *DeletedDocsV2 // global delete list
 	termBucketList   []*SearchTermBucket
 }
@@ -61,6 +63,7 @@ func CreateSearchTermBatchMgrV2(owner common.SearchIdxOwner, sources []SearchTer
 		IndexKey:       indexKey,
 		BatchSize:      batchSize,
 		BucketCount:    bucketCount,
+		TokenizerType:  getTokenizerType(sources),
 		delDocs:        delDocs,
 		termBucketList: make([]*SearchTermBucket, 0, 100)}
 
@@ -99,6 +102,7 @@ func CreateSearchTermBatchMgrV2(owner common.SearchIdxOwner, sources []SearchTer
 		if err != nil {
 			return nil, err
 		}
+
 		termBucket := termIDMap[termID]
 		if termBucket == nil {
 			termBucket = &SearchTermBucket{
@@ -112,6 +116,13 @@ func CreateSearchTermBatchMgrV2(owner common.SearchIdxOwner, sources []SearchTer
 		termBucket.TermSources = append(termBucket.TermSources, termSources)
 	}
 	return mgr, nil
+}
+
+func getTokenizerType(sources []SearchTermIdxSourceV2) (tokenType tokenizer.TokenizerType) {
+	for _, source := range sources {
+		tokenType = source.GetTokenizerType()
+	}
+	return
 }
 
 //////////////////////////////////////////////////////////////////
@@ -129,6 +140,7 @@ type searchTermIdxTermInfo struct {
 type SearchTermBatchV2 struct {
 	Owner           common.SearchIdxOwner                              // owner
 	SourceList      []SearchTermIdxSourceV2                            // all docs
+	TokenizerType   tokenizer.TokenizerType                            // tokenizer type of the sources
 	termList        []string                                           // all terms
 	termIDLIst      []string                                           // all termIDs
 	termIDToWriter  map[string]*SearchTermIdxWriterV2                  // termID -> index writer
@@ -145,15 +157,16 @@ func (mgr *SearchTermBatchMgrV2) GetNextTermBatch(sdc client.StrongDocClient) (*
 	termBuckets := mgr.termBucketList[:batchSize]
 	mgr.termBucketList = mgr.termBucketList[batchSize:]
 
-	return CreateSearchTermBatchV2(sdc, mgr.Owner, termBuckets)
+	return CreateSearchTermBatchV2(sdc, mgr.Owner, mgr.TokenizerType, termBuckets)
 }
 
 // TODO: optimization
 func CreateSearchTermBatchV2(sdc client.StrongDocClient, owner common.SearchIdxOwner,
-	termBucketBatch []*SearchTermBucket) (*SearchTermBatchV2, error) {
+	tokenizerType tokenizer.TokenizerType, termBucketBatch []*SearchTermBucket) (*SearchTermBatchV2, error) {
 	batch := &SearchTermBatchV2{
 		Owner:           owner,
 		SourceList:      nil,                                     // all docs
+		TokenizerType:   tokenizerType,                           // tokenizer
 		termIDToWriter:  make(map[string]*SearchTermIdxWriterV2), // termID -> writer
 		termIDToTerms:   nil,
 		sourceToTermIDs: nil,
@@ -235,7 +248,7 @@ func CreateSearchTermBatchV2(sdc client.StrongDocClient, owner common.SearchIdxO
 	for _, termBucket := range termBucketBatch {
 		allTermIDs = append(allTermIDs, termBucket.TermID)
 		// create term index writer for every termID
-		writer, err := CreateSearchTermIdxWriterV2(sdc, owner,
+		writer, err := CreateSearchTermIdxWriterV2(sdc, owner, tokenizerType,
 			termBucket.TermID, termBucket.TermSources,
 			termIDToAllDelDocsMap[termBucket.TermID],
 			termBucket.TermKey, termBucket.IndexKey)
@@ -243,27 +256,26 @@ func CreateSearchTermBatchV2(sdc client.StrongDocClient, owner common.SearchIdxO
 			return nil, err
 		}
 		// collect all terms
-		for _, term := range termBucket.TermSources {
-			allTerms = append(allTerms, term.Term)
+		for _, termSource := range termBucket.TermSources {
+			allTerms = append(allTerms, termSource.Term)
 
 		}
 		batch.termIDToWriter[termBucket.TermID] = writer
 	}
-	//sort.Strings(allTerms)
+
+	sort.Strings(allTerms)
 	batch.termList = allTerms
 	sort.Strings(allTermIDs)
 	batch.termIDLIst = allTermIDs
 
 	sourceToStiws := make(map[SearchTermIdxSourceV2][]*SearchTermIdxWriterV2)
 	for source, termIDMap := range sourceToTermIDsMap {
-		var stiws []*SearchTermIdxWriterV2
 		if len(termIDMap) > 0 {
 			for termID := range termIDMap {
 				stiw := batch.termIDToWriter[termID]
-				stiws = append(stiws, stiw)
+				sourceToStiws[source] = append(sourceToStiws[source], stiw)
 			}
 		}
-		sourceToStiws[source] = stiws
 	}
 	batch.sourceToStiw = sourceToStiws
 
@@ -312,13 +324,13 @@ func (batch *SearchTermBatchV2) processSsdiAll(sdc client.StrongDocClient,
 		ssdiChan := make(chan error)
 		ssdiToChan[stiw] = ssdiChan
 
-		// process each hashedTerm in a separate thread
+		// process each bucket in a separate thread
 		go func(stiw *SearchTermIdxWriterV2,
 			docs map[string]map[string]uint64, // [term] -> [[docID] -> ver]
 			ssdiChan chan<- error) {
 			defer close(ssdiChan)
 			ssdi, err := CreateSearchSortDocIdxV2(sdc, batch.Owner, stiw.TermID,
-				stiw.GetUpdateID(), stiw.TermKey, stiw.IndexKey, docs)
+				stiw.GetUpdateID(), stiw.TermKey, stiw.IndexKey, batch.TokenizerType, docs)
 			if err != nil {
 				ssdiChan <- err
 				return
@@ -396,18 +408,14 @@ func (batch *SearchTermBatchV2) stiReadThread(readToWriteChan chan<- *StiReadRes
 			err := blkResp.Error
 			blk := blkResp.Block
 
-			if err != nil && err != io.EOF {
+			if err != nil && err != io.EOF { // Unrecoverable error
 				readToWriteChan <- &StiReadRespV2{stiwToBlks, err}
 				return
 			}
 
 			if blk != nil && len(blk.TermOffset) > 0 {
 				for _, stiw := range batch.sourceToStiw[source] {
-					blkList := stiwToBlks[stiw]
-					if blkList == nil {
-						blkList = make([]*SearchTermIdxSourceBlockV2, 0, 1)
-					}
-					stiwToBlks[stiw] = append(blkList, blk)
+					stiwToBlks[stiw] = append(stiwToBlks[stiw], blk)
 				}
 			}
 		}
@@ -881,15 +889,16 @@ type SearchTermIdxWriterRespV2 struct {
 }
 
 type SearchTermIdxWriterV2 struct {
-	TermID    string   // term ID
-	Terms     []string // plain terms
-	Owner     common.SearchIdxOwner
-	TermKey   *sscrypto.StrongSaltKey
-	IndexKey  *sscrypto.StrongSaltKey
-	newSti    *SearchTermIdxV2
-	oldSti    common.SearchTermIdx
-	newStiBlk *SearchTermIdxBlkV2
-	oldStiBlk *SearchTermIdxBlkV2
+	TermID        string   // term ID
+	Terms         []string // plain terms
+	Owner         common.SearchIdxOwner
+	TermKey       *sscrypto.StrongSaltKey
+	IndexKey      *sscrypto.StrongSaltKey
+	TokenizerType tokenizer.TokenizerType
+	newSti        *SearchTermIdxV2
+	oldSti        common.SearchTermIdx
+	newStiBlk     *SearchTermIdxBlkV2
+	oldStiBlk     *SearchTermIdxBlkV2
 
 	updateID        string
 	termDelDocMap   map[string]map[string]bool // term -> delDocs
@@ -898,7 +907,7 @@ type SearchTermIdxWriterV2 struct {
 }
 
 func CreateSearchTermIdxWriterV2(sdc client.StrongDocClient,
-	owner common.SearchIdxOwner,
+	owner common.SearchIdxOwner, tokenizerType tokenizer.TokenizerType,
 	termID string, termSources []*SearchTermSources,
 	termDelDocMap map[string]map[string]bool,
 	termKey, indexKey *sscrypto.StrongSaltKey) (*SearchTermIdxWriterV2, error) {
@@ -939,7 +948,6 @@ func CreateSearchTermIdxWriterV2(sdc client.StrongDocClient,
 				stiw.highDocVerMap[stis.GetDocID()] = stis.GetDocVer()
 			}
 		}
-
 	}
 	stiw.Terms = allTerms
 
@@ -959,7 +967,7 @@ func CreateSearchTermIdxWriterV2(sdc client.StrongDocClient,
 	}
 
 	// Create new STI
-	stiw.newSti, err = CreateSearchTermIdxV2(sdc, owner, termID, termKey, indexKey, nil, nil)
+	stiw.newSti, err = CreateSearchTermIdxV2(sdc, owner, termID, termKey, indexKey, nil, nil, tokenizerType)
 	if err != nil {
 		return nil, err
 	}

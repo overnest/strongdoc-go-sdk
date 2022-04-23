@@ -36,7 +36,7 @@ func TestTermIdxBlockV1(t *testing.T) {
 
 		dtib := docidxv1.CreateDocTermIdxBlkV1(prevHighTerm, common.DTI_BLOCK_SIZE_MAX)
 
-		tokenizer, err := tokenizer.OpenTokenizer(tokenizer.TKZER_BLEVE, sourceFile)
+		tokenizer, err := tokenizer.OpenTokenizer(tokenizer.TKZER_BLEVE_NO_STM, sourceFile)
 		assert.NilError(t, err)
 
 		for token, _, err := tokenizer.NextToken(); err != io.EOF; token, _, err = tokenizer.NextToken() {
@@ -86,7 +86,7 @@ func TestTermIdxSourcesV1(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Generate doc offset index, writes output
-	err = CreateAndSaveDocOffsetIdx(testClient, docID, docVer, key, sourceFile)
+	err = CreateDocOffsetIdx(testClient, docID, docVer, key, sourceFile)
 	assert.NilError(t, err)
 
 	// Close source file

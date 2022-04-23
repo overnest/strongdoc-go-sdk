@@ -274,7 +274,7 @@ func (doc *TestDocumentIdxV1) CreateDoi(sdc client.StrongDocClient, key *sscrypt
 	}
 	defer tokenzer.Close()
 
-	doi, err := CreateDocOffsetIdx(sdc, doc.DocID, doc.DocVer, key, 0, tokenizer.TKZER_NONE)
+	doi, err := createDocOffsetIdxPriv(sdc, doc.DocID, doc.DocVer, key, 0, tokenizer.TKZER_NONE)
 	if err != nil {
 		return err
 	}
@@ -328,6 +328,6 @@ func RemoveTestDocumentIdxs(sdc client.StrongDocClient, docs []*TestDocumentIdxV
 }
 
 // clean all tmp files
-func CleanupTestDocumentsTmpFiles() error {
+func CleanupLocalDocumentIndex() error {
 	return os.RemoveAll(common.LOCAL_DOC_IDX_BASE)
 }

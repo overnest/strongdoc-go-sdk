@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
-	"os"
-	"path"
 	"sync"
 
 	"github.com/go-errors/errors"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"github.com/shengdoushi/base58"
@@ -44,15 +43,6 @@ var STI_TERM_BATCH_SIZE = 200 // Process terms in batches of 1000
 // var STI_TERM_BATCH_SIZE_V2 uint32 = 10 // Process termBuckets in batch of 10
 // var STI_TERM_BUCKET_COUNT uint32 = 100
 var HASH_MOD_VAL = 100
-
-// GetSearchIdxPathPrefix gets the search index path prefix
-func GetSearchIdxPathPrefix() string {
-	return path.Clean("/tmp/search")
-}
-
-func CleanupTemporarySearchIndex() error {
-	return os.RemoveAll(GetSearchIdxPathPrefix())
-}
 
 //////////////////////////////////////////////////////////////////
 //
@@ -261,6 +251,7 @@ func TermBucketID(term string, buckets uint32) string {
 //////////////////////////////////////////////////////////////////
 // return termID -> [original terms list]
 func GetTermIDs(terms []string, termKey *sscrypto.StrongSaltKey, bucketCount uint32, stiVersion uint32) (map[string][]string, error) {
+
 	termIDMap := make(map[string][]string) // termID -> list of terms
 	for _, term := range terms {
 		termID, err := GetTermID(term, termKey, bucketCount, stiVersion)
@@ -286,4 +277,35 @@ func GetTermID(term string, termKey *sscrypto.StrongSaltKey, bucketCount uint32,
 	default:
 		return "", nil
 	}
+}
+
+//////////////////////////////////////////////////////////////////
+//
+//                       Analyze Terms
+//
+//////////////////////////////////////////////////////////////////
+func AnalyzeTerms(origTerms []string, analyzer tokenizer.Analyzer) (
+	analyzedTerms []string, // list of analyzed terms
+	origToAnalzdTerms map[string]string, // original term -> analyzed term
+	analzdToOrigTerms map[string][]string, // analyzed term -> []original term
+	err error) {
+
+	analyzedTerms = make([]string, len(origTerms))
+	origToAnalzdTerms = make(map[string]string)
+	analzdToOrigTerms = make(map[string][]string)
+	err = nil
+
+	for i, origTerm := range origTerms {
+		tokens := analyzer.Analyze(origTerm)
+		if len(tokens) != 1 {
+			err = errors.Errorf("The search term %v fails analysis:%v", origTerm, tokens)
+			return
+		}
+		analyzedTerm := tokens[0]
+		analyzedTerms[i] = analyzedTerm
+		origToAnalzdTerms[origTerm] = tokens[0]
+		analzdToOrigTerms[analyzedTerm] = append(analzdToOrigTerms[analyzedTerm], origTerm)
+	}
+
+	return
 }

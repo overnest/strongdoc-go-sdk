@@ -7,6 +7,7 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/crypto"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	ssblocks "github.com/overnest/strongsalt-common-go/blocks"
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
@@ -16,44 +17,46 @@ import (
 // SearchTermIdxV2 is a structure for search term index V2
 type SearchTermIdxV2 struct {
 	common.StiVersionS
-	TermID     string
-	Owner      common.SearchIdxOwner
-	OldSti     common.SearchTermIdx
-	DelDocs    *DeletedDocsV2
-	TermKey    *sscrypto.StrongSaltKey
-	IndexKey   *sscrypto.StrongSaltKey
-	IndexNonce []byte
-	InitOffset uint64
-	updateID   string
-	writer     io.WriteCloser
-	reader     io.ReadCloser
-	bwriter    ssblocks.BlockListWriterV1
-	breader    ssblocks.BlockListReaderV1
-	storeSize  uint64
+	TermID        string
+	Owner         common.SearchIdxOwner
+	OldSti        common.SearchTermIdx
+	DelDocs       *DeletedDocsV2
+	TermKey       *sscrypto.StrongSaltKey
+	IndexKey      *sscrypto.StrongSaltKey
+	IndexNonce    []byte
+	InitOffset    uint64
+	TokenizerType tokenizer.TokenizerType
+	updateID      string
+	writer        io.WriteCloser
+	reader        io.ReadCloser
+	bwriter       ssblocks.BlockListWriterV1
+	breader       ssblocks.BlockListReaderV1
+	storeSize     uint64
 }
 
 // CreateSearchTermIdxV2 creates a search term index writer V2
 func CreateSearchTermIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, termID string,
 	termKey, indexKey *sscrypto.StrongSaltKey, oldSti common.SearchTermIdx,
-	delDocs *DeletedDocsV2) (*SearchTermIdxV2, error) {
+	delDocs *DeletedDocsV2, tokenizerType tokenizer.TokenizerType) (*SearchTermIdxV2, error) {
 
 	var err error
 	sti := &SearchTermIdxV2{
-		StiVersionS: common.StiVersionS{StiVer: common.STI_V2},
-		TermID:      termID,
-		Owner:       owner,
-		OldSti:      oldSti,
-		DelDocs:     delDocs,
-		TermKey:     termKey,
-		IndexKey:    indexKey,
-		IndexNonce:  nil,
-		InitOffset:  0,
-		updateID:    "",
-		writer:      nil,
-		reader:      nil,
-		bwriter:     nil,
-		breader:     nil,
-		storeSize:   0,
+		StiVersionS:   common.StiVersionS{StiVer: common.STI_V2},
+		TermID:        termID,
+		Owner:         owner,
+		OldSti:        oldSti,
+		DelDocs:       delDocs,
+		TermKey:       termKey,
+		IndexKey:      indexKey,
+		IndexNonce:    nil,
+		InitOffset:    0,
+		TokenizerType: tokenizerType,
+		updateID:      "",
+		writer:        nil,
+		reader:        nil,
+		bwriter:       nil,
+		breader:       nil,
+		storeSize:     0,
 	}
 
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
@@ -85,6 +88,7 @@ func CreateSearchTermIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwn
 
 	cipherHdrBody := &StiCipherHdrBodyV2{
 		BlockVersionS: common.BlockVersionS{BlockVer: common.STI_BLOCK_V2},
+		TokenizerType: tokenizerType,
 	}
 
 	plainHdrBodySerial, err := plainHdrBody.Serialize()
@@ -239,6 +243,7 @@ func OpenSearchTermIdxPrivV2(owner common.SearchIdxOwner, termID, updateID strin
 	if err != nil {
 		return nil, err
 	}
+	sti.TokenizerType = cipherHdrBody.TokenizerType
 
 	// Create a block list reader using the streaming crypto so the blocks will be
 	// decrypted.

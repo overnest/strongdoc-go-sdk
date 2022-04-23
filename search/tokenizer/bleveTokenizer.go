@@ -43,11 +43,36 @@ type bTokenFilterType struct {
 var btftLowercase = bTokenFilterType{lowercase.Name}
 var btftStemmer = bTokenFilterType{porter.Name}
 
-func OpenBleveAnalyzer() (*analysis.Analyzer, error) {
+func OpenBleveAnalyzer(tokenizerType TokenizerType) (Analyzer, error) {
+	var analyzer *analysis.Analyzer = nil
+	var err error
+
+	switch tokenizerType {
+	case TKZER_BLEVE:
+		analyzer, err = openBleveAnalyzerStem()
+		if err != nil {
+			return nil, err
+		}
+	case TKZER_BLEVE_NO_STM:
+		analyzer, err = openBleveAnalyzerNoStem()
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.Errorf("Tokenizer type %v unsupported", tokenizerType)
+	}
+
+	return &bAnalyzer{
+		analyzer:      analyzer,
+		tokenizerType: tokenizerType,
+	}, nil
+}
+
+func openBleveAnalyzerStem() (*analysis.Analyzer, error) {
 	return openBleveAnalyzer(bttRegex, btftLowercase, btftStemmer)
 }
 
-func OpenBleveAnalyzerNoStem() (*analysis.Analyzer, error) {
+func openBleveAnalyzerNoStem() (*analysis.Analyzer, error) {
 	return openBleveAnalyzer(bttRegex, btftLowercase)
 }
 
@@ -78,6 +103,26 @@ func openBleveAnalyzer(tokenizerType bTokenizerType, filterTypes ...bTokenFilter
 		Tokenizer:    tokenizer,
 		TokenFilters: tokenFilters,
 	}, nil
+}
+
+type bAnalyzer struct {
+	analyzer      *analysis.Analyzer
+	tokenizerType TokenizerType
+}
+
+func (ana *bAnalyzer) Analyze(input string) []string {
+	bTokens := ana.analyzer.Analyze([]byte(input))
+
+	tokens := make([]string, len(bTokens))
+	for i, btoken := range bTokens {
+		tokens[i] = string(btoken.Term)
+	}
+
+	return tokens
+}
+
+func (ana *bAnalyzer) Type() TokenizerType {
+	return ana.tokenizerType
 }
 
 //////////////////////////////////////////////////////////////////
@@ -121,12 +166,12 @@ func openBleveTokenizer(tokenizerType TokenizerType, source utils.Source) (Bleve
 
 	switch tokenizerType {
 	case TKZER_BLEVE:
-		analyzer, err = OpenBleveAnalyzer()
+		analyzer, err = openBleveAnalyzerStem()
 		if err != nil {
 			return nil, err
 		}
 	case TKZER_BLEVE_NO_STM:
-		analyzer, err = OpenBleveAnalyzerNoStem()
+		analyzer, err = openBleveAnalyzerNoStem()
 		if err != nil {
 			return nil, err
 		}

@@ -19,7 +19,7 @@ func TestTools(t *testing.T) {
 	// ================================ Prev Test ================================
 	common.EnableLocalDocIdx() // Comment out to enable testing against remote server
 	sdc := prevTest(t)
-	defer CleanupTestDocumentsTmpFiles()
+	defer CleanupLocalDocumentIndex()
 	// ================================ Generate Doc Indexes ================================
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)
@@ -138,7 +138,7 @@ func TestCreateModifiedDoc(t *testing.T) {
 
 	// ================================ Prev Test ================================
 	sdc := prevTest(t)
-	defer CleanupTestDocumentsTmpFiles()
+	defer CleanupLocalDocumentIndex()
 	// ================================ Test Doc Modified Indexes ================================
 	key, err := sscrypto.GenerateKey(sscrypto.Type_XChaCha20)
 	assert.NilError(t, err)

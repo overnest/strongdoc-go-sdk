@@ -84,3 +84,44 @@ func TestGrep(t *testing.T) {
 		assert.DeepEqual(t, docMap, grepDocMap)
 	}
 }
+
+func TestMapStringSlice(t *testing.T) {
+	inputs := [][]string{
+		{"same", "same", "trans", "rem", "", "trans", "same"},
+		{},
+		{"rem"},
+		{"rem", "rem", "rem"},
+		{"rem", "same", "same", "trans", "rem", "rem"},
+	}
+	outputs := [][]string{
+		{"same", "same", "transd", "", "transd", "same"},
+		{},
+		{},
+		{},
+		{"same", "same", "transd"},
+	}
+
+	for i, input := range inputs {
+		o, err := MapStringSlice(input, mapFunc)
+		assert.NilError(t, err)
+		assert.DeepEqual(t, outputs[i], o)
+	}
+}
+
+// The return string is different based on input
+// in: same, out: same
+// in: trans, out: transd
+// in: rem, out: ""
+// in: "", out: ""
+func mapFunc(in string, misc ...interface{}) (string, error) {
+	switch in {
+	case "same":
+		return "same", nil
+	case "trans":
+		return "transd", nil
+	case "rem":
+		return "", nil
+	default:
+		return in, nil
+	}
+}

@@ -67,8 +67,8 @@ func TestSearchIdxWriterV1(t *testing.T) {
 
 	TestCreateDocIndexAndSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, nil, firstDocs)
 	TestValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, firstDocs)
-	defer docidx.CleanupTestDocumentsTmpFiles()
-	defer common.CleanupTemporarySearchIndex()
+	defer docidx.CleanupLocalDocumentIndex()
+	defer common.CleanupLocalSearchIndex()
 
 	// err = TestCleanupSearchIndexes(owner, 1)
 	// assert.NilError(t, err)

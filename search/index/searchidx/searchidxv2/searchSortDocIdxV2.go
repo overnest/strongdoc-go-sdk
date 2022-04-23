@@ -10,6 +10,7 @@ import (
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/crypto"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	ssblocks "github.com/overnest/strongsalt-common-go/blocks"
 	ssheaders "github.com/overnest/strongsalt-common-go/headers"
@@ -137,45 +138,48 @@ func (source *ssdiSourceDocIdx) ReadNextDocInfos() (termDocVer map[string]map[st
 // SearchSortDocIdxV2 is a structure for search sorted document index V1
 type SearchSortDocIdxV2 struct {
 	common.SsdiVersionS
-	Owner       common.SearchIdxOwner
-	TermID      string
-	TermKey     *sscrypto.StrongSaltKey
-	IndexKey    *sscrypto.StrongSaltKey
-	IndexNonce  []byte
-	InitOffset  uint64
-	updateID    string
-	source      ssdiSource
-	writer      io.WriteCloser
-	reader      io.ReadCloser
-	bwriter     ssblocks.BlockListWriterV1
-	breader     ssblocks.BlockListReaderV1
-	block       *SearchSortDocIdxBlkV2
-	storeSize   uint64
-	totalDocIDs uint64
+	Owner         common.SearchIdxOwner
+	TermID        string
+	TermKey       *sscrypto.StrongSaltKey
+	IndexKey      *sscrypto.StrongSaltKey
+	IndexNonce    []byte
+	InitOffset    uint64
+	TokenizerType tokenizer.TokenizerType
+	updateID      string
+	source        ssdiSource
+	writer        io.WriteCloser
+	reader        io.ReadCloser
+	bwriter       ssblocks.BlockListWriterV1
+	breader       ssblocks.BlockListReaderV1
+	block         *SearchSortDocIdxBlkV2
+	storeSize     uint64
+	totalDocIDs   uint64
 }
 
 // CreateSearchSortDocIdxV2 creates a search sorted document index writer V1
 func CreateSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, termID, updateID string,
-	termKey, indexKey *sscrypto.StrongSaltKey, docs map[string]map[string]uint64) (*SearchSortDocIdxV2, error) {
+	termKey, indexKey *sscrypto.StrongSaltKey, tokenizerType tokenizer.TokenizerType,
+	docs map[string]map[string]uint64) (*SearchSortDocIdxV2, error) {
 
 	var err error
 	ssdi := &SearchSortDocIdxV2{
-		SsdiVersionS: common.SsdiVersionS{SsdiVer: common.SSDI_V2},
-		Owner:        owner,
-		TermID:       termID,
-		TermKey:      termKey,
-		IndexKey:     indexKey,
-		IndexNonce:   nil,
-		InitOffset:   0,
-		updateID:     updateID,
-		source:       nil,
-		writer:       nil,
-		reader:       nil,
-		bwriter:      nil,
-		breader:      nil,
-		block:        nil,
-		storeSize:    0,
-		totalDocIDs:  0,
+		SsdiVersionS:  common.SsdiVersionS{SsdiVer: common.SSDI_V2},
+		Owner:         owner,
+		TermID:        termID,
+		TermKey:       termKey,
+		IndexKey:      indexKey,
+		IndexNonce:    nil,
+		InitOffset:    0,
+		TokenizerType: tokenizerType,
+		updateID:      updateID,
+		source:        nil,
+		writer:        nil,
+		reader:        nil,
+		bwriter:       nil,
+		breader:       nil,
+		block:         nil,
+		storeSize:     0,
+		totalDocIDs:   0,
 	}
 
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
@@ -216,6 +220,7 @@ func CreateSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdx
 
 	cipherHdrBody := &SsdiCipherHdrBodyV1{
 		BlockVersionS: common.BlockVersionS{BlockVer: common.STI_BLOCK_V2},
+		TokenizerType: tokenizerType,
 	}
 
 	plainHdrBodySerial, err := plainHdrBody.serialize()
@@ -367,10 +372,11 @@ func OpenSearchSortDocIdxPrivV2(owner common.SearchIdxOwner, termID, updateID st
 	}
 
 	cipherHdrBody := &SsdiCipherHdrBodyV1{}
-	_, err = cipherHdrBody.deserialize(cipherHdrBodyData)
+	cipherHdrBody, err = cipherHdrBody.deserialize(cipherHdrBodyData)
 	if err != nil {
 		return nil, err
 	}
+	ssdi.TokenizerType = cipherHdrBody.TokenizerType
 
 	// Create a block list reader using the streaming crypto so the blocks will be
 	// decrypted.

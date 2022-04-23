@@ -53,7 +53,7 @@ func TestUpdateSearchIdx(t *testing.T) {
 		assert.NilError(t, err)
 		newDocs = append(newDocs, newDoc)
 	}
-	defer docidx.CleanupTestDocumentsTmpFiles()
+	defer docidx.CleanupLocalDocumentIndex()
 
 	defer common.RemoveSearchIndex(sdc, owner)
 	TestCreateDocIndexAndSearchIdxV2(t, sdc, owner, docKey, termKey, indexKey, nil, oldDocs)

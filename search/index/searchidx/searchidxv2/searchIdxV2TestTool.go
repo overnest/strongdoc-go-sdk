@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"sort"
 	"testing"
 
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx"
-	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 	"gotest.tools/assert"
 )
@@ -79,50 +80,19 @@ func TestValidateSearchIdxV2(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, docKey, termKey, indexKey *sscrypto.StrongSaltKey,
 	newDocs []*docidx.TestDocumentIdxV1) {
 
-	docTermsMap := make(map[string]bool)                                     // term -> true
-	docTermLocMap := make(map[*docidx.TestDocumentIdxV1]map[string][]uint64) // term -> []locations
-	delTermsMap := make(map[string][]*docidx.TestDocumentIdxV1)              // term -> []testDocs
-
-	// open document term index
-	for _, doc := range newDocs {
-		doi, err := doc.OpenDoi(sdc, docKey)
-		assert.NilError(t, err)
-
-		terms, termloc, err := doi.(*docidxv1.DocOffsetIdxV1).ReadAllTermLoc()
-		assert.NilError(t, err)
-
-		docTermLocMap[doc] = termloc
-		for _, term := range terms {
-			docTermsMap[term] = true
-		}
-
-		err = doi.Close()
-		assert.NilError(t, err)
-
-		for term := range doc.DeletedTerms {
-			delTermsMap[term] = append(delTermsMap[term], doc)
-		}
-	}
-
-	docTerms := make([]string, 0, len(docTermsMap))
-	for term := range docTermsMap {
-		docTerms = append(docTerms, term)
-	}
-	sort.Strings(docTerms)
-
-	for _, term := range docTerms {
-		docLocMap := make(map[*docidx.TestDocumentIdxV1][]uint64) // doc -> locations
-		for doc, termLocMap := range docTermLocMap {
-			if locs, exist := termLocMap[term]; exist {
-				docLocMap[doc] = locs
+	doiInfo := getDoiInfo(t, sdc, docKey, newDocs)
+	for _, doiTerm := range doiInfo.doiTerms {
+		doiDocLocMap := make(map[*docidx.TestDocumentIdxV1][]uint64) // doc -> locations
+		for doc, doiTermLocMap := range doiInfo.doiTermLocMap {
+			if locs, exist := doiTermLocMap[doiTerm]; exist {
+				doiDocLocMap[doc] = locs
 			}
 		}
-
-		TestValidateSearchTermIdxV2(t, sdc, owner, termKey, indexKey, term, docLocMap)
-		TestValidateSortedDocIdxV2(t, sdc, owner, termKey, indexKey, term, docLocMap)
+		TestValidateSearchTermIdxV2(t, sdc, owner, termKey, indexKey, doiTerm, doiDocLocMap)
+		TestValidateSortedDocIdxV2(t, sdc, owner, termKey, indexKey, doiTerm, doiDocLocMap)
 	}
 
-	for term, docs := range delTermsMap {
+	for term, docs := range doiInfo.doiDelTermMap {
 		TestValidateDeletedSearchTermIdxV2(t, sdc, owner, termKey, indexKey, term, docs)
 		TestValidateDeletedSortedDocIdxV2(t, sdc, owner, termKey, indexKey, term, docs)
 	}
@@ -131,9 +101,9 @@ func TestValidateSearchIdxV2(t *testing.T, sdc client.StrongDocClient,
 // validate search term index
 func TestValidateSearchTermIdxV2(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
-	term string, docLocMap map[*docidx.TestDocumentIdxV1][]uint64) {
+	doiTerm string, doiDocLocMap map[*docidx.TestDocumentIdxV1][]uint64) {
 
-	termID, err := common.GetTermID(term, termKey, TEST_BUCKET_COUNT, common.STI_V2)
+	termID, err := common.GetTermID(doiTerm, termKey, TEST_BUCKET_COUNT, common.STI_V2)
 	assert.NilError(t, err)
 
 	updateID, err := GetLatestUpdateIDV2(sdc, owner, termID)
@@ -142,6 +112,11 @@ func TestValidateSearchTermIdxV2(t *testing.T, sdc client.StrongDocClient,
 	// open term index
 	sti, err := OpenSearchTermIdxV2(sdc, owner, termID, termKey, indexKey, updateID)
 	assert.NilError(t, err)
+
+	stiAnalyzer, err := tokenizer.OpenAnalyzer(sti.TokenizerType)
+	assert.NilError(t, err)
+
+	stiAnalzdTerm := stiAnalyzer.Analyze(doiTerm)[0]
 
 	for err == nil {
 		var blk *SearchTermIdxBlkV2
@@ -154,13 +129,13 @@ func TestValidateSearchTermIdxV2(t *testing.T, sdc client.StrongDocClient,
 			continue
 		}
 
-		if _, exists := blk.TermDocVerOffset[term]; !exists {
+		if _, exists := blk.TermDocVerOffset[doiTerm]; !exists {
 			continue
 		}
 		//fmt.Println("check the block")
 
-		for doc, locs := range docLocMap {
-			verOff := blk.TermDocVerOffset[term][doc.DocID]
+		for doiDoc, doiLocs := range doiDocLocMap {
+			verOff := blk.TermDocVerOffset[doiTerm][doiDoc.DocID]
 			if verOff == nil {
 				continue
 			}
@@ -169,19 +144,21 @@ func TestValidateSearchTermIdxV2(t *testing.T, sdc client.StrongDocClient,
 			//fmt.Println("locs", locs)
 			//fmt.Println("verOff.Offsets", verOff.Offsets)
 
-			assert.Equal(t, doc.DocVer, verOff.Version)
-			assert.Assert(t, len(locs) >= len(verOff.Offsets))
-			assert.DeepEqual(t, verOff.Offsets, locs[:len(verOff.Offsets)])
-			docLocMap[doc] = locs[len(verOff.Offsets):]
+			assert.Equal(t, doiDoc.DocVer, verOff.Version)
+			if len(doiLocs) < len(verOff.Offsets) {
+				fmt.Println("PROBLEM: validate sti(doiTerm/analzdTerm): ", doiTerm, stiAnalzdTerm, termID, doiDoc.DocID)
+			}
+			assert.Assert(t, len(doiLocs) >= len(verOff.Offsets))
+			if !reflect.DeepEqual(verOff.Offsets, doiLocs[:len(verOff.Offsets)]) {
+				fmt.Println("PROBLEM: validate sti(doiTerm/analzdTerm): ", doiTerm, stiAnalzdTerm, termID, doiDoc.DocID)
+			}
+			assert.DeepEqual(t, verOff.Offsets, doiLocs[:len(verOff.Offsets)])
+			doiDocLocMap[doiDoc] = doiLocs[len(verOff.Offsets):]
 		}
 	}
 
 	err = sti.Close()
 	assert.NilError(t, err)
-
-	for _, locs := range docLocMap {
-		assert.Equal(t, len(locs), 0)
-	}
 }
 
 // validate deleted search term index
@@ -225,9 +202,9 @@ func TestValidateDeletedSearchTermIdxV2(t *testing.T, sdc client.StrongDocClient
 // validate sorted doc index
 func TestValidateSortedDocIdxV2(t *testing.T, sdc client.StrongDocClient,
 	owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
-	term string, docLocMap map[*docidx.TestDocumentIdxV1][]uint64) {
+	doiTerm string, doiDocLocMap map[*docidx.TestDocumentIdxV1][]uint64) {
 
-	termID, err := common.GetTermID(term, termKey, TEST_BUCKET_COUNT, common.STI_V2)
+	termID, err := common.GetTermID(doiTerm, termKey, TEST_BUCKET_COUNT, common.STI_V2)
 	assert.NilError(t, err)
 
 	updateID, err := GetLatestUpdateIDV2(sdc, owner, termID)
@@ -236,19 +213,28 @@ func TestValidateSortedDocIdxV2(t *testing.T, sdc client.StrongDocClient,
 	ssdi, err := OpenSearchSortDocIdxV2(sdc, owner, termID, termKey, indexKey, updateID)
 	assert.NilError(t, err)
 
-	docIDs := make([]string, 0, len(docLocMap))
-	for doc := range docLocMap {
-		docIDs = append(docIDs, doc.DocID)
-	}
-
-	docIdVerMap, err := ssdi.FindDocIDs(term, docIDs)
+	ssdiAnalyzer, err := tokenizer.OpenAnalyzer(ssdi.TokenizerType)
 	assert.NilError(t, err)
 
-	for doc := range docLocMap {
-		docIDVer := docIdVerMap[doc.DocID]
-		assert.Assert(t, docIDVer != nil)
-		if docIDVer != nil {
-			assert.Equal(t, doc.DocVer, docIDVer.DocVer)
+	ssdiAnalzdTerm := ssdiAnalyzer.Analyze(doiTerm)[0]
+
+	doiDocIDs := make([]string, 0, len(doiDocLocMap))
+	for doiDoc := range doiDocLocMap {
+		doiDocIDs = append(doiDocIDs, doiDoc.DocID)
+	}
+
+	ssdiDocIdVerMap, err := ssdi.FindDocIDs(doiTerm, doiDocIDs)
+	assert.NilError(t, err)
+
+	for doiDoc := range doiDocLocMap {
+		ssdiDocIDVer := ssdiDocIdVerMap[doiDoc.DocID]
+		if ssdiDocIDVer == nil {
+			fmt.Println("PROBLEM: validate ssdi(doiTerm/analzdTerm/doiDoc.DocID):", doiTerm, ssdiAnalzdTerm, doiDoc.DocID)
+		}
+
+		assert.Assert(t, ssdiDocIDVer != nil, "Did not find the proper document")
+		if ssdiDocIDVer != nil {
+			assert.Equal(t, doiDoc.DocVer, ssdiDocIDVer.DocVer)
 		}
 	}
 
@@ -287,4 +273,70 @@ func TestValidateDeletedSortedDocIdxV2(t *testing.T, sdc client.StrongDocClient,
 
 	err = ssdi.Close()
 	assert.NilError(t, err)
+}
+
+type doiInfo struct {
+	doiTerms      []string                                          // list of terms
+	doiTermMap    map[string]bool                                   // term -> bool
+	doiTermLocMap map[*docidx.TestDocumentIdxV1]map[string][]uint64 // doc -> (term -> []locations)
+	doiDelTermMap map[string][]*docidx.TestDocumentIdxV1            // term -> []doc
+}
+
+func getDoiInfo(t *testing.T, sdc client.StrongDocClient, docKey *sscrypto.StrongSaltKey,
+	newDocs []*docidx.TestDocumentIdxV1) *doiInfo {
+
+	doiInfo := &doiInfo{
+		doiTerms:      nil,                                                     // list of terms
+		doiTermMap:    make(map[string]bool),                                   // term -> bool
+		doiTermLocMap: make(map[*docidx.TestDocumentIdxV1]map[string][]uint64), // doc -> (term -> []locations)
+		doiDelTermMap: make(map[string][]*docidx.TestDocumentIdxV1),            // term -> []doc
+	}
+
+	// open document offset index
+	for _, doc := range newDocs {
+		doi, err := doc.OpenDoi(sdc, docKey)
+		assert.NilError(t, err)
+
+		source, err := SearchTermIdxSourceCreateDoc(doi, nil)
+		assert.NilError(t, err)
+
+		sourceTermLoc := make(map[string][]uint64)
+		sourceTerms := source.GetAllTerms()
+		for {
+			sourceBlock, err := source.GetNextSourceBlock(nil)
+			if err != nil {
+				assert.Assert(t, err == io.EOF)
+			}
+
+			if sourceBlock != nil {
+				for term, offset := range sourceBlock.TermOffset {
+					sourceTermLoc[term] = append(sourceTermLoc[term], offset...)
+				}
+			}
+
+			if err == io.EOF {
+				break
+			}
+		}
+
+		doiInfo.doiTermLocMap[doc] = sourceTermLoc
+		for _, sourceTerm := range sourceTerms {
+			doiInfo.doiTermMap[sourceTerm] = true
+		}
+
+		err = source.Close()
+		assert.NilError(t, err)
+
+		for term := range doc.DeletedTerms {
+			doiInfo.doiDelTermMap[term] = append(doiInfo.doiDelTermMap[term], doc)
+		}
+	}
+
+	doiInfo.doiTerms = make([]string, 0, len(doiInfo.doiTermMap))
+	for term := range doiInfo.doiTermMap {
+		doiInfo.doiTerms = append(doiInfo.doiTerms, term)
+	}
+	sort.Strings(doiInfo.doiTerms)
+
+	return doiInfo
 }

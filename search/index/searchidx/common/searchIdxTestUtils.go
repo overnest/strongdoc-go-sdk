@@ -221,3 +221,7 @@ func TestGetKeys() (map[string]*sscrypto.StrongSaltKey, error) {
 
 	return keys, err
 }
+
+func CleanupLocalSearchIndex() error {
+	return os.RemoveAll(LOCAL_SEARCH_IDX_BASE)
+}

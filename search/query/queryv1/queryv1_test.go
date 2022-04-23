@@ -307,7 +307,7 @@ func setup(t *testing.T, ver uint32) (sdc client.StrongDocClient, owner common.S
 		searchidxv1.TestValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, docs)
 	case common.STI_V2:
 		searchidxv2.TestCreateDocIndexAndSearchIdxV2(t, sdc, owner, docKey, termKey, indexKey, nil, docs)
-		// searchidxv2.TestValidateSearchIdxV2(t, sdc, owner, docKey, termKey, indexKey, docs)
+		searchidxv2.TestValidateSearchIdxV2(t, sdc, owner, docKey, termKey, indexKey, docs)
 	default:
 		assert.Assert(t, false, "Invalid version")
 	}
@@ -315,7 +315,10 @@ func setup(t *testing.T, ver uint32) (sdc client.StrongDocClient, owner common.S
 }
 
 func cleanup(sdc client.StrongDocClient, owner common.SearchIdxOwner, docs []*docidx.TestDocumentIdxV1) {
-	docidx.CleanupTestDocumentsTmpFiles()
+	if common.AllLocal() {
+		docidx.CleanupLocalDocumentIndex()
+		common.CleanupLocalSearchIndex()
+	}
 	docidx.RemoveTestDocumentIdxs(sdc, docs)
 	common.RemoveSearchIndex(sdc, owner)
 }
@@ -323,6 +326,8 @@ func cleanup(sdc client.StrongDocClient, owner common.SearchIdxOwner, docs []*do
 func prevTest(t *testing.T) client.StrongDocClient {
 	assert.Assert(t, !common.PartialLocal(), "Does not support partial localized testing")
 	if common.AllLocal() {
+		docidx.CleanupLocalDocumentIndex()
+		common.CleanupLocalSearchIndex()
 		return nil
 	}
 

@@ -37,7 +37,7 @@ type TermSearchResultV1 struct {
 func OpenTermSearchV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, terms []string,
 	termKey, indexKey *sscrypto.StrongSaltKey, ssdiVer uint32) (*TermSearchV1, error) {
 
-	analyzer, err := tokenizer.OpenBleveAnalyzer()
+	analyzer, err := tokenizer.OpenBleveAnalyzer(tokenizer.TKZER_BLEVE)
 	if err != nil {
 		return nil, err
 	}
@@ -45,11 +45,11 @@ func OpenTermSearchV1(sdc client.StrongDocClient, owner common.SearchIdxOwner, t
 	searchTerms := make([]string, len(terms))
 	searchToOrigTerms := make(map[string]string)
 	for i, term := range terms {
-		tokens := analyzer.Analyze([]byte(term))
+		tokens := analyzer.Analyze(term)
 		if len(tokens) != 1 {
 			return nil, errors.Errorf("The search term %v fails analysis:%v", term, tokens)
 		}
-		searchTerms[i] = string(tokens[0].Term)
+		searchTerms[i] = string(tokens[0])
 		searchToOrigTerms[searchTerms[i]] = term
 	}
 

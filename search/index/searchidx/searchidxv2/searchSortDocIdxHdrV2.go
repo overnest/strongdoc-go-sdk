@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -41,6 +42,7 @@ func (hdr *SsdiPlainHdrBodyV1) deserialize(data []byte) (*SsdiPlainHdrBodyV1, er
 // SsdiCipherHdrBodyV1 is the ciphertext header for search sorted document index.
 type SsdiCipherHdrBodyV1 struct {
 	common.BlockVersionS
+	TokenizerType tokenizer.TokenizerType
 }
 
 func (hdr *SsdiCipherHdrBodyV1) serialize() ([]byte, error) {

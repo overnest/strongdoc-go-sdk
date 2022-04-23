@@ -50,7 +50,7 @@ func TestDocOffsetIdx(t *testing.T) {
 	assert.NilError(t, err)
 
 	// Generate doc offset index, writes output
-	err = CreateAndSaveDocOffsetIdx(testClient, docID, docVer, key, sourceFile)
+	err = CreateDocOffsetIdx(testClient, docID, docVer, key, sourceFile)
 	assert.NilError(t, err)
 
 	// Close source file
@@ -74,7 +74,7 @@ func TestDocOffsetIdx(t *testing.T) {
 }
 
 func testDocOffsetIdxV1(t *testing.T, doiVersion common.DocOffsetIdx, sourceFile utils.Source) {
-	tokenizer, err := tokenizer.OpenTokenizer(tokenizer.TKZER_BLEVE, sourceFile)
+	tokenizer, err := tokenizer.OpenTokenizer(tokenizer.TKZER_BLEVE_NO_STM, sourceFile)
 	assert.NilError(t, err)
 
 	doi, ok := doiVersion.(*docidxv1.DocOffsetIdxV1)

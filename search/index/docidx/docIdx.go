@@ -10,7 +10,7 @@ import (
 func CreateAndSaveDocIndexes(sdc client.StrongDocClient, docID string, docVer uint64,
 	key *sscrypto.StrongSaltKey, sourceData utils.Source) error {
 
-	err := CreateAndSaveDocOffsetIdx(sdc, docID, docVer, key, sourceData)
+	err := CreateDocOffsetIdx(sdc, docID, docVer, key, sourceData)
 	if err != nil {
 		return err
 	}

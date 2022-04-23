@@ -7,7 +7,7 @@ import (
 
 // Use the same analyzer on the query terms
 func AnalyzeTerms(terms []string) ([]string, map[string]string, error) {
-	analyzer, err := tokenizer.OpenBleveAnalyzer()
+	analyzer, err := tokenizer.OpenBleveAnalyzer(tokenizer.TKZER_BLEVE)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -15,11 +15,11 @@ func AnalyzeTerms(terms []string) ([]string, map[string]string, error) {
 	analyzedTerms := make([]string, len(terms))
 	analyzedTermsMap := make(map[string]string)
 	for i, term := range terms {
-		tokens := analyzer.Analyze([]byte(term))
+		tokens := analyzer.Analyze(term)
 		if len(tokens) != 1 {
 			return analyzedTerms, analyzedTermsMap, errors.Errorf("HashedTerm analysis error %v:%v", term, tokens)
 		}
-		token := tokens[0].String()
+		token := tokens[0]
 		analyzedTerms[i] = token
 		analyzedTermsMap[token] = term
 	}

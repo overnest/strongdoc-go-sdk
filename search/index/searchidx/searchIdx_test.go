@@ -32,10 +32,13 @@ func TestSearchIdxWriterV1(t *testing.T) {
 	docs, err := docidx.InitTestDocumentIdx(numDocs, false)
 	assert.NilError(t, err)
 
+	docidx.CleanupLocalDocumentIndex()
+	common.CleanupLocalSearchIndex()
+
 	searchidxv1.TestCreateDocIndexAndSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, nil, docs)
 	searchidxv1.TestValidateSearchIdxV1(t, sdc, owner, docKey, termKey, indexKey, docs)
-	defer docidx.CleanupTestDocumentsTmpFiles()
-	defer common.CleanupTemporarySearchIndex()
+	defer docidx.CleanupLocalDocumentIndex()
+	defer common.CleanupLocalSearchIndex()
 
 	origTermDocs := make(map[string]map[string]uint64) // term -> (docID->docVer)
 	terms := make([]string, 0, numTerms)

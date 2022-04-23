@@ -26,7 +26,7 @@ type docTermSourceTextFileV1 struct {
 
 // OpenDocTermSourceTextFileV1 opens the text file Document Term Source V1
 func OpenDocTermSourceTextFileV1(source utils.Source) (*docTermSourceTextFileV1, error) {
-	tokenizer, err := tokenizer.OpenTokenizer(tokenizer.TKZER_BLEVE, source)
+	tokenizer, err := tokenizer.OpenTokenizer(tokenizer.TKZER_BLEVE_NO_STM, source)
 	if err != nil {
 		return nil, errors.New(err)
 	}

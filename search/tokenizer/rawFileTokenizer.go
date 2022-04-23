@@ -29,7 +29,7 @@ func OpenRawFileTokenizer(source utils.Source) (RawFileTokenizer, error) {
 		return nil, err
 	}
 
-	analyzer, err := OpenBleveAnalyzer()
+	analyzer, err := openBleveAnalyzerNoStem()
 	if err != nil {
 		return nil, err
 	}

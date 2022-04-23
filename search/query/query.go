@@ -169,7 +169,7 @@ func Search(cred *Credential, query string) ([]*DocumentResult, error) {
 }
 
 func Cleanup(cred *Credential) error {
-	docidx.CleanupTestDocumentsTmpFiles()
+	docidx.CleanupLocalDocumentIndex()
 	scom.RemoveSearchIndex(nil, cred.owner)
 	return nil
 }

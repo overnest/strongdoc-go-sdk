@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
+	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -41,6 +42,7 @@ func (hdr *StiPlainHdrBodyV2) Deserialize(data []byte) (*StiPlainHdrBodyV2, erro
 // StiCipherHdrBodyV2 is the ciphertext header for search term index.
 type StiCipherHdrBodyV2 struct {
 	common.BlockVersionS
+	TokenizerType tokenizer.TokenizerType
 }
 
 func (hdr *StiCipherHdrBodyV2) Serialize() ([]byte, error) {

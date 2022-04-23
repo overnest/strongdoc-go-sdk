@@ -2,10 +2,11 @@ package docidx
 
 import (
 	"encoding/json"
-	"github.com/overnest/strongdoc-go-sdk/client"
-	"github.com/overnest/strongdoc-go-sdk/utils"
 	"io"
 	"strings"
+
+	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/utils"
 
 	"github.com/go-errors/errors"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
@@ -320,6 +321,4 @@ func GetAllTermList(dti DocTermIdx) (terms []string, err error) {
 		return nil, errors.Errorf("Document term index version %v is not supported",
 			dti.GetDtiVersion())
 	}
-
-	return
 }

@@ -3,9 +3,7 @@ package searchidxv1
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
-	"path"
 	"sort"
 	"testing"
 
@@ -14,7 +12,6 @@ import (
 	docidx "github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
 	"github.com/overnest/strongdoc-go-sdk/search/index/searchidx/common"
-	"github.com/overnest/strongdoc-go-sdk/utils"
 	sscrypto "github.com/overnest/strongsalt-crypto-go"
 
 	"gotest.tools/assert"
@@ -313,42 +310,4 @@ func TestValidateDeleteSearchIdxV1(t *testing.T, sdc client.StrongDocClient,
 		TestValidateDeletedSearchTermIdxV1(t, sdc, owner, termKey, indexKey, term, docs)
 		TestValidateDeletedSortedDocIdxV1(t, sdc, owner, termKey, indexKey, term, docs)
 	}
-}
-
-func TestCleanupSearchIndexes(owner common.SearchIdxOwner, numToKeep int) error {
-	searchIdxPath := path.Clean(fmt.Sprintf("%v/%v/sidx", common.GetSearchIdxPathPrefix(), owner))
-
-	termDirInfos, err := ioutil.ReadDir(searchIdxPath)
-	if err != nil {
-		return err
-	}
-
-	for _, termDirInfo := range termDirInfos {
-		if !termDirInfo.IsDir() {
-			continue
-		}
-
-		termDirPath := path.Clean(fmt.Sprintf("%v/%v", searchIdxPath, termDirInfo.Name()))
-		updateIdInfos, err := ioutil.ReadDir(termDirPath)
-		if err != nil {
-			return err
-		}
-
-		// Sort by update time
-		sort.Slice(updateIdInfos, func(i, j int) bool {
-			return updateIdInfos[i].ModTime().Before(updateIdInfos[j].ModTime())
-		})
-
-		keep := utils.Min(numToKeep, len(updateIdInfos))
-		removeDirInfos := updateIdInfos[len(updateIdInfos)-keep:]
-		for _, removeDirInfo := range removeDirInfos {
-			removeDirPath := path.Clean(fmt.Sprintf("%v/%v", termDirPath, removeDirInfo.Name()))
-			err := os.RemoveAll(removeDirPath)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }

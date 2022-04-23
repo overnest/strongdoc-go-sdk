@@ -22,27 +22,27 @@ import (
 //
 //////////////////////////////////////////////////////////////////
 
-// CreateDocOffsetIdx creates a new document offset index for writing
-func CreateDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+// createDocOffsetIdxPriv creates a new document offset index for writing
+func createDocOffsetIdxPriv(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
 	initOffset int64, tokenizerType tokenizer.TokenizerType) (*docidxv1.DocOffsetIdxV1, error) {
 	return docidxv1.CreateDocOffsetIdxV1(sdc, docID, docVer, key, initOffset, tokenizerType)
 }
 
 // Create document offset index and writes output
-func CreateAndSaveDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+func CreateDocOffsetIdx(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
 	sourceData utils.Source) error {
-	return CreateAndSaveDocOffsetIdxWithOffset(sdc, docID, docVer, key, sourceData, 0)
+	return CreateDocOffsetIdxOffset(sdc, docID, docVer, key, sourceData, 0)
 }
 
-func CreateAndSaveDocOffsetIdxWithOffset(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
+func CreateDocOffsetIdxOffset(sdc client.StrongDocClient, docID string, docVer uint64, key *sscrypto.StrongSaltKey,
 	sourceData utils.Source, initOffset int64) error {
-	tokenizer, err := tokenizer.OpenTokenizer(tokenizer.TKZER_BLEVE, sourceData)
+	tokenizer, err := tokenizer.OpenTokenizer(tokenizer.TKZER_BLEVE_NO_STM, sourceData)
 	if err != nil {
 		return err
 	}
 	defer tokenizer.Close()
 
-	doi, err := CreateDocOffsetIdx(sdc, docID, docVer, key, initOffset, tokenizer.Type())
+	doi, err := createDocOffsetIdxPriv(sdc, docID, docVer, key, initOffset, tokenizer.Type())
 	if err != nil {
 		return err
 	}
