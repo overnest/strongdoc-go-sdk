@@ -151,7 +151,9 @@ func CreateSearchTermIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwn
 }
 
 // OpenSearchTermIdxV2 opens a search term index reader V2
-func OpenSearchTermIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, termID string, termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV2, error) {
+func OpenSearchTermIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, termID string,
+	termKey, indexKey *sscrypto.StrongSaltKey, updateID string) (*SearchTermIdxV2, error) {
+
 	if _, ok := termKey.Key.(sscryptointf.KeyMAC); !ok {
 		return nil, errors.Errorf("The term key type %v is not a MAC key", termKey.Type.Name)
 	}

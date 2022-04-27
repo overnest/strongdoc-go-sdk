@@ -3,15 +3,11 @@ package searchidxv2
 import (
 	"fmt"
 	"io"
-	"sort"
 
 	"github.com/go-errors/errors"
-	"github.com/mpvl/unique"
 	"github.com/overnest/strongdoc-go-sdk/search/index/docidx"
 	didxcommon "github.com/overnest/strongdoc-go-sdk/search/index/docidx/common"
 	didxv1 "github.com/overnest/strongdoc-go-sdk/search/index/docidx/docidxv1"
-	"github.com/overnest/strongdoc-go-sdk/search/tokenizer"
-	"github.com/overnest/strongdoc-go-sdk/utils"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -35,7 +31,6 @@ type SearchTermIdxSourceV2 interface {
 	GetDelTerms() []string
 	// Returns io.EOF error if there are no more blocks
 	GetNextSourceBlock(filterTerms []string) (*SearchTermIdxSourceBlockV2, error)
-	GetTokenizerType() tokenizer.TokenizerType
 	Reset() error
 	Close() error
 	fmt.Stringer
@@ -47,11 +42,6 @@ type searchTermIdxSourceV2 struct {
 	dtiNew   didxcommon.DocTermIdx
 	allTerms []string
 	delTerms []string
-	analyzer tokenizer.Analyzer
-}
-
-func GetSearchTermIdxSourceAnalyzer() (tokenizer.Analyzer, error) {
-	return tokenizer.OpenAnalyzer(tokenizer.TKZER_BLEVE)
 }
 
 // SearchTermIdxSourceCreateDoc opens a search source when a new document is created
@@ -70,13 +60,8 @@ func SearchTermIdxSourceDeleteDoc(doiDel didxcommon.DocOffsetIdx, dtiDel didxcom
 }
 
 func createSearchTermIdxSourceV2(doiNew didxcommon.DocOffsetIdx, dtiOld, dtiNew didxcommon.DocTermIdx) (SearchTermIdxSourceV2, error) {
-	analyzer, err := GetSearchTermIdxSourceAnalyzer()
-	if err != nil {
-		return nil, err
-	}
-
 	source := &searchTermIdxSourceV2{doiNew, dtiOld, dtiNew,
-		make([]string, 0), make([]string, 0), analyzer}
+		make([]string, 0), make([]string, 0)}
 
 	// If there is no DTI given, then we'll figure out all the terms to be added from the DOI
 	if dtiOld == nil && dtiNew == nil {
@@ -95,10 +80,7 @@ func createSearchTermIdxSourceV2(doiNew didxcommon.DocOffsetIdx, dtiOld, dtiNew 
 				}
 				if blk != nil {
 					for term := range blk.TermLoc {
-						tokens := analyzer.Analyze(term)
-						for _, token := range tokens {
-							terms[token] = true
-						}
+						terms[term] = true
 					}
 				}
 			}
@@ -129,27 +111,7 @@ func createSearchTermIdxSourceV2(doiNew didxcommon.DocOffsetIdx, dtiOld, dtiNew 
 		source.delTerms = delTerms
 	}
 
-	source.allTerms, err = utils.MapStringSlice(source.allTerms, source.analyzeFunc)
-	if err != nil {
-		return nil, err
-	}
-	unique.Sort(unique.StringSlice{P: &source.allTerms})
-
-	source.delTerms, err = utils.MapStringSlice(source.delTerms, source.analyzeFunc)
-	if err != nil {
-		return nil, err
-	}
-	unique.Sort(unique.StringSlice{P: &source.delTerms})
-
 	return source, nil
-}
-
-func (sis *searchTermIdxSourceV2) analyzeFunc(input string, misc ...interface{}) (string, error) {
-	tokens := sis.analyzer.Analyze(input)
-	if len(tokens) > 0 {
-		return tokens[0], nil
-	}
-	return "", errors.Errorf("The search term %v fails analysis:%v", input, tokens)
 }
 
 // GetNextSourceBlock gets the next source block from DOI
@@ -181,27 +143,15 @@ func (sis *searchTermIdxSourceV2) GetNextSourceBlock(filterTerms []string) (*Sea
 			}
 		}
 
-		needSort := make(map[string]bool) // tracks which term location need sorting after
 		for term, locs := range blk.TermLoc {
-			tokens := sis.analyzer.Analyze(term)
-			for _, token := range tokens {
-				if (len(filterTerms) == 0 || filterTermMap[token]) && len(locs) > 0 {
-					termOffset := sisBlock.TermOffset[token]
-					if len(termOffset) <= 0 {
-						sisBlock.TermOffset[token] = locs
-					} else {
-						if termOffset[len(termOffset)-1] > locs[0] {
-							needSort[token] = true
-						}
-						sisBlock.TermOffset[token] = append(termOffset, locs...)
-					}
+			if (len(filterTerms) == 0 || filterTermMap[term]) && len(locs) > 0 {
+				termOffset := sisBlock.TermOffset[term]
+				if len(termOffset) <= 0 {
+					sisBlock.TermOffset[term] = locs
+				} else {
+					sisBlock.TermOffset[term] = append(termOffset, locs...)
 				}
 			}
-		}
-
-		for sortTerm := range needSort {
-			locations := sisBlock.TermOffset[sortTerm]
-			sort.Slice(locations, func(i, j int) bool { return locations[i] < locations[j] })
 		}
 
 		return sisBlock, nil
@@ -209,10 +159,6 @@ func (sis *searchTermIdxSourceV2) GetNextSourceBlock(filterTerms []string) (*Sea
 		return nil, errors.Errorf("Document offset index version %v is not supported",
 			sis.doiNew.GetDoiVersion())
 	}
-}
-
-func (sis *searchTermIdxSourceV2) GetTokenizerType() tokenizer.TokenizerType {
-	return sis.analyzer.Type()
 }
 
 func (sis *searchTermIdxSourceV2) GetDocID() string {

@@ -15,7 +15,7 @@ import (
 //
 //////////////////////////////////////////////////////////////////
 
-// SearchTermIdxBlkV1 is the Search Index Block V2
+// SearchTermIdxBlkV2 is the Search Index Block V2
 type SearchTermIdxBlkV2 struct {
 	TermDocVerOffset  map[string](map[string]*VersionOffsetV2) // term -> (docID -> versionOffsets)
 	predictedJSONSize uint64                                   `json:"-"`
@@ -38,34 +38,45 @@ var initSearchTermIdxBlkV2 = func() interface{} {
 }
 
 func init() {
-	blk := initSearchTermIdxBlkV2()
-	predictSize, err := blocks.GetPredictedJSONSize(blk)
+	// {"Version":0,"Offsets":[]}      actual size: 26
+	verOffset := &VersionOffsetV2{0, []uint64{}}
+	base3, err := blocks.GetPredictedJSONSize(verOffset)
 	if err != nil {
 		log.Fatal(err)
 	}
-	baseStiBlockJSONSize = uint64(predictSize)
+	// Remove the 0 version + outer most 2 {}.
+	// This is because the 2 {} are already included in baseStiDocVersionOffsetJSONSize
+	baseStiVersionOffsetJSONSize = uint64(base3) - 1 // Remove the 0 version
 
-	verOffset := &VersionOffsetV2{0, []uint64{}}
-	if b, err := json.Marshal(verOffset); err == nil {
-		baseStiVersionOffsetJSONSize = uint64(len(b)) - 1 // Remove the 0 version
-	}
-
+	// {"":{"Version":0,"Offsets":[]}}     actual size: 31
 	docVerOffset := make(map[string]*VersionOffsetV2)
 	docVerOffset[""] = verOffset
 	base2, err := blocks.GetPredictedJSONSize(docVerOffset)
 	if err != nil {
 		log.Fatal(err)
 	}
-	baseStiDocVersionOffsetJSONSize = uint64(base2) - 1
+	// Remove the 0 version + outer most 2 {}.
+	// This is because the 2 {} are already included in baseStiTermDocVersionOffsetJSONSize
+	baseStiDocVersionOffsetJSONSize = uint64(base2) - 1 - 2 // Remove the 0 version
 
+	// {"":{"":{"Version":0,"Offsets":[]}}}    actual size: 36
 	termDocVerOffset := make(map[string]map[string]*VersionOffsetV2)
 	termDocVerOffset[""] = docVerOffset
 	base1, err := blocks.GetPredictedJSONSize(termDocVerOffset)
 	if err != nil {
 		log.Fatal(err)
 	}
-	baseStiTermDocVersionOffsetJSONSize = uint64(base1) - 1
+	// Remove the 0 version + outer most 2 {}.
+	// This is because the 2 {} are already included in baseStiBlockJSONSize
+	baseStiTermDocVersionOffsetJSONSize = uint64(base1) - 1 - 2
 
+	// {"TermDocVerOffset":{}}
+	blk := initSearchTermIdxBlkV2()
+	predictSize, err := blocks.GetPredictedJSONSize(blk)
+	if err != nil {
+		log.Fatal(err)
+	}
+	baseStiBlockJSONSize = uint64(predictSize)
 }
 
 // CreateSearchTermIdxBlkV1 creates a new Search Index Block V2
@@ -87,23 +98,21 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 	if len(offsets) == 0 {
 		return fmt.Errorf("invalid offset")
 	}
-	// Delete existing DocID entry if it's older than the incoming one
-	docVerOffset := blk.TermDocVerOffset[term]
+
 	newSize := blk.predictedJSONSize
-	if docVerOffset == nil {
+
+	docVerOffset := blk.TermDocVerOffset[term]
+	if docVerOffset == nil { // term doesn't exist
 		// Need to add new term
 		//{"<Term>":
 		//	{"<docID>":
 		//		{"Version":<docVer>,"Offsets":[<o1>,<o2>,...], }
 		//	}
 		//}
-
 		newSize += uint64(len(term)) +
 			uint64(len(docID)) +
 			uint64(len(fmt.Sprintf("%v", docVer))) +
-			// 2 double quotes, 1 colon
-			baseStiDocVersionOffsetJSONSize + 3
-
+			baseStiTermDocVersionOffsetJSONSize
 		if len(blk.TermDocVerOffset) != 0 {
 			newSize += 1 // 1 comma
 		}
@@ -114,7 +123,6 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 			Offsets: make([]uint64, 0, len(offsets)),
 		}
 		blk.TermDocVerOffset[term] = docVerOffset
-
 	} else { // existing term
 		verOffset := docVerOffset[docID]
 		if verOffset == nil {
@@ -125,18 +133,18 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 			//		{"Version":<docVer>,"Offsets":[<o1>,<o2>,...], }
 			//	}
 			newSize += uint64(len(docID)) +
-				baseStiDocVersionOffsetJSONSize +
-				uint64(len(fmt.Sprintf("%v", docVer)))
+				uint64(len(fmt.Sprintf("%v", docVer))) +
+				baseStiDocVersionOffsetJSONSize
+			if len(docVerOffset) != 0 {
+				newSize += 1 // 1 comma
+			}
+
 			docVerOffset[docID] = &VersionOffsetV2{
 				Version: docVer,
 				Offsets: make([]uint64, 0, len(offsets)),
 			}
-
-			blk.TermDocVerOffset[term][docID] = &VersionOffsetV2{
-				Version: docVer,
-				Offsets: make([]uint64, 0, len(offsets)),
-			}
 		} else if verOffset.Version < docVer {
+			// Delete existing DocID entry if it's older than the incoming one
 			// Update doc version
 			//{"<Term>":
 			//	{"<docID>":
@@ -154,8 +162,8 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 			verOffset.Offsets = make([]uint64, 0, len(offsets))
 			verOffset.Version = docVer
 		}
-
 	}
+
 	// append offsets to existing Term & DocID
 	versionOffsets := blk.TermDocVerOffset[term][docID]
 	for _, offset := range offsets {
@@ -174,6 +182,11 @@ func (blk *SearchTermIdxBlkV2) AddDocOffsets(term, docID string, docVer uint64, 
 // IsEmpty shows whether the block is empty
 func (blk *SearchTermIdxBlkV2) IsEmpty() bool {
 	return (len(blk.TermDocVerOffset) == 0)
+}
+
+// IsFull shows whether the block is full
+func (blk *SearchTermIdxBlkV2) IsFull() bool {
+	return (blk.predictedJSONSize >= blk.maxDataSize)
 }
 
 // Serialize the version offset struct

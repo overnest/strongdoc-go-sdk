@@ -32,6 +32,14 @@ type DeletedDocsV2 struct {
 	delDocMap map[string]bool // Map of DocID to boolean
 }
 
+func CreateDeletedDocsV2(delDocs []string) *DeletedDocsV2 {
+	delDocsV2 := &DeletedDocsV2{delDocs, make(map[string]bool)}
+	for _, delDoc := range delDocs {
+		delDocsV2.delDocMap[delDoc] = true
+	}
+	return delDocsV2
+}
+
 // CreateSearchIdxWriterV1 creates a search index writer V2
 func CreateSearchIdxWriterV2(owner common.SearchIdxOwner, termKey, indexKey *sscrypto.StrongSaltKey,
 	sources []SearchTermIdxSourceV2) (*SearchIdxV2, error) {
@@ -49,7 +57,7 @@ func CreateSearchIdxWriterV2(owner common.SearchIdxOwner, termKey, indexKey *ssc
 		IndexKey:      indexKey,
 		owner:         owner,
 		batchMgr:      nil,
-		delDocs:       &DeletedDocsV2{make([]string, 0), make(map[string]bool)},
+		delDocs:       CreateDeletedDocsV2(nil),
 	}
 
 	var err error

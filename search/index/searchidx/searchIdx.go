@@ -374,13 +374,13 @@ func (bReader *stiBulkReader) readStiData(reader *stiReader, channel chan<- *sti
 		}
 
 		existTerm := false
-		for _, term := range reader.analzdTerms {
-			result.data.termEof[term] = (err == io.EOF)
-			for _, origTerms := range reader.analzdToOrigs[term] {
-				result.data.termEof[origTerms] = result.data.termEof[term]
+		for _, analzdTerm := range reader.analzdTerms {
+			result.data.termEof[analzdTerm] = (err == io.EOF)
+			for _, origTerms := range reader.analzdToOrigs[analzdTerm] {
+				result.data.termEof[origTerms] = result.data.termEof[analzdTerm]
 			}
 			if blk != nil {
-				if _, ok := blk.TermDocVerOffset[term]; ok {
+				if _, ok := blk.TermDocVerOffset[analzdTerm]; ok {
 					existTerm = true
 				}
 			}
@@ -392,18 +392,18 @@ func (bReader *stiBulkReader) readStiData(reader *stiReader, channel chan<- *sti
 		}
 
 		termToStiTermDoc := make(map[string]*stiTermDoc)
-		for term, docIDVerOffset := range blk.TermDocVerOffset {
-			if _, ok := termToStiTermDoc[term]; !ok {
-				termToStiTermDoc[term] = &stiTermDoc{
+		for analzdTerm, docIDVerOffset := range blk.TermDocVerOffset {
+			if _, ok := termToStiTermDoc[analzdTerm]; !ok {
+				termToStiTermDoc[analzdTerm] = &stiTermDoc{
 					docIDs:     make([]string, 0),
 					docOffsets: make(map[string]*stiDocOffsets),
 				}
-				result.data.termDoc[term] = termToStiTermDoc[term]
-				for _, origTerms := range reader.analzdToOrigs[term] {
-					result.data.termDoc[origTerms] = termToStiTermDoc[term]
+				result.data.termDoc[analzdTerm] = termToStiTermDoc[analzdTerm]
+				for _, origTerms := range reader.analzdToOrigs[analzdTerm] {
+					result.data.termDoc[origTerms] = termToStiTermDoc[analzdTerm]
 				}
 			}
-			termDoc := termToStiTermDoc[term]
+			termDoc := termToStiTermDoc[analzdTerm]
 			for docID, verOffset := range docIDVerOffset {
 				termDoc.docIDs = append(termDoc.docIDs, docID)
 				docOffset := termDoc.docOffsets[docID]

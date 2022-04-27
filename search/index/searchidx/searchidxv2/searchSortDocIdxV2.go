@@ -26,7 +26,7 @@ import (
 type ssdiSource interface {
 	Reset() error
 	Close() error
-	ReadNextDocInfos() (map[string]map[string]uint64, error)
+	ReadNextDocInfos() (processedTermDocs, error)
 }
 
 //
@@ -63,8 +63,8 @@ func (source *ssdiSourceSTI) Close() error {
 
 // Read Block from STI
 // return [term -> [docID -> docVer]]
-func (source *ssdiSourceSTI) ReadNextDocInfos() (termDocVer map[string]map[string]uint64, err error) {
-	termDocVer = make(map[string]map[string]uint64)
+func (source *ssdiSourceSTI) ReadNextDocInfos() (termDocVer processedTermDocs, err error) {
+	termDocVer = make(processedTermDocs)
 	sti := source.sti
 	if sti == nil {
 		err = fmt.Errorf("invalid source")
@@ -102,11 +102,11 @@ func (source *ssdiSourceSTI) ReadNextDocInfos() (termDocVer map[string]map[strin
 // Sorted Doc Index Source from STI Writer
 //
 type ssdiSourceDocIdx struct {
-	stiSources map[string]map[string]uint64
+	stiSources processedTermDocs
 	eof        bool
 }
 
-func openSsdiSourceFromSTISource(stiSources map[string]map[string]uint64) *ssdiSourceDocIdx {
+func openSsdiSourceFromSTISource(stiSources processedTermDocs) *ssdiSourceDocIdx {
 	return &ssdiSourceDocIdx{stiSources: stiSources, eof: false}
 }
 
@@ -119,7 +119,7 @@ func (source *ssdiSourceDocIdx) Close() error {
 	return nil
 }
 
-func (source *ssdiSourceDocIdx) ReadNextDocInfos() (termDocVer map[string]map[string]uint64, err error) {
+func (source *ssdiSourceDocIdx) ReadNextDocInfos() (termDocVer processedTermDocs, err error) {
 	if source.eof {
 		err = io.EOF
 		return
@@ -159,7 +159,7 @@ type SearchSortDocIdxV2 struct {
 // CreateSearchSortDocIdxV2 creates a search sorted document index writer V1
 func CreateSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdxOwner, termID, updateID string,
 	termKey, indexKey *sscrypto.StrongSaltKey, tokenizerType tokenizer.TokenizerType,
-	docs map[string]map[string]uint64) (*SearchSortDocIdxV2, error) {
+	procTermDocs processedTermDocs) (*SearchSortDocIdxV2, error) {
 
 	var err error
 	ssdi := &SearchSortDocIdxV2{
@@ -195,8 +195,8 @@ func CreateSearchSortDocIdxV2(sdc client.StrongDocClient, owner common.SearchIdx
 		return nil, errors.Errorf("The key type %v is not a midstream key", indexKey.Type.Name)
 	}
 
-	if docs != nil {
-		ssdi.source = openSsdiSourceFromSTISource(docs)
+	if procTermDocs != nil {
+		ssdi.source = openSsdiSourceFromSTISource(procTermDocs)
 	} else {
 		ssdi.source, err = openSsdiSourceFromSTI(sdc, owner, termID, termKey, indexKey, updateID)
 		if err != nil {
@@ -437,7 +437,7 @@ func (ssdi *SearchSortDocIdxV2) WriteNextBlock() (*SearchSortDocIdxBlkV2, error)
 	}
 
 	for {
-		var termDocIDVers map[string]map[string]uint64
+		var termDocIDVers processedTermDocs
 		termDocIDVers, err = ssdi.source.ReadNextDocInfos()
 		if err != nil {
 			break
@@ -518,7 +518,13 @@ func (ssdi *SearchSortDocIdxV2) FindDocID(term, docID string) (*DocIDVerV2, erro
 		return nil, errors.Errorf("The search sorted document index is not open for reading")
 	}
 
-	b, _, err := ssdi.breader.SearchBinary(TermDoc{Term: term, DocID: docID}, DocIDVerComparatorV2)
+	analyzer, err := tokenizer.OpenAnalyzer(ssdi.TokenizerType)
+	if err != nil {
+		return nil, err
+	}
+	analzdTerm := analyzer.Analyze(term)[0]
+
+	b, _, err := ssdi.breader.SearchBinary(TermDoc{Term: analzdTerm, DocID: docID}, DocIDVerComparatorV2)
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -528,7 +534,7 @@ func (ssdi *SearchSortDocIdxV2) FindDocID(term, docID string) (*DocIDVerV2, erro
 		if !ok {
 			return nil, errors.Errorf("Cannot convert to SearchSortDocIdxBlkV1")
 		}
-		if termDocVer, exists := blk.termToDocIDVer[term]; exists {
+		if termDocVer, exists := blk.termToDocIDVer[analzdTerm]; exists {
 			if docVer, exist := termDocVer[docID]; exist {
 				return &DocIDVerV2{term, docID, docVer}, nil
 			}
@@ -547,14 +553,20 @@ func (ssdi *SearchSortDocIdxV2) FindDocIDs(term string, docIDs []string) (map[st
 
 	sortedCloneDocIDs := make([]string, len(docIDs))
 	copy(sortedCloneDocIDs, docIDs)
-
 	sort.Strings(sortedCloneDocIDs)
+
 	result := make(map[string]*DocIDVerV2)
 	for _, docID := range docIDs {
 		result[docID] = nil
 	}
 
-	err := ssdi.Reset()
+	analyzer, err := tokenizer.OpenAnalyzer(ssdi.TokenizerType)
+	if err != nil {
+		return nil, err
+	}
+	analzdTerm := analyzer.Analyze(term)[0]
+
+	err = ssdi.Reset()
 	if err != nil {
 		return nil, err
 	}
@@ -567,11 +579,11 @@ func (ssdi *SearchSortDocIdxV2) FindDocIDs(term string, docIDs []string) (map[st
 			return nil, err
 		}
 		if blk != nil {
-			if _, ok := blk.termToDocIDVer[term]; !ok {
+			if _, ok := blk.termToDocIDVer[analzdTerm]; !ok {
 				continue
 			}
-			for ; i < len(sortedCloneDocIDs) && strings.Compare(sortedCloneDocIDs[i], blk.termToHighDocID[term]) <= 0; i++ {
-				if docVer, exist := blk.termToDocIDVer[term][sortedCloneDocIDs[i]]; exist {
+			for ; i < len(sortedCloneDocIDs) && strings.Compare(sortedCloneDocIDs[i], blk.termToHighDocID[analzdTerm]) <= 0; i++ {
+				if docVer, exist := blk.termToDocIDVer[analzdTerm][sortedCloneDocIDs[i]]; exist {
 					result[sortedCloneDocIDs[i]] = &DocIDVerV2{term, sortedCloneDocIDs[i], docVer}
 				}
 			}
