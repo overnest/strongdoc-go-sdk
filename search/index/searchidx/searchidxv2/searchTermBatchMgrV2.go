@@ -14,14 +14,6 @@ import (
 
 const copyLen = 10
 
-func removeString(stringList []string, i int) []string {
-	if stringList != nil && i >= 0 && i < len(stringList) {
-		stringList[i] = stringList[len(stringList)-1]
-		stringList = stringList[:len(stringList)-1]
-	}
-	return stringList
-}
-
 var searchTermIndexAnalyzer tokenizer.Analyzer = nil
 
 func init() {

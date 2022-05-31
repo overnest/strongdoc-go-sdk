@@ -182,6 +182,14 @@ func CloneStringSlice(input []string) (output []string) {
 	return
 }
 
+func RemoveString(stringList []string, i int) []string {
+	if stringList != nil && i >= 0 && i < len(stringList) {
+		stringList[i] = stringList[len(stringList)-1]
+		stringList = stringList[:len(stringList)-1]
+	}
+	return stringList
+}
+
 func Grep(dir string, terms []string, removeNewline bool) (map[string][]uint64, error) { // Document -> TermOffsets in bytes
 	regex := regexp.MustCompilePOSIX(strings.Join(terms, "[^a-zA-Z0-9]+"))
 	removeNewlineRegex := regexp.MustCompilePOSIX("[\n\r]")
