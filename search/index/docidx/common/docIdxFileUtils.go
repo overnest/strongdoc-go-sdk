@@ -4,7 +4,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/overnest/strongdoc-go-sdk/api"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 )
@@ -13,7 +12,7 @@ func OpenDocOffsetIdxWriter(sdc client.StrongDocClient, docID string, docVer uin
 	if LocalDocIdx() {
 		outputWriter, err = utils.MakeDirAndCreateFile(buildDocOffsetIdxPath(docID, docVer))
 	} else {
-		outputWriter, err = api.NewDocOffsetIdxWriter(sdc, docID, docVer)
+		// outputWriter, err = api.NewDocOffsetIdxWriter(sdc, docID, docVer)
 	}
 	return
 }
@@ -22,7 +21,7 @@ func OpenDocTermIdxWriter(sdc client.StrongDocClient, docID string, docVer uint6
 	if LocalDocIdx() {
 		outputWriter, err = utils.MakeDirAndCreateFile(buildDocTermIdxPath(docID, docVer))
 	} else {
-		outputWriter, err = api.NewDocTermIdxWriter(sdc, docID, docVer)
+		// outputWriter, err = api.NewDocTermIdxWriter(sdc, docID, docVer)
 	}
 	return
 }
@@ -31,7 +30,7 @@ func OpenDocOffsetIdxReader(sdc client.StrongDocClient, docID string, docVer uin
 	if LocalDocIdx() {
 		reader, err = utils.OpenLocalFile(buildDocOffsetIdxPath(docID, docVer))
 	} else {
-		reader, err = api.NewDocOffsetIdxReader(sdc, docID, docVer)
+		// reader, err = api.NewDocOffsetIdxReader(sdc, docID, docVer)
 	}
 	return
 }
@@ -40,7 +39,7 @@ func OpenDocTermIdxReader(sdc client.StrongDocClient, docID string, docVer uint6
 	if LocalDocIdx() {
 		reader, err = utils.OpenLocalFile(buildDocTermIdxPath(docID, docVer))
 	} else {
-		reader, err = api.NewDocTermIdxReader(sdc, docID, docVer)
+		// reader, err = api.NewDocTermIdxReader(sdc, docID, docVer)
 	}
 	return
 }
@@ -50,7 +49,8 @@ func RemoveDocIdxs(sdc client.StrongDocClient, docID string) error {
 	if LocalDocIdx() {
 		return os.RemoveAll(buildDocIdxBasePath(docID))
 	} else {
-		return api.RemoveDocIndexesAllVersions(sdc, docID)
+		// return api.RemoveDocIndexesAllVersions(sdc, docID)
+		return nil
 	}
 }
 
@@ -58,7 +58,8 @@ func GetDocTermIndexSize(sdc client.StrongDocClient, docID string, docVer uint64
 	if LocalDocIdx() {
 		path := buildDocTermIdxPath(docID, docVer)
 		return utils.GetLocalFileSize(path)
-	} else {
-		return api.GetDocTermIndexSize(sdc, docID, docVer)
 	}
+
+	// return api.GetDocTermIndexSize(sdc, docID, docVer)
+	return 0, nil
 }

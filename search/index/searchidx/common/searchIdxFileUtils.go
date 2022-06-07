@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/overnest/strongdoc-go-sdk/api"
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 )
@@ -37,16 +36,17 @@ func OpenSearchTermIndexReader(sdc client.StrongDocClient, owner SearchIdxOwner,
 		return reader, uint64(stat.Size()), nil
 	}
 
-	reader, err := api.NewSearchTermIdxReader(sdc, owner.GetOwnerType(), termID, updateID)
-	if err != nil {
-		return nil, 0, err
-	}
+	// reader, err := api.NewSearchTermIdxReader(sdc, owner.GetOwnerType(), termID, updateID)
+	// if err != nil {
+	// 	return nil, 0, err
+	// }
 
-	size, err := api.GetSearchTermIndexSize(sdc, owner.GetOwnerType(), termID, updateID)
-	if err != nil {
-		return nil, 0, err
-	}
-	return reader, size, nil
+	// size, err := api.GetSearchTermIndexSize(sdc, owner.GetOwnerType(), termID, updateID)
+	// if err != nil {
+	// 	return nil, 0, err
+	// }
+	// return reader, size, nil
+	return nil, 0, nil
 }
 
 func OpenSearchSortDocIndexReader(sdc client.StrongDocClient, owner SearchIdxOwner, termID string, updateID string) (io.ReadCloser, uint64, error) {
@@ -66,18 +66,19 @@ func OpenSearchSortDocIndexReader(sdc client.StrongDocClient, owner SearchIdxOwn
 		}
 
 		return reader, uint64(stat.Size()), nil
-
-	}
-	reader, err := api.NewSearchSortedDocIdxReader(sdc, owner.GetOwnerType(), termID, updateID)
-	if err != nil {
-		return nil, 0, err
 	}
 
-	size, err := api.GetSearchSortedDocIdxSize(sdc, owner.GetOwnerType(), termID, updateID)
-	if err != nil {
-		return nil, 0, err
-	}
-	return reader, size, nil
+	// reader, err := api.NewSearchSortedDocIdxReader(sdc, owner.GetOwnerType(), termID, updateID)
+	// if err != nil {
+	// 	return nil, 0, err
+	// }
+
+	// size, err := api.GetSearchSortedDocIdxSize(sdc, owner.GetOwnerType(), termID, updateID)
+	// if err != nil {
+	// 	return nil, 0, err
+	// }
+	// return reader, size, nil
+	return nil, 0, nil
 }
 
 func OpenSearchSortDocIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwner, termID string, updateID string) (io.WriteCloser, error) {
@@ -85,7 +86,9 @@ func OpenSearchSortDocIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwn
 		path := getSearchSortDocIdxPath(owner, termID, updateID)
 		return utils.MakeDirAndCreateFile(path)
 	}
-	return api.NewSearchSortedDocIdxWriter(sdc, owner.GetOwnerType(), termID, updateID)
+
+	// return api.NewSearchSortedDocIdxWriter(sdc, owner.GetOwnerType(), termID, updateID)
+	return nil, nil
 }
 
 func OpenSearchTermIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwner, termID string) (writer io.WriteCloser, updateID string, err error) {
@@ -95,7 +98,8 @@ func OpenSearchTermIndexWriter(sdc client.StrongDocClient, owner SearchIdxOwner,
 		writer, err = utils.MakeDirAndCreateFile(path)
 		return
 	}
-	return api.NewSearchTermIdxWriter(sdc, owner.GetOwnerType(), termID)
+	// return api.NewSearchTermIdxWriter(sdc, owner.GetOwnerType(), termID)
+	return nil, "", nil
 }
 
 //////////////////////////////////////////////////////////////////
@@ -138,7 +142,8 @@ func GetUpdateIDs(sdc client.StrongDocClient, owner SearchIdxOwner, termID strin
 
 		return updateIDs, nil
 	} else {
-		return api.GetUpdateIDs(sdc, owner.GetOwnerType(), termID) //todo get sorted doc updateID
+		// return api.GetUpdateIDs(sdc, owner.GetOwnerType(), termID) //todo get sorted doc updateID
+		return nil, nil
 	}
 }
 
@@ -160,6 +165,7 @@ func RemoveSearchIndex(sdc client.StrongDocClient, owner SearchIdxOwner) error {
 	if LocalSearchIdx() {
 		return os.RemoveAll(getSearchIdxPathPrefix(owner))
 	} else {
-		return api.RemoveSearchIndexes(sdc, owner.GetOwnerType())
+		// return api.RemoveSearchIndexes(sdc, owner.GetOwnerType())
+		return nil
 	}
 }

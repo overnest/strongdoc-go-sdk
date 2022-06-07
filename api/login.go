@@ -8,7 +8,8 @@ import (
 // This token must henceforth be sent with all Reqs
 // in the same session.
 func Login(sdc client.StrongDocClient, userID, password, orgID string) (err error) {
-	return sdc.Login(userID, password, orgID)
+	// return sdc.Login(userID, password, orgID)
+	return nil
 }
 
 // Logout retires the Bearer token in use, ending the session.
@@ -21,5 +22,6 @@ func Logout(sdc client.StrongDocClient) (status string, err error) {
 		status = res.Status
 		return
 	*/
-	return sdc.Logout()
+	// return sdc.Logout()
+	return "", nil
 }
