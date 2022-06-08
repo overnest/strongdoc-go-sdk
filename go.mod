@@ -8,6 +8,7 @@ require (
 	github.com/go-errors/errors v1.1.1
 	github.com/golang/protobuf v1.5.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
+	github.com/karlseguin/ccache v2.0.3+incompatible // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de // indirect

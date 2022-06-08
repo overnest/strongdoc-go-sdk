@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func FromError(err error) GrpcErr {
+func FromError(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -20,7 +20,7 @@ func FromError(err error) GrpcErr {
 
 	st, ok := status.FromError(err)
 	if !ok {
-		panic(err)
+		return err
 	}
 
 	return &grpcErr{status: st, details: nil}

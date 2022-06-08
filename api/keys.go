@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/karlseguin/ccache"
 	"github.com/overnest/strongdoc-go-sdk/proto"
 	cryptoKey "github.com/overnest/strongsalt-crypto-go"
 	cryptoKdf "github.com/overnest/strongsalt-crypto-go/kdf"
@@ -21,9 +22,15 @@ type Key struct {
 	SKey *cryptoKey.StrongSaltKey
 }
 
+var (
+	keyCache        = ccache.New(ccache.Configure().MaxSize(10000).ItemsToPrune(100))
+	keyCacheEnabled = true
+	keycacheTTL     = time.Minute * 30
+)
+
 ///////////////////////////////////////////////////////////////////////////////////////
 //
-//                     Convert To/From Grpc + Server Format
+//                     Convert To/From Grpc + Client Format
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -62,6 +69,11 @@ func NewKdfKey(ownerID, password string) (*Key, error) {
 		return nil, err
 	}
 
+	passwdKey, err := userKdf.GenerateKey([]byte(password))
+	if err != nil {
+		return nil, err
+	}
+
 	pKey := &proto.Key{
 		KeyID:         "", // This is only available after being stored on the server
 		KeyType:       proto.KeyType_KDF,
@@ -73,7 +85,7 @@ func NewKdfKey(ownerID, password string) (*Key, error) {
 
 	return &Key{
 		PKey: pKey,
-		SKey: nil,
+		SKey: passwdKey,
 		SKdf: &Kdf{
 			Kdf:      userKdf,
 			Password: password,
@@ -163,28 +175,13 @@ func (k *Key) NewEncryptedKeys(encryptors []*Key) error {
 	}
 
 	for _, encryptor := range encryptors {
-		if encryptor == nil || encryptor.PKey == nil ||
-			(encryptor.SKey == nil && encryptor.SKdf == nil) {
+		if encryptor == nil || encryptor.PKey == nil {
 			continue
 		}
 
-		var encryptedKey []byte = nil
-
-		if encryptor.SKdf != nil {
-			passwdKey, err := encryptor.SKdf.Kdf.GenerateKey([]byte(encryptor.SKdf.Password))
-			if err != nil {
-				return err
-			}
-
-			encryptedKey, err = passwdKey.Encrypt(serialKey)
-			if err != nil {
-				return err
-			}
-		} else {
-			encryptedKey, err = encryptor.SKey.Encrypt(serialKey)
-			if err != nil {
-				return err
-			}
+		encryptedKey, err := encryptor.Encrypt(serialKey)
+		if err != nil {
+			return err
 		}
 
 		k.PKey.EncryptedKeys = append(k.PKey.GetEncryptedKeys(),
@@ -203,4 +200,123 @@ func (k *Key) NewEncryptedKeys(encryptors []*Key) error {
 	} // for _, encryptor := range encryptors
 
 	return nil
+}
+
+func (k *Key) Encrypt(plaintext []byte) ([]byte, error) {
+	if k.SKey == nil {
+		return nil, fmt.Errorf("The encryption key is missing")
+	}
+
+	return k.SKey.Encrypt(plaintext)
+}
+
+func (k *Key) Decrypt(ciphertext []byte) ([]byte, error) {
+	if k.SKey == nil {
+		return nil, fmt.Errorf("The decryption key is missing")
+	}
+
+	return k.SKey.Decrypt(ciphertext)
+}
+
+func ParseKdfProtoKey(pkey *proto.Key, password string) (*Key, error) {
+	if pkey == nil {
+		return nil, nil
+	}
+
+	if pkey.KeyType != proto.KeyType_KDF {
+		return nil, fmt.Errorf("ParseKdfProtoKey can only parse KDF key.")
+	}
+
+	kdf, err := cryptoKdf.DeserializeKdf(pkey.PublicData)
+	if err != nil {
+		return nil, nil
+	}
+
+	passwdKey, err := kdf.GenerateKey([]byte(password))
+	if err != nil {
+		return nil, nil
+	}
+
+	key := &Key{
+		PKey: pkey,
+		SKdf: &Kdf{
+			Kdf:      kdf,
+			Password: password,
+		},
+		SKey: passwdKey,
+	}
+
+	if keyCacheEnabled {
+		keyCache.Set(pkey.KeyID, key, keycacheTTL)
+	}
+
+	return key, nil
+}
+
+func ParseProtoKey(pkey *proto.Key, decryptionKeys ...*Key) (*Key, error) {
+	if pkey == nil {
+		return nil, nil
+	}
+
+	key := &Key{
+		PKey: pkey,
+		SKdf: nil,
+		SKey: nil,
+	}
+
+	if pkey.KeyType == proto.KeyType_KDF {
+		return nil, fmt.Errorf("ParseProtoKey can not parse KDF key.")
+	}
+
+	// Process other types of keys
+	var decryptKey *Key = nil
+	var encryptKey *proto.EncryptedKey = nil
+	for _, encryptedKey := range pkey.EncryptedKeys {
+		if keyCacheEnabled {
+			// Find the decryption key in cache first
+			item := keyCache.Get(encryptedKey.Encryptor.LocationID)
+			if item != nil && !item.Expired() {
+				if key, ok := item.Value().(*Key); ok {
+					decryptKey = key
+					encryptKey = encryptedKey
+					break
+				}
+			}
+		}
+
+		// Find the decryption key from the arguments
+		for _, decryptionKey := range decryptionKeys {
+			if decryptionKey.PKey.KeyID == encryptedKey.Encryptor.LocationID {
+				decryptKey = decryptionKey
+				encryptKey = encryptedKey
+				break
+			}
+		}
+
+		if decryptKey != nil {
+			break
+		}
+	}
+
+	if decryptKey == nil {
+		return nil, fmt.Errorf("can not decrypt key %v(%v) with provided decryption keys",
+			pkey.GetKeyID(), pkey.GetKeyType())
+	}
+
+	plainKey, err := decryptKey.Decrypt(encryptKey.Ciphertext)
+	if err != nil {
+		return nil, err
+	}
+
+	skey, err := cryptoKey.DeserializeKey(plainKey)
+	if err != nil {
+		return nil, err
+	}
+
+	key.SKey = skey
+	if keyCacheEnabled {
+		keyCache.Set(pkey.KeyID, key, keycacheTTL)
+	}
+
+	return key, nil
 }
