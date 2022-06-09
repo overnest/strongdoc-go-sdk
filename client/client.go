@@ -3,13 +3,15 @@ package client
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"reflect"
 	"sync"
 	"sync/atomic"
 
+	"github.com/overnest/strongdoc-go-sdk/api/apidef"
 	"github.com/overnest/strongdoc-go-sdk/proto"
 	"github.com/overnest/strongdoc-go-sdk/utils"
-	ssc "github.com/overnest/strongsalt-crypto-go"
 	"github.com/overnest/strongsalt-crypto-go/pake/srp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -46,7 +48,6 @@ var serviceLocations = map[ServiceLocation]locationConfig{
 	SANDBOX: {"api.sandbox.strongsalt.com:9090", "./certs/ssca.cert.pem"},
 	QA:      {"api.strongsaltqa.com:9090", "./certs/ssca.cert.pem"},
 	LOCAL:   {"localhost:9090", "./certs/localhost.cert.pem"},
-	// LOCAL:   {"localhost:9090", "./certs/localhost.crt"},
 }
 
 type connPool struct {
@@ -95,13 +96,11 @@ func (q *connPool) closeAll() error {
 }
 
 type strongDocClientObj struct {
-	location      ServiceLocation
-	noAuthConn    *grpc.ClientConn
-	authConnPool  *connPool
-	userID        string
-	authToken     string
-	passwordKey   *ssc.StrongSaltKey // TODO: This should eventually be hidden from user
-	passwordKeyID string             // TODO: This should eventually be hidden from user
+	location     ServiceLocation
+	noAuthConn   *grpc.ClientConn
+	authConnPool *connPool
+	authToken    string
+	user         *apidef.User
 }
 
 // Singletons
@@ -110,11 +109,11 @@ var client StrongDocClient = nil
 
 // StrongDocClient encapsulates the client object that allows connection to the remote service
 type StrongDocClient interface {
-	// Login(userID, password, orgID string) (err error)
+	Login(userID, password string) error
 	// Logout() (string, error)
 	// NewAuthSession(password string) (*AuthSession, error)
-	// GetNoAuthConn() *grpc.ClientConn
-	// GetAuthConnPool() *connPool
+	GetNoAuthConn() *grpc.ClientConn
+	GetAuthConnPool() *connPool
 	GetGrpcClient() proto.StrongDocServiceClient
 	Close()
 	// UserEncrypt([]byte) ([]byte, error)
@@ -126,15 +125,208 @@ type StrongDocClient interface {
 	// ChangePassword(string, string) error
 }
 
-type AuthSession struct {
-	authID      string
-	authType    proto.AuthType
-	authVersion int32
-	// Login
-	loginResp *proto.LoginResp
-	// SRP
-	srpClient    *srp.Client
-	srpSharedKey *ssc.StrongSaltKey
+// type AuthSession struct {
+// 	authID      string
+// 	authType    proto.AuthType
+// 	authVersion int32
+// 	// Login
+// 	loginResp *proto.LoginResp
+// 	// SRP
+// 	srpClient    *srp.Client
+// 	srpSharedKey *ssc.StrongSaltKey
+// }
+
+// Login attempts a log in. If successful, it generates an authenticatecd GRPC connection
+func (c *strongDocClientObj) Login(userEmailOrID, password string) error {
+	noAuthClient := proto.NewStrongDocServiceClient(c.GetNoAuthConn())
+	stream, err := noAuthClient.Login(context.Background())
+	if err != nil {
+		return err
+	}
+	defer stream.CloseSend()
+
+	var userID string = ""
+	var srpClient *srp.Client = nil
+	_ = userID
+
+	// Send the login prep message to server
+	err = stream.Send(&proto.LoginReq{
+		State: proto.LoginState_LOGIN_PREP,
+		Data: &proto.LoginReq_PrepReq{
+			PrepReq: &proto.PrepLoginReq{
+				EmailOrUserID: userEmailOrID,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		switch resp.State {
+		case proto.LoginState_LOGIN_PREP:
+			_, srpClient, err = c.loginPrepResp(stream, resp, userEmailOrID, password)
+			if err != nil {
+				return err
+			}
+		case proto.LoginState_LOGIN_SRP_CRED:
+			err = c.loginCredResp(stream, resp, srpClient)
+			if err != nil {
+				return err
+			}
+		case proto.LoginState_LOGIN_SRP_PROOF:
+			err = c.loginProofResp(stream, resp, srpClient, password)
+			if err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("invalid login state %v", resp.State)
+		}
+	}
+}
+
+func (c *strongDocClientObj) loginPrepResp(stream proto.StrongDocService_LoginClient,
+	resp *proto.LoginResp, userEmailOrID, password string) (string, *srp.Client, error) {
+
+	lresp, ok := resp.GetData().(*proto.LoginResp_PrepResp)
+	if !ok {
+		return "", nil, fmt.Errorf("invalid login data type %v for state %v",
+			reflect.TypeOf(resp.Data), resp.State)
+	}
+
+	userAuth := lresp.PrepResp.GetUserAuth()
+	userID := lresp.PrepResp.GetUserID()
+	if len(userID) == 0 {
+		return "", nil, fmt.Errorf("can not find user for %v", userEmailOrID)
+	}
+
+	switch userAuth.GetAuthType() {
+	case proto.AuthType_AUTH_SRP:
+		srpAuth, ok := userAuth.GetAuth().(*proto.UserAuth_SrpAuth)
+		if !ok {
+			return "", nil, fmt.Errorf("invalid auth data type %v for auth %v user %v",
+				reflect.TypeOf(userAuth.GetAuth()), userAuth.GetAuthType(),
+				userID)
+		}
+
+		srpSession, err := srp.NewFromVersion(srpAuth.SrpAuth.GetSrpVersion())
+		if err != nil {
+			return "", nil, err
+		}
+
+		srpClient, err := srpSession.NewClient([]byte(userID), []byte(password))
+		if err != nil {
+			return "", nil, err
+		}
+
+		clientCred := srpClient.Credentials()
+
+		fmt.Println("Client Cred: %v %v %v", userID, password, clientCred)
+
+		err = stream.Send(&proto.LoginReq{
+			State: proto.LoginState_LOGIN_SRP_CRED,
+			Data: &proto.LoginReq_SrpCredReq{
+				SrpCredReq: &proto.SrpCredReq{
+					UserID: userID,
+					ClientCreds: &proto.SrpCredential{
+						SrpCredential: clientCred,
+					},
+				},
+			},
+		})
+		if err != nil {
+			return "", nil, err
+		}
+
+		return userID, srpClient, nil
+	case proto.AuthType_AUTH_NONE:
+		return "", nil, fmt.Errorf("unsupported user authentication type %v",
+			lresp.PrepResp.GetUserAuth().GetAuthType())
+	default:
+		return "", nil, fmt.Errorf("unsupported user authentication type %v",
+			lresp.PrepResp.GetUserAuth().GetAuthType())
+	}
+}
+
+func (c *strongDocClientObj) loginCredResp(stream proto.StrongDocService_LoginClient,
+	resp *proto.LoginResp, srpClient *srp.Client) error {
+	lresp, ok := resp.GetData().(*proto.LoginResp_SrpCredResp)
+	if !ok {
+		return fmt.Errorf("invalid login data type %v for state %v",
+			reflect.TypeOf(resp.Data), resp.State)
+	}
+
+	serverCred := lresp.SrpCredResp.GetServerCreds()
+	clientProof, err := srpClient.Generate(serverCred.GetSrpCredential())
+	if err != nil {
+		return err
+	}
+
+	err = stream.Send(&proto.LoginReq{
+		State: proto.LoginState_LOGIN_SRP_PROOF,
+		Data: &proto.LoginReq_SrpProofReq{
+			SrpProofReq: &proto.SrpProofReq{
+				ClientProof: &proto.SrpAuthProof{
+					SrpAuthProof: clientProof,
+				},
+			},
+		},
+	})
+
+	return err
+}
+
+func (c *strongDocClientObj) loginProofResp(stream proto.StrongDocService_LoginClient,
+	resp *proto.LoginResp, srpClient *srp.Client, password string) error {
+	lresp, ok := resp.GetData().(*proto.LoginResp_SrpProofResp)
+	if !ok {
+		return fmt.Errorf("invalid login data type %v for state %v",
+			reflect.TypeOf(resp.Data), resp.State)
+	}
+
+	if !lresp.SrpProofResp.GetClientSuccess() {
+		return fmt.Errorf("login failed")
+	}
+
+	token := lresp.SrpProofResp.GetJtwToken()
+
+	// Server proof is optional
+	if len(lresp.SrpProofResp.GetServerProof().GetSrpAuthProof()) > 0 {
+		ok := srpClient.ServerOk(lresp.SrpProofResp.GetServerProof().GetSrpAuthProof())
+		if !ok {
+			return fmt.Errorf("server failed to verify its identity")
+		}
+	}
+
+	config := serviceLocations[c.location]
+
+	// Close existing authenticated connection pool
+	if c.authConnPool != nil {
+		c.authConnPool.closeAll()
+	}
+	// Initialize connection pool
+	connPool, err := initConnPool(MAX_CONCURRENT_CONNECTIONS,
+		token, config.HostPort, config.Cert)
+	if err != nil {
+		return err
+	}
+
+	c.authConnPool = connPool
+	c.authToken = token
+	c.user, err = apidef.ConvertUserProtoToClient(lresp.SrpProofResp.GetUserData(), password)
+	if err != nil {
+		return err
+	}
+
+	return stream.CloseSend()
 }
 
 // func (c *strongDocClientObj) newAuthSession(prepareAuthResp *proto.PrepareAuthResp, authPurpose proto.AuthPurpose, userID, orgID, password string) (*AuthSession, error) {
@@ -183,46 +375,46 @@ type AuthSession struct {
 // 	return auth.authID
 // }
 
-func (auth *AuthSession) CanAuthenticateData() bool {
-	if auth.srpSharedKey == nil {
-		if auth.srpClient == nil {
-			return false
-		}
-		var err error
-		auth.srpSharedKey, err = auth.srpClient.StrongSaltKey()
-		if err != nil {
-			return false
-		}
-	}
-	return true
-}
+// func (auth *AuthSession) CanAuthenticateData() bool {
+// 	if auth.srpSharedKey == nil {
+// 		if auth.srpClient == nil {
+// 			return false
+// 		}
+// 		var err error
+// 		auth.srpSharedKey, err = auth.srpClient.StrongSaltKey()
+// 		if err != nil {
+// 			return false
+// 		}
+// 	}
+// 	return true
+// }
 
-func (auth *AuthSession) PrepareDataForAuth(plaintext []byte) (string, error) {
-	if auth.srpSharedKey == nil {
-		if auth.srpClient == nil {
-			return "", fmt.Errorf("This Authentication Session cannot authenticate data.")
-		}
-		var err error
-		auth.srpSharedKey, err = auth.srpClient.StrongSaltKey()
-		if err != nil {
-			return "", fmt.Errorf("Error getting SRP shared key: %v", err)
-		}
-	}
-	return auth.srpSharedKey.EncryptBase64(plaintext)
-}
+// func (auth *AuthSession) PrepareDataForAuth(plaintext []byte) (string, error) {
+// 	if auth.srpSharedKey == nil {
+// 		if auth.srpClient == nil {
+// 			return "", fmt.Errorf("This Authentication Session cannot authenticate data.")
+// 		}
+// 		var err error
+// 		auth.srpSharedKey, err = auth.srpClient.StrongSaltKey()
+// 		if err != nil {
+// 			return "", fmt.Errorf("Error getting SRP shared key: %v", err)
+// 		}
+// 	}
+// 	return auth.srpSharedKey.EncryptBase64(plaintext)
+// }
 
 // InitStrongDocClient initializes a singleton StrongDocClient
 func InitStrongDocClient(location ServiceLocation, reset bool) (StrongDocClient, error) {
 	_, ok := serviceLocations[location]
 	if !ok || location == unset {
-		return nil, fmt.Errorf("The ServiceLocation %v is not supported", location)
+		return nil, fmt.Errorf("the ServiceLocation %v is not supported", location)
 	}
 
 	if atomic.LoadUint32(&clientInit) == 1 {
 		if location == serviceLocation {
 			return client, nil
 		} else if !reset {
-			return nil, fmt.Errorf("Can not initialize StrongDocClient with service location %v. "+
+			return nil, fmt.Errorf("can not initialize StrongDocClient with service location %v. "+
 				"Singleton already initialized with %v", location, serviceLocation)
 		}
 	}
@@ -266,7 +458,7 @@ func GetStrongDocClient() (StrongDocClient, error) {
 			return client, nil
 		}
 	}
-	return nil, fmt.Errorf("Can not get StrongDocManager. Please call InitStrongDocManager to initialize")
+	return nil, fmt.Errorf("can not get StrongDocManager. Please call InitStrongDocManager to initialize")
 }
 
 // GetStrongDocGrpcClient gets a singleton gRPC StrongDocServiceClient
@@ -276,7 +468,7 @@ func GetStrongDocGrpcClient() (proto.StrongDocServiceClient, error) {
 			return client.GetGrpcClient(), nil
 		}
 	}
-	return nil, fmt.Errorf("Can not get StrongDocClient. Please call InitStrongDocManager to initialize")
+	return nil, fmt.Errorf("can not get StrongDocClient. Please call InitStrongDocManager to initialize")
 }
 
 // func (c *strongDocClientObj) Logout() (status string, err error) {
@@ -289,89 +481,6 @@ func GetStrongDocGrpcClient() (proto.StrongDocServiceClient, error) {
 // 	c.passwordKey = nil
 // 	c.passwordKeyID = ""
 
-// 	return
-// }
-
-// // Login attempts a log in. If successful, it generates an authenticatecd GRPC connection
-// func (c *strongDocClientObj) Login(userID, password, orgID string) (err error) {
-// 	token := ""
-// 	noAuthConn := c.GetNoAuthConn()
-// 	if noAuthConn == nil || err != nil {
-// 		log.Fatalf("Can not obtain none authenticated connection %s", err)
-// 		return
-// 	}
-
-// 	noAuthClient := proto.NewStrongDocServiceClient(noAuthConn)
-
-// 	prepareRes, err := noAuthClient.PrepareLogin(context.Background(), &proto.PrepareLoginReq{
-// 		EmailOrUserID: userID,
-// 		OrgID:         orgID,
-// 	})
-// 	if err != nil {
-// 		err = fmt.Errorf("Login err: [%v]", err)
-// 		return
-// 	}
-
-// 	authSession, err := c.newAuthSession(prepareRes.GetPrepareAuthResp(), proto.AuthPurpose_AUTH_LOGIN, prepareRes.GetUserID(), orgID, password)
-
-// 	if err != nil {
-// 		err = fmt.Errorf("Login err: [%v]", err)
-// 		return
-// 	}
-// 	if authSession.loginResp == nil {
-// 		err = fmt.Errorf("Login err: [Received nil login response]")
-// 		return
-// 	}
-
-// 	loginRes := authSession.loginResp
-
-// 	/*switch prepareRes.GetAuthType() {
-// 	case proto.AuthType_AUTH_SRP:
-// 		return c.loginSRP(prepareRes.GetUserID(), password, orgID, prepareRes.GetAuthVersion())
-// 	}*/
-
-// 	/*res, err := noAuthClient.Login(context.Background(), &proto.LoginReq{
-// 		UserID: userID, Password: password, OrgID: orgID})
-// 	if err != nil {
-// 		err = fmt.Errorf("Login err: [%v]", err)
-// 		return
-// 	}*/
-
-// 	token = loginRes.GetToken()
-// 	config := serviceLocations[c.location]
-
-// 	// Close existing authenticated connection pool
-// 	if c.authConnPool != nil {
-// 		c.authConnPool.closeAll()
-// 	}
-// 	// Initialize connection pool
-// 	connPool, err := initConnPool(MAX_CONCURRENT_CONNECTIONS,
-// 		token, config.HostPort, config.Cert)
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	c.authConnPool = connPool
-// 	c.authToken = token
-// 	c.userID = prepareRes.UserID
-
-// 	encodedSerialKdfMeta := loginRes.GetKdfMeta()
-// 	if encodedSerialKdfMeta != "" {
-// 		serialKdfMeta, err := base64.URLEncoding.DecodeString(encodedSerialKdfMeta)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		userKdf, err := sscKdf.DeserializeKdf(serialKdfMeta)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		passwordKey, err := userKdf.GenerateKey([]byte(password))
-// 		if err != nil {
-// 			return err
-// 		}
-// 		c.passwordKey = passwordKey
-// 		c.passwordKeyID = loginRes.GetKeyID()
-// 	}
 // 	return
 // }
 
@@ -613,28 +722,28 @@ func (c *strongDocClientObj) Close() {
 	return c.passwordKey
 }*/
 
-func (c *strongDocClientObj) UserEncrypt(plaintext []byte) ([]byte, error) {
-	return c.passwordKey.Encrypt(plaintext)
-}
+// func (c *strongDocClientObj) UserEncrypt(plaintext []byte) ([]byte, error) {
+// 	return c.passwordKey.Encrypt(plaintext)
+// }
 
-func (c *strongDocClientObj) UserEncryptBase64(plaintext []byte) (string, error) {
-	return c.passwordKey.EncryptBase64(plaintext)
-}
-func (c *strongDocClientObj) UserDecrypt(ciphertext []byte) ([]byte, error) {
-	return c.passwordKey.Decrypt(ciphertext)
-}
+// func (c *strongDocClientObj) UserEncryptBase64(plaintext []byte) (string, error) {
+// 	return c.passwordKey.EncryptBase64(plaintext)
+// }
+// func (c *strongDocClientObj) UserDecrypt(ciphertext []byte) ([]byte, error) {
+// 	return c.passwordKey.Decrypt(ciphertext)
+// }
 
-func (c *strongDocClientObj) UserDecryptBase64(ciphertext string) ([]byte, error) {
-	return c.passwordKey.DecryptBase64(ciphertext)
-}
+// func (c *strongDocClientObj) UserDecryptBase64(ciphertext string) ([]byte, error) {
+// 	return c.passwordKey.DecryptBase64(ciphertext)
+// }
 
-func (c *strongDocClientObj) GetUserID() string {
-	return c.userID
-}
+// func (c *strongDocClientObj) GetUserID() string {
+// 	return c.userID
+// }
 
-func (c *strongDocClientObj) GetUserKeyID() string {
-	return c.passwordKeyID
-}
+// func (c *strongDocClientObj) GetUserKeyID() string {
+// 	return c.passwordKeyID
+// }
 
 func getNoAuthConn(hostport, cert string) (conn *grpc.ClientConn, err error) {
 	certFilePath, err := utils.FetchFileLoc(cert)

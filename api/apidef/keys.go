@@ -1,4 +1,4 @@
-package api
+package apidef
 
 import (
 	"fmt"
@@ -164,60 +164,6 @@ func newKey(ownerID string, sskey *cryptoKey.StrongSaltKey, encryptors []*Key) (
 	return key, nil
 }
 
-func (k *Key) NewEncryptedKeys(encryptors []*Key) error {
-	if k == nil || len(encryptors) == 0 || k.SKey == nil { // k.SKdf does not need encryption
-		return nil
-	}
-
-	serialKey, err := k.SKey.Serialize()
-	if err != nil {
-		return err
-	}
-
-	for _, encryptor := range encryptors {
-		if encryptor == nil || encryptor.PKey == nil {
-			continue
-		}
-
-		encryptedKey, err := encryptor.Encrypt(serialKey)
-		if err != nil {
-			return err
-		}
-
-		k.PKey.EncryptedKeys = append(k.PKey.GetEncryptedKeys(),
-			&proto.EncryptedKey{
-				KeyID: k.PKey.GetKeyID(),
-				Encryptor: &proto.Encryptor{
-					Location:   "", // This is set on the server
-					LocationID: encryptor.PKey.GetKeyID(),
-					OwnerID:    encryptor.PKey.GetOwnerID(),
-				},
-				Ciphertext: encryptedKey,
-				CreatedAt:  timestamppb.New(time.Now()),
-				DeletedAt:  nil,
-			},
-		)
-	} // for _, encryptor := range encryptors
-
-	return nil
-}
-
-func (k *Key) Encrypt(plaintext []byte) ([]byte, error) {
-	if k.SKey == nil {
-		return nil, fmt.Errorf("The encryption key is missing")
-	}
-
-	return k.SKey.Encrypt(plaintext)
-}
-
-func (k *Key) Decrypt(ciphertext []byte) ([]byte, error) {
-	if k.SKey == nil {
-		return nil, fmt.Errorf("The decryption key is missing")
-	}
-
-	return k.SKey.Decrypt(ciphertext)
-}
-
 func ParseKdfProtoKey(pkey *proto.Key, password string) (*Key, error) {
 	if pkey == nil {
 		return nil, nil
@@ -319,4 +265,58 @@ func ParseProtoKey(pkey *proto.Key, decryptionKeys ...*Key) (*Key, error) {
 	}
 
 	return key, nil
+}
+
+func (k *Key) NewEncryptedKeys(encryptors []*Key) error {
+	if k == nil || len(encryptors) == 0 || k.SKey == nil { // k.SKdf does not need encryption
+		return nil
+	}
+
+	serialKey, err := k.SKey.Serialize()
+	if err != nil {
+		return err
+	}
+
+	for _, encryptor := range encryptors {
+		if encryptor == nil || encryptor.PKey == nil {
+			continue
+		}
+
+		encryptedKey, err := encryptor.Encrypt(serialKey)
+		if err != nil {
+			return err
+		}
+
+		k.PKey.EncryptedKeys = append(k.PKey.GetEncryptedKeys(),
+			&proto.EncryptedKey{
+				KeyID: k.PKey.GetKeyID(),
+				Encryptor: &proto.Encryptor{
+					Location:   "", // This is set on the server
+					LocationID: encryptor.PKey.GetKeyID(),
+					OwnerID:    encryptor.PKey.GetOwnerID(),
+				},
+				Ciphertext: encryptedKey,
+				CreatedAt:  timestamppb.New(time.Now()),
+				DeletedAt:  nil,
+			},
+		)
+	} // for _, encryptor := range encryptors
+
+	return nil
+}
+
+func (k *Key) Encrypt(plaintext []byte) ([]byte, error) {
+	if k.SKey == nil {
+		return nil, fmt.Errorf("the encryption key is missing")
+	}
+
+	return k.SKey.Encrypt(plaintext)
+}
+
+func (k *Key) Decrypt(ciphertext []byte) ([]byte, error) {
+	if k.SKey == nil {
+		return nil, fmt.Errorf("the decryption key is missing")
+	}
+
+	return k.SKey.Decrypt(ciphertext)
 }

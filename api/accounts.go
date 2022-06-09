@@ -3,16 +3,13 @@ package api
 import (
 	"context"
 	"fmt"
-	"time"
+	"reflect"
 
+	"github.com/overnest/strongdoc-go-sdk/api/apidef"
 	"github.com/overnest/strongsalt-crypto-go/pake/srp"
 
 	"github.com/overnest/strongdoc-go-sdk/client"
 	"github.com/overnest/strongdoc-go-sdk/proto"
-)
-
-const (
-	SRP_VER = int32(1)
 )
 
 // // TODO: remove RegisterOrganization from sdk
@@ -129,234 +126,106 @@ const (
 // 	return res.Success, res.CodeAlreadyUsed, nil
 // }
 
-type UserAuth struct {
-	AuthType proto.AuthType
-	SrpAuth  *SrpAuth
-}
-
-type SrpAuth struct {
-	SrpVersion  int32
-	SrpVerifier *srp.Verifier
-}
-
-type UserCred struct {
-	KdfKey   *Key
-	AsymKey  *Key
-	AsymKeys []*Key
-}
-
-type SearchCred struct {
-	TermKey    *Key
-	TermKeys   []*Key
-	SearchKey  *Key
-	SearchKeys []*Key
-}
-
-type User struct {
-	UserID     string
-	Password   string // This can only be provided by client
-	Name       string
-	Email      string
-	UserAuth   *UserAuth
-	UserCred   *UserCred
-	SearchCred *SearchCred
-	CreatedAt  time.Time
-}
+///////////////////////////////////////////////////////////////////////////////////////
+//
+//                                     User
+//
+///////////////////////////////////////////////////////////////////////////////////////
 
 // RegisterUser creates new user if it doesn't already exist. Trying to create
 // a user with an existing username throws an error.
 //
 // Does not require Login
-func RegisterUser(sdc client.StrongDocClient, name, password, email string) (user *User, success bool, err error) {
-	kdf, asym, term, search, err := NewUserKeys("", password)
-	if err != nil {
-		return
-	}
-
-	user = &User{
-		Name:     name,
-		Email:    email,
-		Password: password,
-		UserCred: &UserCred{
-			KdfKey:  kdf,
-			AsymKey: asym,
-		},
-		SearchCred: &SearchCred{
-			TermKey:   term,
-			SearchKey: search,
-		},
-	}
-
-	return registerUser(sdc, user)
-}
-
-func registerUser(sdc client.StrongDocClient, reqUser *User) (user *User, success bool, err error) {
+func RegisterUser(sdc client.StrongDocClient, name, password, email string) (user *apidef.User, success bool, err error) {
+	user = nil
 	success = false
 	err = nil
 
-	srpSession, err := srp.NewFromVersion(SRP_VER)
+	stream, err := sdc.GetGrpcClient().RegisterUser(context.Background())
+	if err != nil {
+		return
+	}
+	defer stream.CloseSend()
+
+	resp, err := stream.Recv()
 	if err != nil {
 		return
 	}
 
-	srpVerifier, err := srpSession.Verifier([]byte(""), []byte(reqUser.Password))
+	userIdResp, ok := resp.GetRegister().(*proto.RegisterUserResp_UserID)
+	if !ok {
+		err = fmt.Errorf("register user response type %v unexpected",
+			reflect.TypeOf(resp.GetRegister()))
+		return
+	}
+
+	userID := userIdResp.UserID.GetUserID()
+	kdf, asym, term, search, err := apidef.NewUserKeys(userID, password)
+	if err != nil {
+		return
+	}
+
+	srpSession, err := srp.NewFromVersion(apidef.SRP_VER)
+	if err != nil {
+		return
+	}
+
+	srpVerifier, err := srpSession.Verifier([]byte(userID), []byte(password))
 	if err != nil {
 		return
 	}
 	_, verifierString := srpVerifier.Encode()
 
 	req := &proto.RegisterUserReq{
-		Email: reqUser.Email,
-		Name:  reqUser.Name,
+		UserID: userID,
+		Email:  email,
+		Name:   name,
 		RegUserAuth: &proto.RegUserAuth{
 			AuthType: proto.AuthType_AUTH_SRP,
 			Auth: &proto.RegUserAuth_RegSrpAuth{
 				RegSrpAuth: &proto.RegSrpAuth{
-					SrpVersion:  SRP_VER,
+					SrpVersion:  apidef.SRP_VER,
 					SrpVerifier: verifierString,
 				},
 			},
 		},
 		UserCred: &proto.UserCred{
-			KdfKey:  reqUser.UserCred.KdfKey.PKey,
-			AsymKey: reqUser.UserCred.AsymKey.PKey,
+			KdfKey:  kdf.PKey,
+			AsymKey: asym.PKey,
 		},
 		SearchCred: &proto.SearchCred{
-			TermKey:   reqUser.SearchCred.TermKey.PKey,
-			SearchKey: reqUser.SearchCred.SearchKey.PKey,
+			TermKey:   term.PKey,
+			SearchKey: search.PKey,
 		},
 	}
 
-	res, err := sdc.GetGrpcClient().RegisterUser(context.Background(), req)
+	err = stream.Send(req)
 	if err != nil {
 		return
 	}
 
-	success = res.Success
-	puser := res.GetUser()
+	resp, err = stream.Recv()
+	if err != nil {
+		return
+	}
+
+	userResultResp, ok := resp.GetRegister().(*proto.RegisterUserResp_UserResult)
+	if !ok {
+		err = fmt.Errorf("register user response type %v unexpected",
+			reflect.TypeOf(resp.GetRegister()))
+		return
+	}
+
+	success = userResultResp.UserResult.GetSuccess()
+	puser := userResultResp.UserResult.GetUser()
 	if puser != nil {
-		user, err = convertUserProtoToClient(puser, reqUser.Password)
+		user, err = apidef.ConvertUserProtoToClient(puser, password)
 		if err != nil {
 			return nil, false, err
 		}
 	}
 
 	return
-}
-
-func convertUserProtoToClient(puser *proto.User, password string) (*User, error) {
-	if puser == nil {
-		return nil, nil
-	}
-
-	user := &User{
-		UserID:     puser.GetUserID(),
-		Password:   password,
-		Email:      puser.GetEmail(),
-		Name:       puser.GetName(),
-		CreatedAt:  puser.GetCreatedAt().AsTime(),
-		UserAuth:   nil,
-		UserCred:   nil,
-		SearchCred: nil,
-	}
-
-	// Convert User Authentication
-	user.UserAuth = &UserAuth{
-		AuthType: puser.GetUserAuth().AuthType,
-		SrpAuth:  nil,
-	}
-
-	switch puser.GetUserAuth().AuthType {
-	case proto.AuthType_AUTH_SRP:
-		if srpAuth, ok := puser.GetUserAuth().GetAuth().(*proto.UserAuth_SrpAuth); ok {
-			srpSession, err := srp.NewFromVersion(srpAuth.SrpAuth.GetSrpVersion())
-			if err != nil {
-				return nil, err
-			}
-
-			srpVerifier, err := srpSession.Verifier([]byte(puser.GetUserID()), []byte(password))
-			if err != nil {
-				return nil, err
-			}
-
-			user.UserAuth.SrpAuth = &SrpAuth{
-				SrpVersion:  srpAuth.SrpAuth.GetSrpVersion(),
-				SrpVerifier: srpVerifier,
-			}
-		}
-	case proto.AuthType_AUTH_NONE:
-		// Do nothing
-	default:
-		return nil, fmt.Errorf("user authentication type %v is not supported",
-			puser.GetUserAuth().AuthType)
-	}
-
-	// Convert User Credentials
-	puserCred := puser.GetUserCred()
-	if puserCred != nil {
-		kdfKey, err := ParseKdfProtoKey(puserCred.GetKdfKey(), password)
-		if err != nil {
-			return nil, err
-		}
-
-		asymKey, err := ParseProtoKey(puserCred.GetAsymKey())
-		if err != nil {
-			return nil, err
-		}
-
-		user.UserCred = &UserCred{
-			KdfKey:   kdfKey,
-			AsymKey:  asymKey,
-			AsymKeys: make([]*Key, 0, len(puserCred.AsymKeys)),
-		}
-
-		for _, pak := range puserCred.AsymKeys {
-			ak, err := ParseProtoKey(pak, kdfKey)
-			if err != nil {
-				return nil, err
-			}
-			user.UserCred.AsymKeys = append(user.UserCred.AsymKeys, ak)
-		}
-	}
-
-	// Convert Search Credentials
-	psearchCred := puser.GetSearchCred()
-	if psearchCred != nil {
-		termKey, err := ParseProtoKey(psearchCred.GetTermKey())
-		if err != nil {
-			return nil, err
-		}
-
-		searchKey, err := ParseProtoKey(psearchCred.GetSearchKey())
-		if err != nil {
-			return nil, err
-		}
-
-		user.SearchCred = &SearchCred{
-			TermKey:    termKey,
-			SearchKey:  searchKey,
-			TermKeys:   make([]*Key, 0, len(psearchCred.GetTermKeys())),
-			SearchKeys: make([]*Key, 0, len(psearchCred.GetSearchKeys())),
-		}
-
-		for _, ptk := range psearchCred.GetTermKeys() {
-			tk, err := ParseProtoKey(ptk, user.UserCred.KdfKey)
-			if err != nil {
-				return nil, err
-			}
-			user.SearchCred.TermKeys = append(user.SearchCred.TermKeys, tk)
-		}
-
-		for _, psk := range psearchCred.GetSearchKeys() {
-			sk, err := ParseProtoKey(psk, user.UserCred.KdfKey)
-			if err != nil {
-				return nil, err
-			}
-			user.SearchCred.SearchKeys = append(user.SearchCred.SearchKeys, sk)
-		}
-	}
-
-	return user, nil
 }
 
 // // User is the user of the organization
