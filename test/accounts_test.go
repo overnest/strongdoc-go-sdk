@@ -6,6 +6,7 @@ import (
 
 	"github.com/overnest/strongdoc-go-sdk/api"
 	"github.com/overnest/strongdoc-go-sdk/client"
+	"github.com/overnest/strongdoc-go-sdk/sberr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,7 +18,7 @@ func TestRegistration(t *testing.T) {
 
 	user, succ, err := api.RegisterUser(sdc, "UserName", "UserPasswd", "email@user.com")
 	if err != nil {
-		gerr := api.FromError(err)
+		gerr := sberr.FromError(err)
 		fmt.Println(gerr)
 	}
 

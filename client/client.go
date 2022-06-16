@@ -20,7 +20,10 @@ import (
 var clientInit uint32 = 0
 var clientMutex sync.Mutex
 
-const MAX_CONCURRENT_CONNECTIONS = 10 // max number of current connections
+const (
+	MAX_CONCURRENT_CONNECTIONS = 10 // max number of current connections
+	MAX_GRPC_MESSAGE_SIZE      = 1014 * 1024 * 100
+)
 
 type locationConfig struct {
 	HostPort string
@@ -110,7 +113,7 @@ var client StrongDocClient = nil
 // StrongDocClient encapsulates the client object that allows connection to the remote service
 type StrongDocClient interface {
 	Login(userID, password string) error
-	// Logout() (string, error)
+	Logout() (string, error)
 	// NewAuthSession(password string) (*AuthSession, error)
 	GetNoAuthConn() *grpc.ClientConn
 	GetAuthConnPool() *connPool
@@ -228,9 +231,6 @@ func (c *strongDocClientObj) loginPrepResp(stream proto.StrongDocService_LoginCl
 		}
 
 		clientCred := srpClient.Credentials()
-
-		fmt.Println("Client Cred: %v %v %v", userID, password, clientCred)
-
 		err = stream.Send(&proto.LoginReq{
 			State: proto.LoginState_LOGIN_SRP_CRED,
 			Data: &proto.LoginReq_SrpCredReq{
@@ -327,6 +327,25 @@ func (c *strongDocClientObj) loginProofResp(stream proto.StrongDocService_LoginC
 	}
 
 	return stream.CloseSend()
+}
+
+func (c *strongDocClientObj) Logout() (status string, err error) {
+	res, err := c.GetGrpcClient().Logout(context.Background(), &proto.LogoutReq{})
+	if err != nil {
+		return
+	}
+	status = res.Status
+
+	c.authToken = ""
+	c.user = nil
+
+	// Close existing authenticated connection pool
+	if c.authConnPool != nil {
+		c.authConnPool.closeAll()
+	}
+	c.authConnPool = nil
+
+	return
 }
 
 // func (c *strongDocClientObj) newAuthSession(prepareAuthResp *proto.PrepareAuthResp, authPurpose proto.AuthPurpose, userID, orgID, password string) (*AuthSession, error) {
@@ -470,19 +489,6 @@ func GetStrongDocGrpcClient() (proto.StrongDocServiceClient, error) {
 	}
 	return nil, fmt.Errorf("can not get StrongDocClient. Please call InitStrongDocManager to initialize")
 }
-
-// func (c *strongDocClientObj) Logout() (status string, err error) {
-// 	res, err := c.GetGrpcClient().Logout(context.Background(), &proto.LogoutReq{})
-// 	if err != nil {
-// 		return
-// 	}
-// 	status = res.Status
-
-// 	c.passwordKey = nil
-// 	c.passwordKeyID = ""
-
-// 	return
-// }
 
 // func (c *strongDocClientObj) authSRP(userID, password, orgID string, version int32, authPurpose proto.AuthPurpose) (authSession *AuthSession, err error) {
 // 	srpSession, err := srp.NewFromVersion(version)
@@ -747,11 +753,14 @@ func (c *strongDocClientObj) Close() {
 
 func getNoAuthConn(hostport, cert string) (conn *grpc.ClientConn, err error) {
 	certFilePath, err := utils.FetchFileLoc(cert)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create the client TLS credentials
 	creds, err := credentials.NewClientTLSFromFile(certFilePath, "")
 	if err != nil {
-		err = fmt.Errorf("Can not load TLS cert at %v", cert)
+		err = fmt.Errorf("can not load TLS cert at %v", cert)
 		return
 	}
 
@@ -759,11 +768,17 @@ func getNoAuthConn(hostport, cert string) (conn *grpc.ClientConn, err error) {
 	return grpc.DialContext(context.Background(), hostport,
 		grpc.WithTransportCredentials(creds),
 		grpc.WithPerRPCCredentials(&grpcNoAuthCred{}),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(MAX_GRPC_MESSAGE_SIZE),
+			grpc.MaxCallSendMsgSize(MAX_GRPC_MESSAGE_SIZE)),
 	)
 }
 
 func getAuthConn(token, hostport, cert string) (conn *grpc.ClientConn, err error) {
 	certFilePath, err := utils.FetchFileLoc(cert)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create the client TLS credentials
 	creds, err := credentials.NewClientTLSFromFile(certFilePath, "")
@@ -776,5 +791,8 @@ func getAuthConn(token, hostport, cert string) (conn *grpc.ClientConn, err error
 	return grpc.DialContext(context.Background(), hostport,
 		grpc.WithTransportCredentials(creds),
 		grpc.WithPerRPCCredentials(&grpcAuthCred{token}),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(MAX_GRPC_MESSAGE_SIZE),
+			grpc.MaxCallSendMsgSize(MAX_GRPC_MESSAGE_SIZE)),
 	)
 }

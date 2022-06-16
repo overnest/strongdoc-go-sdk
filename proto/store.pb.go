@@ -20,263 +20,301 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-type StoreInitMeta_StoreContent int32
+type StoreWhence int32
 
 const (
-	StoreInitMeta_GENERIC        StoreInitMeta_StoreContent = 0
-	StoreInitMeta_DOCUMENT       StoreInitMeta_StoreContent = 1
-	StoreInitMeta_DOCUMENT_INDEX StoreInitMeta_StoreContent = 2
-	StoreInitMeta_SEARCH_INDEX   StoreInitMeta_StoreContent = 3
+	StoreWhence_SEEK_START   StoreWhence = 0
+	StoreWhence_SEEK_CURRENT StoreWhence = 1
+	StoreWhence_SEEK_END     StoreWhence = 2
 )
 
-var StoreInitMeta_StoreContent_name = map[int32]string{
+var StoreWhence_name = map[int32]string{
+	0: "SEEK_START",
+	1: "SEEK_CURRENT",
+	2: "SEEK_END",
+}
+
+var StoreWhence_value = map[string]int32{
+	"SEEK_START":   0,
+	"SEEK_CURRENT": 1,
+	"SEEK_END":     2,
+}
+
+func (x StoreWhence) String() string {
+	return proto.EnumName(StoreWhence_name, int32(x))
+}
+
+func (StoreWhence) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_98bbca36ef968dfc, []int{0}
+}
+
+type StoreInit_StoreContent int32
+
+const (
+	StoreInit_GENERIC        StoreInit_StoreContent = 0
+	StoreInit_DOCUMENT       StoreInit_StoreContent = 1
+	StoreInit_DOCUMENT_INDEX StoreInit_StoreContent = 2
+	StoreInit_SEARCH_INDEX   StoreInit_StoreContent = 3
+)
+
+var StoreInit_StoreContent_name = map[int32]string{
 	0: "GENERIC",
 	1: "DOCUMENT",
 	2: "DOCUMENT_INDEX",
 	3: "SEARCH_INDEX",
 }
 
-var StoreInitMeta_StoreContent_value = map[string]int32{
+var StoreInit_StoreContent_value = map[string]int32{
 	"GENERIC":        0,
 	"DOCUMENT":       1,
 	"DOCUMENT_INDEX": 2,
 	"SEARCH_INDEX":   3,
 }
 
-func (x StoreInitMeta_StoreContent) String() string {
-	return proto.EnumName(StoreInitMeta_StoreContent_name, int32(x))
+func (x StoreInit_StoreContent) String() string {
+	return proto.EnumName(StoreInit_StoreContent_name, int32(x))
 }
 
-func (StoreInitMeta_StoreContent) EnumDescriptor() ([]byte, []int) {
+func (StoreInit_StoreContent) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_98bbca36ef968dfc, []int{0, 0}
 }
 
-type StoreReadReq_StoreReadType int32
+type StoreReadReq_StoreReadOp int32
 
 const (
-	StoreReadReq_READ_PREMETA StoreReadReq_StoreReadType = 0
-	StoreReadReq_READ         StoreReadReq_StoreReadType = 1
-	StoreReadReq_READ_SEEK    StoreReadReq_StoreReadType = 2
-	StoreReadReq_READ_AT      StoreReadReq_StoreReadType = 3
+	StoreReadReq_READ_INIT StoreReadReq_StoreReadOp = 0
+	StoreReadReq_READ_DATA StoreReadReq_StoreReadOp = 1
+	StoreReadReq_READ_SEEK StoreReadReq_StoreReadOp = 2
+	StoreReadReq_READ_AT   StoreReadReq_StoreReadOp = 3
+	StoreReadReq_READ_END  StoreReadReq_StoreReadOp = 4
 )
 
-var StoreReadReq_StoreReadType_name = map[int32]string{
-	0: "READ_PREMETA",
-	1: "READ",
+var StoreReadReq_StoreReadOp_name = map[int32]string{
+	0: "READ_INIT",
+	1: "READ_DATA",
 	2: "READ_SEEK",
 	3: "READ_AT",
+	4: "READ_END",
 }
 
-var StoreReadReq_StoreReadType_value = map[string]int32{
-	"READ_PREMETA": 0,
-	"READ":         1,
-	"READ_SEEK":    2,
-	"READ_AT":      3,
+var StoreReadReq_StoreReadOp_value = map[string]int32{
+	"READ_INIT": 0,
+	"READ_DATA": 1,
+	"READ_SEEK": 2,
+	"READ_AT":   3,
+	"READ_END":  4,
 }
 
-func (x StoreReadReq_StoreReadType) String() string {
-	return proto.EnumName(StoreReadReq_StoreReadType_name, int32(x))
+func (x StoreReadReq_StoreReadOp) String() string {
+	return proto.EnumName(StoreReadReq_StoreReadOp_name, int32(x))
 }
 
-func (StoreReadReq_StoreReadType) EnumDescriptor() ([]byte, []int) {
+func (StoreReadReq_StoreReadOp) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_98bbca36ef968dfc, []int{4, 0}
 }
 
-type StoreWriteReq_StoreWriteType int32
+type StoreWriteReq_StoreWriteOp int32
 
 const (
-	StoreWriteReq_WRITE_PREMETA StoreWriteReq_StoreWriteType = 0
-	StoreWriteReq_WRITE         StoreWriteReq_StoreWriteType = 1
-	StoreWriteReq_WRITE_END     StoreWriteReq_StoreWriteType = 2
+	StoreWriteReq_WRITE_INIT StoreWriteReq_StoreWriteOp = 0
+	StoreWriteReq_WRITE_DATA StoreWriteReq_StoreWriteOp = 1
+	StoreWriteReq_WRITE_SEEK StoreWriteReq_StoreWriteOp = 2
+	StoreWriteReq_WRITE_AT   StoreWriteReq_StoreWriteOp = 3
+	StoreWriteReq_WRITE_END  StoreWriteReq_StoreWriteOp = 4
 )
 
-var StoreWriteReq_StoreWriteType_name = map[int32]string{
-	0: "WRITE_PREMETA",
-	1: "WRITE",
-	2: "WRITE_END",
+var StoreWriteReq_StoreWriteOp_name = map[int32]string{
+	0: "WRITE_INIT",
+	1: "WRITE_DATA",
+	2: "WRITE_SEEK",
+	3: "WRITE_AT",
+	4: "WRITE_END",
 }
 
-var StoreWriteReq_StoreWriteType_value = map[string]int32{
-	"WRITE_PREMETA": 0,
-	"WRITE":         1,
-	"WRITE_END":     2,
+var StoreWriteReq_StoreWriteOp_value = map[string]int32{
+	"WRITE_INIT": 0,
+	"WRITE_DATA": 1,
+	"WRITE_SEEK": 2,
+	"WRITE_AT":   3,
+	"WRITE_END":  4,
 }
 
-func (x StoreWriteReq_StoreWriteType) String() string {
-	return proto.EnumName(StoreWriteReq_StoreWriteType_name, int32(x))
+func (x StoreWriteReq_StoreWriteOp) String() string {
+	return proto.EnumName(StoreWriteReq_StoreWriteOp_name, int32(x))
 }
 
-func (StoreWriteReq_StoreWriteType) EnumDescriptor() ([]byte, []int) {
+func (StoreWriteReq_StoreWriteOp) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_98bbca36ef968dfc, []int{7, 0}
 }
 
-type StoreInitMeta struct {
-	// // In the future we might allow the client to choose the backend storage location
-	// enum StoreLocation {
-	//   // FILE = 0;
-	//   // S3 = 1;
-	// }
-	Content StoreInitMeta_StoreContent `protobuf:"varint,1,opt,name=content,proto3,enum=proto.StoreInitMeta_StoreContent" json:"content,omitempty"`
-	// StoreLocation location = 2;
-	//
-	// Types that are valid to be assigned to ContentMeta:
-	//	*StoreInitMeta_GenericMeta
-	//	*StoreInitMeta_JsonMeta
-	ContentMeta          isStoreInitMeta_ContentMeta `protobuf_oneof:"contentMeta"`
-	XXX_NoUnkeyedLiteral struct{}                    `json:"-"`
-	XXX_unrecognized     []byte                      `json:"-"`
-	XXX_sizecache        int32                       `json:"-"`
+type StoreInit struct {
+	Content StoreInit_StoreContent `protobuf:"varint,1,opt,name=content,proto3,enum=proto.StoreInit_StoreContent" json:"content,omitempty"`
+	// Types that are valid to be assigned to Init:
+	//	*StoreInit_Generic
+	//	*StoreInit_Json
+	Init                 isStoreInit_Init `protobuf_oneof:"init"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
-func (m *StoreInitMeta) Reset()         { *m = StoreInitMeta{} }
-func (m *StoreInitMeta) String() string { return proto.CompactTextString(m) }
-func (*StoreInitMeta) ProtoMessage()    {}
-func (*StoreInitMeta) Descriptor() ([]byte, []int) {
+func (m *StoreInit) Reset()         { *m = StoreInit{} }
+func (m *StoreInit) String() string { return proto.CompactTextString(m) }
+func (*StoreInit) ProtoMessage()    {}
+func (*StoreInit) Descriptor() ([]byte, []int) {
 	return fileDescriptor_98bbca36ef968dfc, []int{0}
 }
 
-func (m *StoreInitMeta) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_StoreInitMeta.Unmarshal(m, b)
+func (m *StoreInit) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_StoreInit.Unmarshal(m, b)
 }
-func (m *StoreInitMeta) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_StoreInitMeta.Marshal(b, m, deterministic)
+func (m *StoreInit) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_StoreInit.Marshal(b, m, deterministic)
 }
-func (m *StoreInitMeta) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StoreInitMeta.Merge(m, src)
+func (m *StoreInit) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StoreInit.Merge(m, src)
 }
-func (m *StoreInitMeta) XXX_Size() int {
-	return xxx_messageInfo_StoreInitMeta.Size(m)
+func (m *StoreInit) XXX_Size() int {
+	return xxx_messageInfo_StoreInit.Size(m)
 }
-func (m *StoreInitMeta) XXX_DiscardUnknown() {
-	xxx_messageInfo_StoreInitMeta.DiscardUnknown(m)
+func (m *StoreInit) XXX_DiscardUnknown() {
+	xxx_messageInfo_StoreInit.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_StoreInitMeta proto.InternalMessageInfo
+var xxx_messageInfo_StoreInit proto.InternalMessageInfo
 
-func (m *StoreInitMeta) GetContent() StoreInitMeta_StoreContent {
+func (m *StoreInit) GetContent() StoreInit_StoreContent {
 	if m != nil {
 		return m.Content
 	}
-	return StoreInitMeta_GENERIC
+	return StoreInit_GENERIC
 }
 
-type isStoreInitMeta_ContentMeta interface {
-	isStoreInitMeta_ContentMeta()
+type isStoreInit_Init interface {
+	isStoreInit_Init()
 }
 
-type StoreInitMeta_GenericMeta struct {
-	GenericMeta *StoreGenericMeta `protobuf:"bytes,100,opt,name=genericMeta,proto3,oneof"`
+type StoreInit_Generic struct {
+	Generic *StoreInitGeneric `protobuf:"bytes,100,opt,name=generic,proto3,oneof"`
 }
 
-type StoreInitMeta_JsonMeta struct {
-	JsonMeta *StoreJsonMeta `protobuf:"bytes,101,opt,name=jsonMeta,proto3,oneof"`
+type StoreInit_Json struct {
+	Json *StoreJson `protobuf:"bytes,200,opt,name=json,proto3,oneof"`
 }
 
-func (*StoreInitMeta_GenericMeta) isStoreInitMeta_ContentMeta() {}
+func (*StoreInit_Generic) isStoreInit_Init() {}
 
-func (*StoreInitMeta_JsonMeta) isStoreInitMeta_ContentMeta() {}
+func (*StoreInit_Json) isStoreInit_Init() {}
 
-func (m *StoreInitMeta) GetContentMeta() isStoreInitMeta_ContentMeta {
+func (m *StoreInit) GetInit() isStoreInit_Init {
 	if m != nil {
-		return m.ContentMeta
+		return m.Init
 	}
 	return nil
 }
 
-func (m *StoreInitMeta) GetGenericMeta() *StoreGenericMeta {
-	if x, ok := m.GetContentMeta().(*StoreInitMeta_GenericMeta); ok {
-		return x.GenericMeta
+func (m *StoreInit) GetGeneric() *StoreInitGeneric {
+	if x, ok := m.GetInit().(*StoreInit_Generic); ok {
+		return x.Generic
 	}
 	return nil
 }
 
-func (m *StoreInitMeta) GetJsonMeta() *StoreJsonMeta {
-	if x, ok := m.GetContentMeta().(*StoreInitMeta_JsonMeta); ok {
-		return x.JsonMeta
+func (m *StoreInit) GetJson() *StoreJson {
+	if x, ok := m.GetInit().(*StoreInit_Json); ok {
+		return x.Json
 	}
 	return nil
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*StoreInitMeta) XXX_OneofWrappers() []interface{} {
+func (*StoreInit) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*StoreInitMeta_GenericMeta)(nil),
-		(*StoreInitMeta_JsonMeta)(nil),
+		(*StoreInit_Generic)(nil),
+		(*StoreInit_Json)(nil),
 	}
 }
 
-type StoreGenericMeta struct {
+type StoreInitGeneric struct {
 	Filename             string   `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *StoreGenericMeta) Reset()         { *m = StoreGenericMeta{} }
-func (m *StoreGenericMeta) String() string { return proto.CompactTextString(m) }
-func (*StoreGenericMeta) ProtoMessage()    {}
-func (*StoreGenericMeta) Descriptor() ([]byte, []int) {
+func (m *StoreInitGeneric) Reset()         { *m = StoreInitGeneric{} }
+func (m *StoreInitGeneric) String() string { return proto.CompactTextString(m) }
+func (*StoreInitGeneric) ProtoMessage()    {}
+func (*StoreInitGeneric) Descriptor() ([]byte, []int) {
 	return fileDescriptor_98bbca36ef968dfc, []int{1}
 }
 
-func (m *StoreGenericMeta) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_StoreGenericMeta.Unmarshal(m, b)
+func (m *StoreInitGeneric) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_StoreInitGeneric.Unmarshal(m, b)
 }
-func (m *StoreGenericMeta) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_StoreGenericMeta.Marshal(b, m, deterministic)
+func (m *StoreInitGeneric) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_StoreInitGeneric.Marshal(b, m, deterministic)
 }
-func (m *StoreGenericMeta) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StoreGenericMeta.Merge(m, src)
+func (m *StoreInitGeneric) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StoreInitGeneric.Merge(m, src)
 }
-func (m *StoreGenericMeta) XXX_Size() int {
-	return xxx_messageInfo_StoreGenericMeta.Size(m)
+func (m *StoreInitGeneric) XXX_Size() int {
+	return xxx_messageInfo_StoreInitGeneric.Size(m)
 }
-func (m *StoreGenericMeta) XXX_DiscardUnknown() {
-	xxx_messageInfo_StoreGenericMeta.DiscardUnknown(m)
+func (m *StoreInitGeneric) XXX_DiscardUnknown() {
+	xxx_messageInfo_StoreInitGeneric.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_StoreGenericMeta proto.InternalMessageInfo
+var xxx_messageInfo_StoreInitGeneric proto.InternalMessageInfo
 
-func (m *StoreGenericMeta) GetFilename() string {
+func (m *StoreInitGeneric) GetFilename() string {
 	if m != nil {
 		return m.Filename
 	}
 	return ""
 }
 
-type StoreJsonMeta struct {
-	Json                 string   `protobuf:"bytes,1,opt,name=json,proto3" json:"json,omitempty"`
+type StoreJson struct {
+	Version              int64    `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	Json                 string   `protobuf:"bytes,2,opt,name=json,proto3" json:"json,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *StoreJsonMeta) Reset()         { *m = StoreJsonMeta{} }
-func (m *StoreJsonMeta) String() string { return proto.CompactTextString(m) }
-func (*StoreJsonMeta) ProtoMessage()    {}
-func (*StoreJsonMeta) Descriptor() ([]byte, []int) {
+func (m *StoreJson) Reset()         { *m = StoreJson{} }
+func (m *StoreJson) String() string { return proto.CompactTextString(m) }
+func (*StoreJson) ProtoMessage()    {}
+func (*StoreJson) Descriptor() ([]byte, []int) {
 	return fileDescriptor_98bbca36ef968dfc, []int{2}
 }
 
-func (m *StoreJsonMeta) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_StoreJsonMeta.Unmarshal(m, b)
+func (m *StoreJson) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_StoreJson.Unmarshal(m, b)
 }
-func (m *StoreJsonMeta) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_StoreJsonMeta.Marshal(b, m, deterministic)
+func (m *StoreJson) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_StoreJson.Marshal(b, m, deterministic)
 }
-func (m *StoreJsonMeta) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StoreJsonMeta.Merge(m, src)
+func (m *StoreJson) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StoreJson.Merge(m, src)
 }
-func (m *StoreJsonMeta) XXX_Size() int {
-	return xxx_messageInfo_StoreJsonMeta.Size(m)
+func (m *StoreJson) XXX_Size() int {
+	return xxx_messageInfo_StoreJson.Size(m)
 }
-func (m *StoreJsonMeta) XXX_DiscardUnknown() {
-	xxx_messageInfo_StoreJsonMeta.DiscardUnknown(m)
+func (m *StoreJson) XXX_DiscardUnknown() {
+	xxx_messageInfo_StoreJson.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_StoreJsonMeta proto.InternalMessageInfo
+var xxx_messageInfo_StoreJson proto.InternalMessageInfo
 
-func (m *StoreJsonMeta) GetJson() string {
+func (m *StoreJson) GetVersion() int64 {
+	if m != nil {
+		return m.Version
+	}
+	return 0
+}
+
+func (m *StoreJson) GetJson() string {
 	if m != nil {
 		return m.Json
 	}
@@ -284,71 +322,71 @@ func (m *StoreJsonMeta) GetJson() string {
 }
 
 // StoreReadMeta
-type StoreReadMeta struct {
-	BufferSize           int64    `protobuf:"varint,1,opt,name=bufferSize,proto3" json:"bufferSize,omitempty"`
-	Offset               int64    `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
-	Whence               int32    `protobuf:"varint,3,opt,name=whence,proto3" json:"whence,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+type StoreRead struct {
+	BufferSize           int64       `protobuf:"varint,1,opt,name=bufferSize,proto3" json:"bufferSize,omitempty"`
+	Offset               int64       `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	Whence               StoreWhence `protobuf:"varint,3,opt,name=whence,proto3,enum=proto.StoreWhence" json:"whence,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
 }
 
-func (m *StoreReadMeta) Reset()         { *m = StoreReadMeta{} }
-func (m *StoreReadMeta) String() string { return proto.CompactTextString(m) }
-func (*StoreReadMeta) ProtoMessage()    {}
-func (*StoreReadMeta) Descriptor() ([]byte, []int) {
+func (m *StoreRead) Reset()         { *m = StoreRead{} }
+func (m *StoreRead) String() string { return proto.CompactTextString(m) }
+func (*StoreRead) ProtoMessage()    {}
+func (*StoreRead) Descriptor() ([]byte, []int) {
 	return fileDescriptor_98bbca36ef968dfc, []int{3}
 }
 
-func (m *StoreReadMeta) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_StoreReadMeta.Unmarshal(m, b)
+func (m *StoreRead) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_StoreRead.Unmarshal(m, b)
 }
-func (m *StoreReadMeta) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_StoreReadMeta.Marshal(b, m, deterministic)
+func (m *StoreRead) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_StoreRead.Marshal(b, m, deterministic)
 }
-func (m *StoreReadMeta) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StoreReadMeta.Merge(m, src)
+func (m *StoreRead) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StoreRead.Merge(m, src)
 }
-func (m *StoreReadMeta) XXX_Size() int {
-	return xxx_messageInfo_StoreReadMeta.Size(m)
+func (m *StoreRead) XXX_Size() int {
+	return xxx_messageInfo_StoreRead.Size(m)
 }
-func (m *StoreReadMeta) XXX_DiscardUnknown() {
-	xxx_messageInfo_StoreReadMeta.DiscardUnknown(m)
+func (m *StoreRead) XXX_DiscardUnknown() {
+	xxx_messageInfo_StoreRead.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_StoreReadMeta proto.InternalMessageInfo
+var xxx_messageInfo_StoreRead proto.InternalMessageInfo
 
-func (m *StoreReadMeta) GetBufferSize() int64 {
+func (m *StoreRead) GetBufferSize() int64 {
 	if m != nil {
 		return m.BufferSize
 	}
 	return 0
 }
 
-func (m *StoreReadMeta) GetOffset() int64 {
+func (m *StoreRead) GetOffset() int64 {
 	if m != nil {
 		return m.Offset
 	}
 	return 0
 }
 
-func (m *StoreReadMeta) GetWhence() int32 {
+func (m *StoreRead) GetWhence() StoreWhence {
 	if m != nil {
 		return m.Whence
 	}
-	return 0
+	return StoreWhence_SEEK_START
 }
 
 // StoreReadReq
 type StoreReadReq struct {
-	ReadType StoreReadReq_StoreReadType `protobuf:"varint,1,opt,name=readType,proto3,enum=proto.StoreReadReq_StoreReadType" json:"readType,omitempty"`
-	// Types that are valid to be assigned to MetaData:
-	//	*StoreReadReq_InitMeta
-	//	*StoreReadReq_ReadMeta
-	MetaData             isStoreReadReq_MetaData `protobuf_oneof:"metaData"`
-	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
-	XXX_unrecognized     []byte                  `json:"-"`
-	XXX_sizecache        int32                   `json:"-"`
+	ReadOp StoreReadReq_StoreReadOp `protobuf:"varint,1,opt,name=readOp,proto3,enum=proto.StoreReadReq_StoreReadOp" json:"readOp,omitempty"`
+	// Types that are valid to be assigned to Data:
+	//	*StoreReadReq_Init
+	//	*StoreReadReq_Read
+	Data                 isStoreReadReq_Data `protobuf_oneof:"data"`
+	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
+	XXX_unrecognized     []byte              `json:"-"`
+	XXX_sizecache        int32               `json:"-"`
 }
 
 func (m *StoreReadReq) Reset()         { *m = StoreReadReq{} }
@@ -376,46 +414,46 @@ func (m *StoreReadReq) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_StoreReadReq proto.InternalMessageInfo
 
-func (m *StoreReadReq) GetReadType() StoreReadReq_StoreReadType {
+func (m *StoreReadReq) GetReadOp() StoreReadReq_StoreReadOp {
 	if m != nil {
-		return m.ReadType
+		return m.ReadOp
 	}
-	return StoreReadReq_READ_PREMETA
+	return StoreReadReq_READ_INIT
 }
 
-type isStoreReadReq_MetaData interface {
-	isStoreReadReq_MetaData()
+type isStoreReadReq_Data interface {
+	isStoreReadReq_Data()
 }
 
-type StoreReadReq_InitMeta struct {
-	InitMeta *StoreInitMeta `protobuf:"bytes,2,opt,name=initMeta,proto3,oneof"`
+type StoreReadReq_Init struct {
+	Init *StoreInit `protobuf:"bytes,10,opt,name=init,proto3,oneof"`
 }
 
-type StoreReadReq_ReadMeta struct {
-	ReadMeta *StoreReadMeta `protobuf:"bytes,3,opt,name=readMeta,proto3,oneof"`
+type StoreReadReq_Read struct {
+	Read *StoreRead `protobuf:"bytes,20,opt,name=read,proto3,oneof"`
 }
 
-func (*StoreReadReq_InitMeta) isStoreReadReq_MetaData() {}
+func (*StoreReadReq_Init) isStoreReadReq_Data() {}
 
-func (*StoreReadReq_ReadMeta) isStoreReadReq_MetaData() {}
+func (*StoreReadReq_Read) isStoreReadReq_Data() {}
 
-func (m *StoreReadReq) GetMetaData() isStoreReadReq_MetaData {
+func (m *StoreReadReq) GetData() isStoreReadReq_Data {
 	if m != nil {
-		return m.MetaData
+		return m.Data
 	}
 	return nil
 }
 
-func (m *StoreReadReq) GetInitMeta() *StoreInitMeta {
-	if x, ok := m.GetMetaData().(*StoreReadReq_InitMeta); ok {
-		return x.InitMeta
+func (m *StoreReadReq) GetInit() *StoreInit {
+	if x, ok := m.GetData().(*StoreReadReq_Init); ok {
+		return x.Init
 	}
 	return nil
 }
 
-func (m *StoreReadReq) GetReadMeta() *StoreReadMeta {
-	if x, ok := m.GetMetaData().(*StoreReadReq_ReadMeta); ok {
-		return x.ReadMeta
+func (m *StoreReadReq) GetRead() *StoreRead {
+	if x, ok := m.GetData().(*StoreReadReq_Read); ok {
+		return x.Read
 	}
 	return nil
 }
@@ -423,18 +461,20 @@ func (m *StoreReadReq) GetReadMeta() *StoreReadMeta {
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*StoreReadReq) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*StoreReadReq_InitMeta)(nil),
-		(*StoreReadReq_ReadMeta)(nil),
+		(*StoreReadReq_Init)(nil),
+		(*StoreReadReq_Read)(nil),
 	}
 }
 
 type StoreReadResp struct {
-	Data                 []byte   `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
-	Eof                  bool     `protobuf:"varint,2,opt,name=eof,proto3" json:"eof,omitempty"`
-	Offset               int64    `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	Data                 []byte     `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	Eof                  bool       `protobuf:"varint,2,opt,name=eof,proto3" json:"eof,omitempty"`
+	Offset               int64      `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	Size                 int64      `protobuf:"varint,4,opt,name=size,proto3" json:"size,omitempty"`
+	Json                 *StoreJson `protobuf:"bytes,100,opt,name=json,proto3" json:"json,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
 func (m *StoreReadResp) Reset()         { *m = StoreReadResp{} }
@@ -483,54 +523,84 @@ func (m *StoreReadResp) GetOffset() int64 {
 	return 0
 }
 
-type StoreWriteMeta struct {
-	Data                 []byte   `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+func (m *StoreReadResp) GetSize() int64 {
+	if m != nil {
+		return m.Size
+	}
+	return 0
 }
 
-func (m *StoreWriteMeta) Reset()         { *m = StoreWriteMeta{} }
-func (m *StoreWriteMeta) String() string { return proto.CompactTextString(m) }
-func (*StoreWriteMeta) ProtoMessage()    {}
-func (*StoreWriteMeta) Descriptor() ([]byte, []int) {
+func (m *StoreReadResp) GetJson() *StoreJson {
+	if m != nil {
+		return m.Json
+	}
+	return nil
+}
+
+type StoreWrite struct {
+	Data                 []byte      `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	Offset               int64       `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	Whence               StoreWhence `protobuf:"varint,3,opt,name=whence,proto3,enum=proto.StoreWhence" json:"whence,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
+}
+
+func (m *StoreWrite) Reset()         { *m = StoreWrite{} }
+func (m *StoreWrite) String() string { return proto.CompactTextString(m) }
+func (*StoreWrite) ProtoMessage()    {}
+func (*StoreWrite) Descriptor() ([]byte, []int) {
 	return fileDescriptor_98bbca36ef968dfc, []int{6}
 }
 
-func (m *StoreWriteMeta) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_StoreWriteMeta.Unmarshal(m, b)
+func (m *StoreWrite) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_StoreWrite.Unmarshal(m, b)
 }
-func (m *StoreWriteMeta) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_StoreWriteMeta.Marshal(b, m, deterministic)
+func (m *StoreWrite) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_StoreWrite.Marshal(b, m, deterministic)
 }
-func (m *StoreWriteMeta) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StoreWriteMeta.Merge(m, src)
+func (m *StoreWrite) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StoreWrite.Merge(m, src)
 }
-func (m *StoreWriteMeta) XXX_Size() int {
-	return xxx_messageInfo_StoreWriteMeta.Size(m)
+func (m *StoreWrite) XXX_Size() int {
+	return xxx_messageInfo_StoreWrite.Size(m)
 }
-func (m *StoreWriteMeta) XXX_DiscardUnknown() {
-	xxx_messageInfo_StoreWriteMeta.DiscardUnknown(m)
+func (m *StoreWrite) XXX_DiscardUnknown() {
+	xxx_messageInfo_StoreWrite.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_StoreWriteMeta proto.InternalMessageInfo
+var xxx_messageInfo_StoreWrite proto.InternalMessageInfo
 
-func (m *StoreWriteMeta) GetData() []byte {
+func (m *StoreWrite) GetData() []byte {
 	if m != nil {
 		return m.Data
 	}
 	return nil
 }
 
+func (m *StoreWrite) GetOffset() int64 {
+	if m != nil {
+		return m.Offset
+	}
+	return 0
+}
+
+func (m *StoreWrite) GetWhence() StoreWhence {
+	if m != nil {
+		return m.Whence
+	}
+	return StoreWhence_SEEK_START
+}
+
 type StoreWriteReq struct {
-	WriteType StoreWriteReq_StoreWriteType `protobuf:"varint,1,opt,name=writeType,proto3,enum=proto.StoreWriteReq_StoreWriteType" json:"writeType,omitempty"`
-	// Types that are valid to be assigned to MetaData:
-	//	*StoreWriteReq_InitMeta
-	//	*StoreWriteReq_WriteMeta
-	MetaData             isStoreWriteReq_MetaData `protobuf_oneof:"metaData"`
-	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
-	XXX_unrecognized     []byte                   `json:"-"`
-	XXX_sizecache        int32                    `json:"-"`
+	WriteOp StoreWriteReq_StoreWriteOp `protobuf:"varint,1,opt,name=writeOp,proto3,enum=proto.StoreWriteReq_StoreWriteOp" json:"writeOp,omitempty"`
+	// Types that are valid to be assigned to Data:
+	//	*StoreWriteReq_Init
+	//	*StoreWriteReq_Write
+	Data                 isStoreWriteReq_Data `protobuf_oneof:"data"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
 }
 
 func (m *StoreWriteReq) Reset()         { *m = StoreWriteReq{} }
@@ -558,46 +628,46 @@ func (m *StoreWriteReq) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_StoreWriteReq proto.InternalMessageInfo
 
-func (m *StoreWriteReq) GetWriteType() StoreWriteReq_StoreWriteType {
+func (m *StoreWriteReq) GetWriteOp() StoreWriteReq_StoreWriteOp {
 	if m != nil {
-		return m.WriteType
+		return m.WriteOp
 	}
-	return StoreWriteReq_WRITE_PREMETA
+	return StoreWriteReq_WRITE_INIT
 }
 
-type isStoreWriteReq_MetaData interface {
-	isStoreWriteReq_MetaData()
+type isStoreWriteReq_Data interface {
+	isStoreWriteReq_Data()
 }
 
-type StoreWriteReq_InitMeta struct {
-	InitMeta *StoreInitMeta `protobuf:"bytes,2,opt,name=initMeta,proto3,oneof"`
+type StoreWriteReq_Init struct {
+	Init *StoreInit `protobuf:"bytes,10,opt,name=init,proto3,oneof"`
 }
 
-type StoreWriteReq_WriteMeta struct {
-	WriteMeta *StoreWriteMeta `protobuf:"bytes,3,opt,name=writeMeta,proto3,oneof"`
+type StoreWriteReq_Write struct {
+	Write *StoreWrite `protobuf:"bytes,20,opt,name=write,proto3,oneof"`
 }
 
-func (*StoreWriteReq_InitMeta) isStoreWriteReq_MetaData() {}
+func (*StoreWriteReq_Init) isStoreWriteReq_Data() {}
 
-func (*StoreWriteReq_WriteMeta) isStoreWriteReq_MetaData() {}
+func (*StoreWriteReq_Write) isStoreWriteReq_Data() {}
 
-func (m *StoreWriteReq) GetMetaData() isStoreWriteReq_MetaData {
+func (m *StoreWriteReq) GetData() isStoreWriteReq_Data {
 	if m != nil {
-		return m.MetaData
+		return m.Data
 	}
 	return nil
 }
 
-func (m *StoreWriteReq) GetInitMeta() *StoreInitMeta {
-	if x, ok := m.GetMetaData().(*StoreWriteReq_InitMeta); ok {
-		return x.InitMeta
+func (m *StoreWriteReq) GetInit() *StoreInit {
+	if x, ok := m.GetData().(*StoreWriteReq_Init); ok {
+		return x.Init
 	}
 	return nil
 }
 
-func (m *StoreWriteReq) GetWriteMeta() *StoreWriteMeta {
-	if x, ok := m.GetMetaData().(*StoreWriteReq_WriteMeta); ok {
-		return x.WriteMeta
+func (m *StoreWriteReq) GetWrite() *StoreWrite {
+	if x, ok := m.GetData().(*StoreWriteReq_Write); ok {
+		return x.Write
 	}
 	return nil
 }
@@ -605,17 +675,18 @@ func (m *StoreWriteReq) GetWriteMeta() *StoreWriteMeta {
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*StoreWriteReq) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*StoreWriteReq_InitMeta)(nil),
-		(*StoreWriteReq_WriteMeta)(nil),
+		(*StoreWriteReq_Init)(nil),
+		(*StoreWriteReq_Write)(nil),
 	}
 }
 
 type StoreWriteResp struct {
-	BytesWrite           int64    `protobuf:"varint,1,opt,name=bytesWrite,proto3" json:"bytesWrite,omitempty"`
-	UpdateID             string   `protobuf:"bytes,2,opt,name=updateID,proto3" json:"updateID,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	WrittenBytes         int64      `protobuf:"varint,1,opt,name=writtenBytes,proto3" json:"writtenBytes,omitempty"`
+	SeekOffset           int64      `protobuf:"varint,2,opt,name=seekOffset,proto3" json:"seekOffset,omitempty"`
+	Json                 *StoreJson `protobuf:"bytes,100,opt,name=json,proto3" json:"json,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
 func (m *StoreWriteResp) Reset()         { *m = StoreWriteResp{} }
@@ -643,18 +714,25 @@ func (m *StoreWriteResp) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_StoreWriteResp proto.InternalMessageInfo
 
-func (m *StoreWriteResp) GetBytesWrite() int64 {
+func (m *StoreWriteResp) GetWrittenBytes() int64 {
 	if m != nil {
-		return m.BytesWrite
+		return m.WrittenBytes
 	}
 	return 0
 }
 
-func (m *StoreWriteResp) GetUpdateID() string {
+func (m *StoreWriteResp) GetSeekOffset() int64 {
 	if m != nil {
-		return m.UpdateID
+		return m.SeekOffset
 	}
-	return ""
+	return 0
+}
+
+func (m *StoreWriteResp) GetJson() *StoreJson {
+	if m != nil {
+		return m.Json
+	}
+	return nil
 }
 
 type DocMeta struct {
@@ -705,16 +783,17 @@ func (m *DocMeta) GetDocVer() uint64 {
 }
 
 func init() {
-	proto.RegisterEnum("proto.StoreInitMeta_StoreContent", StoreInitMeta_StoreContent_name, StoreInitMeta_StoreContent_value)
-	proto.RegisterEnum("proto.StoreReadReq_StoreReadType", StoreReadReq_StoreReadType_name, StoreReadReq_StoreReadType_value)
-	proto.RegisterEnum("proto.StoreWriteReq_StoreWriteType", StoreWriteReq_StoreWriteType_name, StoreWriteReq_StoreWriteType_value)
-	proto.RegisterType((*StoreInitMeta)(nil), "proto.StoreInitMeta")
-	proto.RegisterType((*StoreGenericMeta)(nil), "proto.StoreGenericMeta")
-	proto.RegisterType((*StoreJsonMeta)(nil), "proto.StoreJsonMeta")
-	proto.RegisterType((*StoreReadMeta)(nil), "proto.StoreReadMeta")
+	proto.RegisterEnum("proto.StoreWhence", StoreWhence_name, StoreWhence_value)
+	proto.RegisterEnum("proto.StoreInit_StoreContent", StoreInit_StoreContent_name, StoreInit_StoreContent_value)
+	proto.RegisterEnum("proto.StoreReadReq_StoreReadOp", StoreReadReq_StoreReadOp_name, StoreReadReq_StoreReadOp_value)
+	proto.RegisterEnum("proto.StoreWriteReq_StoreWriteOp", StoreWriteReq_StoreWriteOp_name, StoreWriteReq_StoreWriteOp_value)
+	proto.RegisterType((*StoreInit)(nil), "proto.StoreInit")
+	proto.RegisterType((*StoreInitGeneric)(nil), "proto.StoreInitGeneric")
+	proto.RegisterType((*StoreJson)(nil), "proto.StoreJson")
+	proto.RegisterType((*StoreRead)(nil), "proto.StoreRead")
 	proto.RegisterType((*StoreReadReq)(nil), "proto.StoreReadReq")
 	proto.RegisterType((*StoreReadResp)(nil), "proto.StoreReadResp")
-	proto.RegisterType((*StoreWriteMeta)(nil), "proto.StoreWriteMeta")
+	proto.RegisterType((*StoreWrite)(nil), "proto.StoreWrite")
 	proto.RegisterType((*StoreWriteReq)(nil), "proto.StoreWriteReq")
 	proto.RegisterType((*StoreWriteResp)(nil), "proto.StoreWriteResp")
 	proto.RegisterType((*DocMeta)(nil), "proto.DocMeta")
@@ -723,44 +802,49 @@ func init() {
 func init() { proto.RegisterFile("store.proto", fileDescriptor_98bbca36ef968dfc) }
 
 var fileDescriptor_98bbca36ef968dfc = []byte{
-	// 622 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x53, 0x4f, 0x6f, 0xd3, 0x3e,
-	0x18, 0x6e, 0xda, 0x75, 0x4b, 0xdf, 0xb6, 0x93, 0x7f, 0xd6, 0x7e, 0x50, 0x71, 0x40, 0xc3, 0xe3,
-	0xb0, 0x53, 0x0f, 0x43, 0x88, 0xc3, 0xb4, 0x43, 0xdb, 0x58, 0x5b, 0x81, 0x76, 0xc8, 0x2d, 0x8c,
-	0xdb, 0x94, 0x25, 0xee, 0x08, 0xac, 0x71, 0x49, 0x3c, 0x4d, 0xe3, 0x13, 0x4c, 0x7c, 0x07, 0xbe,
-	0x2b, 0xf2, 0x1b, 0x27, 0xf5, 0x0a, 0x27, 0x4e, 0xf1, 0xf3, 0xfa, 0x79, 0xde, 0x7f, 0x4f, 0x0c,
-	0xed, 0x5c, 0xab, 0x4c, 0xf6, 0x57, 0x99, 0xd2, 0x8a, 0x36, 0xf1, 0xc3, 0x7e, 0xd5, 0xa1, 0x3b,
-	0x33, 0xe1, 0x71, 0x9a, 0xe8, 0x89, 0xd4, 0x21, 0x3d, 0x86, 0x9d, 0x48, 0xa5, 0x5a, 0xa6, 0xba,
-	0xe7, 0xed, 0x7b, 0x87, 0xbb, 0x47, 0x2f, 0x0a, 0x45, 0xff, 0x11, 0xad, 0x40, 0xa3, 0x82, 0x28,
-	0x4a, 0x05, 0x3d, 0x86, 0xf6, 0xb5, 0x4c, 0x65, 0x96, 0x44, 0x86, 0xd4, 0x8b, 0xf7, 0xbd, 0xc3,
-	0xf6, 0xd1, 0x53, 0x37, 0xc1, 0xe9, 0xfa, 0xfa, 0xac, 0x26, 0x5c, 0x36, 0x3d, 0x02, 0xff, 0x6b,
-	0xae, 0x52, 0x54, 0x4a, 0x54, 0xee, 0xb9, 0xca, 0xb7, 0xf6, 0xee, 0xac, 0x26, 0x2a, 0x1e, 0x3b,
-	0x87, 0x8e, 0xdb, 0x09, 0x6d, 0xc3, 0xce, 0x29, 0x9f, 0x72, 0x31, 0x1e, 0x91, 0x1a, 0xed, 0x80,
-	0x1f, 0x9c, 0x8f, 0x3e, 0x4e, 0xf8, 0x74, 0x4e, 0x3c, 0x4a, 0x61, 0xb7, 0x44, 0x97, 0xe3, 0x69,
-	0xc0, 0x3f, 0x93, 0x3a, 0x25, 0xd0, 0x99, 0xf1, 0x81, 0x18, 0x9d, 0xd9, 0x48, 0x63, 0xd8, 0x85,
-	0xb6, 0x1d, 0x06, 0xf3, 0xf7, 0x81, 0x6c, 0xb6, 0x4d, 0x9f, 0x81, 0xbf, 0x48, 0x6e, 0x64, 0x1a,
-	0x2e, 0x25, 0xae, 0xa8, 0x25, 0x2a, 0xcc, 0x0e, 0xec, 0x3a, 0xcb, 0x66, 0x29, 0x85, 0x2d, 0xd3,
-	0xac, 0x25, 0xe2, 0x99, 0x5d, 0x5a, 0x92, 0x90, 0x61, 0x8c, 0xa4, 0xe7, 0x00, 0x57, 0xb7, 0x8b,
-	0x85, 0xcc, 0x66, 0xc9, 0x8f, 0x22, 0x67, 0x43, 0x38, 0x11, 0xfa, 0x04, 0xb6, 0xd5, 0x62, 0x91,
-	0x4b, 0xdd, 0xab, 0xe3, 0x9d, 0x45, 0x26, 0x7e, 0xf7, 0x45, 0xa6, 0x91, 0xec, 0x35, 0xf6, 0xbd,
-	0xc3, 0xa6, 0xb0, 0x88, 0xfd, 0xac, 0xdb, 0xb5, 0x98, 0x0a, 0x42, 0x7e, 0xa7, 0x27, 0xe0, 0x67,
-	0x32, 0x8c, 0xe7, 0xf7, 0x2b, 0xf9, 0x37, 0x57, 0x2d, 0x6d, 0x0d, 0x0c, 0x51, 0x54, 0x12, 0xe3,
-	0x4c, 0x62, 0x8d, 0xc7, 0x0e, 0x36, 0x9c, 0x29, 0x7f, 0x0a, 0xe3, 0x4c, 0xc9, 0x33, 0x9a, 0xcc,
-	0xce, 0x87, 0xdd, 0x6d, 0x68, 0xca, 0xd9, 0x8d, 0xa6, 0xe4, 0xb1, 0x53, 0x67, 0x31, 0x58, 0x98,
-	0x40, 0x47, 0xf0, 0x41, 0x70, 0xf9, 0x41, 0xf0, 0x09, 0x9f, 0x0f, 0x48, 0x8d, 0xfa, 0xb0, 0x65,
-	0x22, 0xc4, 0xa3, 0x5d, 0x68, 0xe1, 0xdd, 0x8c, 0xf3, 0x77, 0xa4, 0x6e, 0x9c, 0x47, 0x38, 0x98,
-	0x93, 0xc6, 0x10, 0xc0, 0x5f, 0x4a, 0x1d, 0x06, 0xa1, 0x0e, 0xd9, 0xc4, 0x49, 0x2a, 0x64, 0xbe,
-	0x32, 0x96, 0xc4, 0xa1, 0x0e, 0x71, 0x11, 0x1d, 0x81, 0x67, 0x4a, 0xa0, 0x21, 0xd5, 0x02, 0x87,
-	0xf3, 0x85, 0x39, 0x3a, 0x3b, 0x6f, 0xb8, 0x3b, 0x67, 0x2f, 0x61, 0x17, 0xd3, 0x5d, 0x64, 0x89,
-	0x96, 0xa5, 0xc5, 0x9b, 0xf9, 0xd8, 0x43, 0xf9, 0xae, 0x90, 0x66, 0x2c, 0x18, 0x40, 0xeb, 0xce,
-	0x9c, 0x1d, 0x0f, 0x0e, 0xdc, 0x85, 0x94, 0x44, 0x07, 0xa1, 0x0b, 0x6b, 0xd5, 0x3f, 0xd9, 0xf0,
-	0xda, 0x96, 0x75, 0x7c, 0xf8, 0xff, 0x8f, 0xb2, 0x56, 0xb5, 0x66, 0xb2, 0x13, 0x77, 0x4a, 0x2c,
-	0xfe, 0x1f, 0x74, 0x2f, 0xc4, 0x78, 0xce, 0x1d, 0x2f, 0x5a, 0xd0, 0xc4, 0x50, 0x61, 0x46, 0x71,
-	0xcb, 0xa7, 0x01, 0xa9, 0x3f, 0xda, 0xff, 0x7b, 0x37, 0x15, 0x1a, 0x60, 0x7e, 0xf7, 0x7b, 0x2d,
-	0x73, 0x8c, 0x54, 0xbf, 0x7b, 0x15, 0x31, 0x0f, 0xec, 0x76, 0x15, 0x87, 0x5a, 0x8e, 0x03, 0x9c,
-	0xb3, 0x25, 0x2a, 0xcc, 0xde, 0xc0, 0x4e, 0xa0, 0x8a, 0x77, 0xb8, 0x07, 0xcd, 0x58, 0x45, 0xe3,
-	0xc0, 0xbe, 0xad, 0x02, 0x18, 0xdf, 0x62, 0x15, 0x7d, 0x92, 0x19, 0x4a, 0xb7, 0x84, 0x45, 0xc3,
-	0x3e, 0xb0, 0x48, 0x2d, 0xfb, 0xb9, 0xce, 0x54, 0x7a, 0x9d, 0x87, 0x37, 0xda, 0x1e, 0x63, 0x15,
-	0xf5, 0xf3, 0xf8, 0x5b, 0xb1, 0x93, 0x61, 0x13, 0x5b, 0x7d, 0xf0, 0xbc, 0xab, 0x6d, 0x0c, 0xbc,
-	0xfa, 0x1d, 0x00, 0x00, 0xff, 0xff, 0x13, 0x95, 0xef, 0x7d, 0x36, 0x05, 0x00, 0x00,
+	// 699 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x94, 0xcf, 0x6f, 0xd3, 0x4a,
+	0x10, 0xc7, 0xe3, 0x38, 0x3f, 0x27, 0x6e, 0xe4, 0xb7, 0xaa, 0xde, 0xb3, 0x9e, 0x04, 0x14, 0x0b,
+	0x41, 0xe9, 0x21, 0x87, 0xf6, 0x50, 0x21, 0xc4, 0x21, 0x89, 0xad, 0xc6, 0x54, 0x4d, 0xa4, 0x4d,
+	0x4a, 0x91, 0x38, 0x44, 0xae, 0xbd, 0x29, 0xa6, 0xad, 0x37, 0xd8, 0x0b, 0x15, 0x3d, 0x23, 0xc1,
+	0x9f, 0xc6, 0x5f, 0xc4, 0x85, 0x0b, 0x9a, 0xdd, 0x8d, 0x71, 0xda, 0x1e, 0x7a, 0xe0, 0x94, 0xf9,
+	0xce, 0x7e, 0x27, 0xb3, 0x33, 0x1f, 0xdb, 0xd0, 0xc9, 0x05, 0xcf, 0x58, 0x6f, 0x99, 0x71, 0xc1,
+	0x49, 0x5d, 0xfe, 0xb8, 0xbf, 0x0c, 0x68, 0x4f, 0x31, 0x1d, 0xa4, 0x89, 0x20, 0xfb, 0xd0, 0x8c,
+	0x78, 0x2a, 0x58, 0x2a, 0x1c, 0x63, 0xcb, 0xd8, 0xee, 0xee, 0x3e, 0x50, 0xee, 0x5e, 0x61, 0x51,
+	0xd1, 0x50, 0x99, 0xe8, 0xca, 0x4d, 0xf6, 0xa0, 0x79, 0xc6, 0x52, 0x96, 0x25, 0x91, 0x13, 0x6f,
+	0x19, 0xdb, 0x9d, 0xdd, 0xff, 0x6e, 0x16, 0x1e, 0xa8, 0xe3, 0x51, 0x85, 0xae, 0x9c, 0xe4, 0x19,
+	0xd4, 0x3e, 0xe4, 0x3c, 0x75, 0x7e, 0x18, 0xb2, 0xc4, 0x2e, 0x97, 0xbc, 0xce, 0x79, 0x3a, 0xaa,
+	0x50, 0x69, 0x70, 0x27, 0x60, 0x95, 0xdb, 0x92, 0x0e, 0x34, 0x0f, 0xfc, 0xb1, 0x4f, 0x83, 0xa1,
+	0x5d, 0x21, 0x16, 0xb4, 0xbc, 0xc9, 0xf0, 0xf8, 0xc8, 0x1f, 0xcf, 0x6c, 0x83, 0x10, 0xe8, 0xae,
+	0xd4, 0x3c, 0x18, 0x7b, 0xfe, 0x5b, 0xbb, 0x4a, 0x6c, 0xb0, 0xa6, 0x7e, 0x9f, 0x0e, 0x47, 0x3a,
+	0x63, 0x0e, 0x1a, 0x50, 0x4b, 0xd2, 0x44, 0xb8, 0x3d, 0xb0, 0x6f, 0x5e, 0x90, 0xfc, 0x0f, 0xad,
+	0x45, 0x72, 0xc1, 0xd2, 0xf0, 0x92, 0xc9, 0x25, 0xb4, 0x69, 0xa1, 0xdd, 0x17, 0x7a, 0x59, 0x78,
+	0x3b, 0xe2, 0x40, 0xf3, 0x33, 0xcb, 0xf2, 0x84, 0xa7, 0xd2, 0x67, 0xd2, 0x95, 0x24, 0x44, 0x0f,
+	0x56, 0x95, 0xe5, 0x6a, 0x06, 0xae, 0x4b, 0x29, 0x0b, 0x63, 0xf2, 0x10, 0xe0, 0xf4, 0xd3, 0x62,
+	0xc1, 0xb2, 0x69, 0x72, 0xcd, 0x74, 0x75, 0x29, 0x43, 0xfe, 0x85, 0x06, 0x5f, 0x2c, 0x72, 0x26,
+	0xe4, 0x5f, 0x98, 0x54, 0x2b, 0xb2, 0x03, 0x8d, 0xab, 0xf7, 0x2c, 0x8d, 0x98, 0x63, 0x4a, 0x3c,
+	0xa4, 0xbc, 0xb2, 0x13, 0x79, 0x42, 0xb5, 0xc3, 0xfd, 0x69, 0xe8, 0xad, 0x61, 0x47, 0xca, 0x3e,
+	0x92, 0x7d, 0x68, 0x64, 0x2c, 0x8c, 0x27, 0x4b, 0xcd, 0xf6, 0x51, 0xb9, 0x58, 0x9b, 0xfe, 0x88,
+	0xc9, 0x92, 0x6a, 0x3b, 0x79, 0xaa, 0xb6, 0xe5, 0xc0, 0x6d, 0x4c, 0xb8, 0x38, 0xc4, 0x84, 0xe7,
+	0xe8, 0xc3, 0x0a, 0x67, 0xf3, 0xb6, 0x0f, 0xff, 0x11, 0x7d, 0x78, 0xee, 0x1e, 0x43, 0xa7, 0xd4,
+	0x86, 0x6c, 0x40, 0x9b, 0xfa, 0x7d, 0x6f, 0x1e, 0x8c, 0x83, 0x99, 0x5d, 0x29, 0xa4, 0xd7, 0x9f,
+	0xf5, 0x6d, 0xa3, 0x90, 0x53, 0xdf, 0x3f, 0xb4, 0xab, 0x88, 0x5e, 0xca, 0xfe, 0xcc, 0x36, 0x11,
+	0xbd, 0x14, 0xfe, 0xd8, 0xb3, 0x6b, 0x08, 0x35, 0x0e, 0x45, 0xe8, 0x7e, 0x33, 0x60, 0xa3, 0x34,
+	0x53, 0xbe, 0x44, 0x1e, 0x78, 0x22, 0xe7, 0xb6, 0xa8, 0x8c, 0x89, 0x0d, 0x26, 0xe3, 0x0b, 0xb9,
+	0xdf, 0x16, 0xc5, 0xb0, 0xb4, 0x74, 0x73, 0x6d, 0xe9, 0x04, 0x6a, 0x39, 0x62, 0xaa, 0xc9, 0xac,
+	0x8c, 0xc9, 0x13, 0x4d, 0x38, 0xbe, 0xfb, 0xc9, 0xd5, 0xcc, 0x63, 0x00, 0x45, 0x26, 0x4b, 0x04,
+	0xbb, 0xf3, 0x16, 0x7f, 0x03, 0xf4, 0xd7, 0xaa, 0x9e, 0x57, 0xb6, 0x41, 0xd2, 0x2f, 0xa1, 0x79,
+	0x85, 0x71, 0x81, 0xfa, 0xf1, 0x5a, 0xb9, 0xb6, 0x95, 0xd4, 0x64, 0x49, 0x57, 0x15, 0xf7, 0xa6,
+	0xfd, 0x1c, 0xea, 0xb2, 0x44, 0xe3, 0xfe, 0xe7, 0x56, 0x8b, 0x51, 0x85, 0x2a, 0x87, 0xfb, 0x4e,
+	0x3f, 0x89, 0xba, 0x17, 0xe9, 0x02, 0x9c, 0xd0, 0x60, 0xe6, 0xaf, 0x90, 0x17, 0x5a, 0x33, 0x2f,
+	0xb4, 0x86, 0x6e, 0x41, 0x4b, 0x69, 0x49, 0x7d, 0x03, 0xda, 0x4a, 0xad, 0x63, 0xbf, 0x86, 0x6e,
+	0x79, 0xbc, 0x7c, 0x49, 0x5c, 0xb0, 0xb0, 0xbf, 0x60, 0xe9, 0xe0, 0x8b, 0x60, 0xb9, 0x7e, 0xcf,
+	0xd6, 0x72, 0xf8, 0x26, 0xe6, 0x8c, 0x9d, 0x4f, 0xca, 0x10, 0x4a, 0x99, 0x7b, 0x82, 0xde, 0x87,
+	0xa6, 0xc7, 0xa3, 0x23, 0x26, 0x42, 0xb2, 0x09, 0xf5, 0x98, 0x47, 0x81, 0xa7, 0xbf, 0x1d, 0x4a,
+	0x20, 0xe7, 0x98, 0x47, 0x6f, 0x58, 0x26, 0x5b, 0xd4, 0xa8, 0x56, 0x3b, 0xaf, 0xf4, 0xab, 0xa0,
+	0x90, 0xe2, 0xe0, 0x38, 0xf2, 0x7c, 0x3a, 0xeb, 0x53, 0x5c, 0x8c, 0xfc, 0x72, 0xf9, 0x87, 0xf3,
+	0xe1, 0x31, 0xa5, 0xea, 0xfb, 0x66, 0x41, 0x4b, 0x66, 0x70, 0xf6, 0xea, 0xa0, 0x07, 0x6e, 0xc4,
+	0x2f, 0x7b, 0xb9, 0xc8, 0x78, 0x7a, 0x96, 0x87, 0x17, 0x42, 0x87, 0x31, 0x8f, 0x7a, 0x79, 0x7c,
+	0xae, 0x6e, 0x3b, 0xa8, 0xcb, 0x16, 0xdf, 0x0d, 0xe3, 0xb4, 0x21, 0x13, 0x7b, 0xbf, 0x03, 0x00,
+	0x00, 0xff, 0xff, 0x65, 0xa5, 0xb4, 0x28, 0x0a, 0x06, 0x00, 0x00,
 }
