@@ -14,6 +14,7 @@ type StoreReader interface {
 	ReadAt(p []byte, off int64) (n int, err error) // io.ReaderAt
 	Seek(offset int64, whence int) (int64, error)  // io.Seeker
 	GetSize() (size uint64, err error)
+	GetInit() *proto.StoreInit
 	Close() (err error)
 }
 
@@ -21,35 +22,8 @@ type StoreWriter interface {
 	Write(p []byte) (n int, err error)              // io.Writer
 	WriteAt(p []byte, off int64) (n int, err error) // io.WriterAt
 	Seek(offset int64, whence int) (int64, error)   // io.Seeker
+	GetInit() *proto.StoreInit
 	Close() (err error)
-}
-
-type StoreInit struct {
-	StoreContent proto.StoreInit_StoreContent
-	Json         *StoreJson
-	GenericFile  string
-}
-
-type StoreJson struct {
-	Version int64
-	String  string
-}
-
-func (sj *StoreJson) ToProto() *proto.StoreJson {
-	return &proto.StoreJson{
-		Version: sj.Version,
-		Json:    sj.String,
-	}
-}
-
-func StoreJsonFromProto(sj *proto.StoreJson) *StoreJson {
-	if sj == nil {
-		return nil
-	}
-	return &StoreJson{
-		Version: sj.GetVersion(),
-		String:  sj.GetJson(),
-	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -59,47 +33,23 @@ func StoreJsonFromProto(sj *proto.StoreJson) *StoreJson {
 ///////////////////////////////////////////////////////////////////////////////////////
 
 type storeWriter struct {
-	storeInit *StoreInit
-	respJson  *StoreJson
-	stream    proto.StrongDocService_StoreWriteClient
+	initReq  *proto.StoreInit
+	initResp *proto.StoreInit
+	stream   proto.StrongDocService_StoreWriteClient
 }
 
-func CreateStore(sdc client.StrongDocClient, storeInit *StoreInit) (StoreWriter, error) {
-
+func CreateStore(sdc client.StrongDocClient, storeInit *proto.StoreInit) (StoreWriter, error) {
 	stream, err := sdc.GetGrpcClient().StoreWrite(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	switch storeInit.StoreContent {
-	case proto.StoreInit_GENERIC:
-		err = stream.Send(&proto.StoreWriteReq{
-			WriteOp: proto.StoreWriteReq_WRITE_INIT,
-			Data: &proto.StoreWriteReq_Init{
-				Init: &proto.StoreInit{
-					Content: storeInit.StoreContent,
-					Init: &proto.StoreInit_Generic{
-						Generic: &proto.StoreInitGeneric{
-							Filename: storeInit.GenericFile,
-						},
-					},
-				},
-			},
-		})
-	default:
-		err = stream.Send(&proto.StoreWriteReq{
-			WriteOp: proto.StoreWriteReq_WRITE_INIT,
-			Data: &proto.StoreWriteReq_Init{
-				Init: &proto.StoreInit{
-					Content: storeInit.StoreContent,
-					Init: &proto.StoreInit_Json{
-						Json: storeInit.Json.ToProto(),
-					},
-				},
-			},
-		})
-	}
-
+	err = stream.Send(&proto.StoreWriteReq{
+		WriteOp: proto.StoreWriteReq_WRITE_INIT,
+		Req: &proto.StoreWriteReq_Init{
+			Init: storeInit,
+		},
+	})
 	if err != nil {
 		stream.CloseSend()
 		return nil, err
@@ -111,12 +61,10 @@ func CreateStore(sdc client.StrongDocClient, storeInit *StoreInit) (StoreWriter,
 		return nil, err
 	}
 
-	respJson := StoreJsonFromProto(resp.GetJson())
-
 	return &storeWriter{
-		storeInit: storeInit,
-		respJson:  respJson,
-		stream:    stream,
+		initReq:  storeInit,
+		initResp: resp.GetInit(),
+		stream:   stream,
 	}, nil
 }
 
@@ -127,7 +75,7 @@ func (sw *storeWriter) Write(p []byte) (n int, err error) {
 
 	err = sw.stream.Send(&proto.StoreWriteReq{
 		WriteOp: proto.StoreWriteReq_WRITE_DATA,
-		Data: &proto.StoreWriteReq_Write{
+		Req: &proto.StoreWriteReq_Write{
 			Write: &proto.StoreWrite{
 				Data: p,
 			},
@@ -153,7 +101,7 @@ func (sw *storeWriter) WriteAt(p []byte, off int64) (n int, err error) {
 
 	err = sw.stream.Send(&proto.StoreWriteReq{
 		WriteOp: proto.StoreWriteReq_WRITE_AT,
-		Data: &proto.StoreWriteReq_Write{
+		Req: &proto.StoreWriteReq_Write{
 			Write: &proto.StoreWrite{
 				Data:   p,
 				Offset: off,
@@ -188,7 +136,7 @@ func (sw *storeWriter) Seek(off int64, whence int) (n int64, err error) {
 
 	err = sw.stream.Send(&proto.StoreWriteReq{
 		WriteOp: proto.StoreWriteReq_WRITE_SEEK,
-		Data: &proto.StoreWriteReq_Write{
+		Req: &proto.StoreWriteReq_Write{
 			Write: &proto.StoreWrite{
 				Whence: pwhence,
 				Offset: off,
@@ -208,6 +156,10 @@ func (sw *storeWriter) Seek(off int64, whence int) (n int64, err error) {
 	return
 }
 
+func (sw *storeWriter) GetInit() *proto.StoreInit {
+	return sw.initResp
+}
+
 func (sw *storeWriter) Close() (err error) {
 	if sw.stream == nil {
 		return fmt.Errorf("store writer not open for writing")
@@ -217,7 +169,7 @@ func (sw *storeWriter) Close() (err error) {
 
 	err = sw.stream.Send(&proto.StoreWriteReq{
 		WriteOp: proto.StoreWriteReq_WRITE_END,
-		Data:    nil,
+		Req:     nil,
 	})
 	if err != nil {
 		return err
@@ -238,47 +190,24 @@ func (sw *storeWriter) Close() (err error) {
 ///////////////////////////////////////////////////////////////////////////////////////
 
 type storeReader struct {
-	storeInit *StoreInit
-	respJson  *StoreJson
-	stream    proto.StrongDocService_StoreReadClient
-	size      int64
+	initReq  *proto.StoreInit
+	initResp *proto.StoreInit
+	stream   proto.StrongDocService_StoreReadClient
+	size     int64
 }
 
-func OpenStore(sdc client.StrongDocClient, storeInit *StoreInit) (StoreReader, error) {
+func OpenStore(sdc client.StrongDocClient, storeInit *proto.StoreInit) (StoreReader, error) {
 	stream, err := sdc.GetGrpcClient().StoreRead(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	switch storeInit.StoreContent {
-	case proto.StoreInit_GENERIC:
-		err = stream.Send(&proto.StoreReadReq{
-			ReadOp: proto.StoreReadReq_READ_INIT,
-			Data: &proto.StoreReadReq_Init{
-				Init: &proto.StoreInit{
-					Content: storeInit.StoreContent,
-					Init: &proto.StoreInit_Generic{
-						Generic: &proto.StoreInitGeneric{
-							Filename: storeInit.GenericFile,
-						},
-					},
-				},
-			},
-		})
-	default:
-		err = stream.Send(&proto.StoreReadReq{
-			ReadOp: proto.StoreReadReq_READ_INIT,
-			Data: &proto.StoreReadReq_Init{
-				Init: &proto.StoreInit{
-					Content: storeInit.StoreContent,
-					Init: &proto.StoreInit_Json{
-						Json: storeInit.Json.ToProto(),
-					},
-				},
-			},
-		})
-	}
-
+	err = stream.Send(&proto.StoreReadReq{
+		ReadOp: proto.StoreReadReq_READ_INIT,
+		Req: &proto.StoreReadReq_Init{
+			Init: storeInit,
+		},
+	})
 	if err != nil {
 		stream.CloseSend()
 		return nil, err
@@ -290,20 +219,18 @@ func OpenStore(sdc client.StrongDocClient, storeInit *StoreInit) (StoreReader, e
 		return nil, err
 	}
 
-	respJson := StoreJsonFromProto(resp.GetJson())
-
 	return &storeReader{
-		storeInit: storeInit,
-		respJson:  respJson,
-		stream:    stream,
-		size:      resp.GetSize(),
+		initReq:  storeInit,
+		initResp: resp.GetInit(),
+		stream:   stream,
+		size:     resp.GetSize(),
 	}, nil
 }
 
 func (sr *storeReader) Read(p []byte) (int, error) {
 	req := &proto.StoreReadReq{
 		ReadOp: proto.StoreReadReq_READ_DATA,
-		Data: &proto.StoreReadReq_Read{
+		Req: &proto.StoreReadReq_Read{
 			Read: &proto.StoreRead{
 				BufferSize: int64(len(p)),
 				Offset:     0,
@@ -318,7 +245,7 @@ func (sr *storeReader) Read(p []byte) (int, error) {
 func (sr *storeReader) ReadAt(p []byte, off int64) (int, error) {
 	req := &proto.StoreReadReq{
 		ReadOp: proto.StoreReadReq_READ_AT,
-		Data: &proto.StoreReadReq_Read{
+		Req: &proto.StoreReadReq_Read{
 			Read: &proto.StoreRead{
 				BufferSize: int64(len(p)),
 				Offset:     off,
@@ -374,7 +301,7 @@ func (sr *storeReader) Seek(off int64, whence int) (n int64, err error) {
 
 	err = sr.stream.Send(&proto.StoreReadReq{
 		ReadOp: proto.StoreReadReq_READ_SEEK,
-		Data: &proto.StoreReadReq_Read{
+		Req: &proto.StoreReadReq_Read{
 			Read: &proto.StoreRead{
 				BufferSize: 0,
 				Offset:     off,
@@ -399,6 +326,10 @@ func (sr *storeReader) GetSize() (size uint64, err error) {
 	return uint64(sr.size), nil
 }
 
+func (sr *storeReader) GetInit() *proto.StoreInit {
+	return sr.initResp
+}
+
 func (sr *storeReader) Close() (err error) {
 	if sr.stream == nil {
 		return fmt.Errorf("store reader not open for reading")
@@ -408,7 +339,7 @@ func (sr *storeReader) Close() (err error) {
 
 	err = sr.stream.Send(&proto.StoreReadReq{
 		ReadOp: proto.StoreReadReq_READ_END,
-		Data:   nil,
+		Req:    nil,
 	})
 	if err != nil {
 		return err

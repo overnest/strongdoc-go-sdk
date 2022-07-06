@@ -4,207 +4,199 @@ It consists of high-level wrapper functions around GRPC function calls.
 */
 package api
 
-import (
-	"encoding/json"
-	"fmt"
+// const (
+// 	DOC_V1      = int64(1)
+// 	DOC_VER_CUR = DOC_V1
+// )
 
-	"github.com/overnest/strongdoc-go-sdk/client"
-	"github.com/overnest/strongdoc-go-sdk/proto"
-	"github.com/overnest/strongdoc-go-sdk/store"
-)
+// type DocV1 struct {
+// 	DocID  string
+// 	DocVer string
+// }
 
-const (
-	DOC_V1      = int64(1)
-	DOC_VER_CUR = DOC_V1
-)
+// type DocWriter interface {
+// 	GetDocID() string
+// 	GetDocVer() string
+// 	store.StoreWriter
+// }
 
-type DocV1 struct {
-	DocID  string
-	DocVer string
-}
+// type DocReader interface {
+// 	GetDocID() string
+// 	GetDocVer() string
+// 	store.StoreReader
+// }
 
-type DocWriter interface {
-	GetDocID() string
-	GetDocVer() string
-	store.StoreWriter
-}
+// ///////////////////////////////////////////////////////////////////////////////////////
+// //
+// //                                    Doc Writer
+// //
+// ///////////////////////////////////////////////////////////////////////////////////////
 
-type DocReader interface {
-	GetDocID() string
-	GetDocVer() string
-	store.StoreReader
-}
+// type docWriter struct {
+// 	docID       string
+// 	docVer      string
+// 	storeWriter store.StoreWriter
+// }
 
-///////////////////////////////////////////////////////////////////////////////////////
-//
-//                                    Doc Writer
-//
-///////////////////////////////////////////////////////////////////////////////////////
+// func CreateDocWriter(sdc client.StrongDocClient, docID, docVer string) (DocWriter, error) {
+// 	docv1 := &DocV1{
+// 		DocID:  docID,
+// 		DocVer: docVer,
+// 	}
 
-type docWriter struct {
-	docID       string
-	docVer      string
-	storeWriter store.StoreWriter
-}
+// 	docv1Json, err := json.Marshal(docv1)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-func CreateDocWriter(sdc client.StrongDocClient, docID, docVer string) (DocWriter, error) {
-	docv1 := &DocV1{
-		DocID:  docID,
-		DocVer: docVer,
-	}
+// 	storeInit := &proto.StoreInit{
+// 		Content: proto.StoreInit_DOCUMENT,
+// 		Init: &proto.StoreInit_Doc{
+// 			Doc: &proto.DocStoreInit{
+// 				Version: ,
+// 			},
+// 		},
+// 	}
 
-	docv1Json, err := json.Marshal(docv1)
-	if err != nil {
-		return nil, err
-	}
+// 	storeWriter, err := store.CreateStore(sdc, storeInit)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	storeInit := &store.StoreInit{
-		StoreContent: proto.StoreInit_DOCUMENT,
-		Json: &store.StoreJson{
-			Version: DOC_VER_CUR,
-			String:  string(docv1Json),
-		},
-	}
+// 	docWriter := &docWriter{
+// 		docID:       docID,
+// 		docVer:      docVer,
+// 		storeWriter: storeWriter,
+// 	}
 
-	storeWriter, err := store.CreateStore(sdc, storeInit)
-	if err != nil {
-		return nil, err
-	}
+// 	return docWriter, nil
+// }
 
-	docWriter := &docWriter{
-		docID:       docID,
-		docVer:      docVer,
-		storeWriter: storeWriter,
-	}
+// func (dw *docWriter) GetDocID() string {
+// 	return dw.docID
+// }
 
-	return docWriter, nil
-}
+// func (dw *docWriter) GetDocVer() string {
+// 	return dw.docVer
+// }
 
-func (dw *docWriter) GetDocID() string {
-	return dw.docID
-}
+// func (dw *docWriter) Write(p []byte) (int, error) {
+// 	if dw.storeWriter == nil {
+// 		return 0, fmt.Errorf("document not open for writing")
+// 	}
 
-func (dw *docWriter) GetDocVer() string {
-	return dw.docVer
-}
+// 	return dw.storeWriter.Write(p)
+// }
 
-func (dw *docWriter) Write(p []byte) (int, error) {
-	if dw.storeWriter == nil {
-		return 0, fmt.Errorf("document not open for writing")
-	}
+// func (dw *docWriter) WriteAt(p []byte, off int64) (int, error) {
+// 	if dw.storeWriter == nil {
+// 		return 0, fmt.Errorf("document not open for writing")
+// 	}
 
-	return dw.storeWriter.Write(p)
-}
+// 	return dw.storeWriter.WriteAt(p, off)
+// }
 
-func (dw *docWriter) WriteAt(p []byte, off int64) (int, error) {
-	if dw.storeWriter == nil {
-		return 0, fmt.Errorf("document not open for writing")
-	}
+// func (dw *docWriter) Seek(offset int64, whence int) (int64, error) {
+// 	if dw.storeWriter == nil {
+// 		return 0, fmt.Errorf("document not open for writing")
+// 	}
 
-	return dw.storeWriter.WriteAt(p, off)
-}
+// 	return dw.storeWriter.Seek(offset, whence)
+// }
 
-func (dw *docWriter) Seek(offset int64, whence int) (int64, error) {
-	if dw.storeWriter == nil {
-		return 0, fmt.Errorf("document not open for writing")
-	}
+// func (dw *docWriter) Close() error {
+// 	if dw.storeWriter == nil {
+// 		return fmt.Errorf("document not open for writing")
+// 	}
 
-	return dw.storeWriter.Seek(offset, whence)
-}
+// 	return dw.storeWriter.Close()
+// }
 
-func (dw *docWriter) Close() error {
-	if dw.storeWriter == nil {
-		return fmt.Errorf("document not open for writing")
-	}
+// ///////////////////////////////////////////////////////////////////////////////////////
+// //
+// //                                    Doc Reader
+// //
+// ///////////////////////////////////////////////////////////////////////////////////////
 
-	return dw.storeWriter.Close()
-}
+// type docReader struct {
+// 	docID       string
+// 	docVer      string
+// 	storeReader store.StoreReader
+// }
 
-///////////////////////////////////////////////////////////////////////////////////////
-//
-//                                    Doc Reader
-//
-///////////////////////////////////////////////////////////////////////////////////////
+// func CreateDocReader(sdc client.StrongDocClient, docID, docVer string) (DocReader, error) {
+// 	docv1 := &DocV1{
+// 		DocID:  docID,
+// 		DocVer: docVer,
+// 	}
 
-type docReader struct {
-	docID       string
-	docVer      string
-	storeReader store.StoreReader
-}
+// 	docv1Json, err := json.Marshal(docv1)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-func CreateDocReader(sdc client.StrongDocClient, docID, docVer string) (DocReader, error) {
-	docv1 := &DocV1{
-		DocID:  docID,
-		DocVer: docVer,
-	}
+// 	storeInit := &store.StoreInit{
+// 		StoreContent: proto.StoreInit_DOCUMENT,
+// 		Json: &store.StoreJson{
+// 			Version: DOC_VER_CUR,
+// 			String:  string(docv1Json),
+// 		},
+// 	}
 
-	docv1Json, err := json.Marshal(docv1)
-	if err != nil {
-		return nil, err
-	}
+// 	storeReader, err := store.OpenStore(sdc, storeInit)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	storeInit := &store.StoreInit{
-		StoreContent: proto.StoreInit_DOCUMENT,
-		Json: &store.StoreJson{
-			Version: DOC_VER_CUR,
-			String:  string(docv1Json),
-		},
-	}
+// 	docReader := &docReader{
+// 		docID:       docID,
+// 		docVer:      docVer,
+// 		storeReader: storeReader,
+// 	}
 
-	storeReader, err := store.OpenStore(sdc, storeInit)
-	if err != nil {
-		return nil, err
-	}
+// 	return docReader, nil
+// }
 
-	docReader := &docReader{
-		docID:       docID,
-		docVer:      docVer,
-		storeReader: storeReader,
-	}
+// func (dr *docReader) GetDocID() string {
+// 	return dr.docID
+// }
 
-	return docReader, nil
-}
+// func (dr *docReader) GetDocVer() string {
+// 	return dr.docVer
+// }
 
-func (dr *docReader) GetDocID() string {
-	return dr.docID
-}
+// func (dr *docReader) Read(p []byte) (int, error) {
+// 	if dr.storeReader == nil {
+// 		return 0, fmt.Errorf("document not open for reading")
+// 	}
 
-func (dr *docReader) GetDocVer() string {
-	return dr.docVer
-}
+// 	return dr.storeReader.Read(p)
+// }
 
-func (dr *docReader) Read(p []byte) (int, error) {
-	if dr.storeReader == nil {
-		return 0, fmt.Errorf("document not open for reading")
-	}
+// func (dr *docReader) ReadAt(p []byte, off int64) (int, error) {
+// 	if dr.storeReader == nil {
+// 		return 0, fmt.Errorf("document not open for reading")
+// 	}
 
-	return dr.storeReader.Read(p)
-}
+// 	return dr.storeReader.ReadAt(p, off)
+// }
 
-func (dr *docReader) ReadAt(p []byte, off int64) (int, error) {
-	if dr.storeReader == nil {
-		return 0, fmt.Errorf("document not open for reading")
-	}
+// func (dr *docReader) Seek(offset int64, whence int) (int64, error) {
+// 	if dr.storeReader == nil {
+// 		return 0, fmt.Errorf("document not open for reading")
+// 	}
 
-	return dr.storeReader.ReadAt(p, off)
-}
+// 	return dr.storeReader.Seek(offset, whence)
+// }
 
-func (dr *docReader) Seek(offset int64, whence int) (int64, error) {
-	if dr.storeReader == nil {
-		return 0, fmt.Errorf("document not open for reading")
-	}
+// func (dr *docReader) GetSize() (uint64, error) {
+// 	return dr.storeReader.GetSize()
+// }
 
-	return dr.storeReader.Seek(offset, whence)
-}
+// func (dr *docReader) Close() error {
+// 	if dr.storeReader == nil {
+// 		return fmt.Errorf("document not open for reading")
+// 	}
 
-func (dr *docReader) GetSize() (uint64, error) {
-	return dr.storeReader.GetSize()
-}
-
-func (dr *docReader) Close() error {
-	if dr.storeReader == nil {
-		return fmt.Errorf("document not open for reading")
-	}
-
-	return dr.storeReader.Close()
-}
+// 	return dr.storeReader.Close()
+// }

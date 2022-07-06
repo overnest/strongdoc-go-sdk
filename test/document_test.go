@@ -1,45 +1,43 @@
 package test
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"math/rand"
 	"os"
 	"testing"
 
-	"github.com/overnest/strongdoc-go-sdk/proto"
+	"github.com/overnest/strongdoc-go-sdk/api/apidef"
+	"github.com/overnest/strongdoc-go-sdk/document"
 	"github.com/overnest/strongdoc-go-sdk/sberr"
-	"github.com/overnest/strongdoc-go-sdk/store"
 	"github.com/overnest/strongdoc-go-sdk/test/testUtils"
 	"github.com/overnest/strongdoc-go-sdk/utils"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	storeFileName = "storeTestFile"
-	localFileName = "/tmp/storeTestFile"
+	docFileName      = "docTestFile"
+	docLocalFileName = "/tmp/docTestFile"
 )
 
-func TestStore(t *testing.T) {
+func TestDocument(t *testing.T) {
 	assert := require.New(t)
+
 	totalFileSize := 1024 * 1024 * 50
 	maxWriteSize := 1024 * 1024 * 10
 	maxReadSize := 1024 * 1024 * 10
-
-	sdc, _ := testUtils.SetupTestUser(t, 1)
+	sdc, user := testUtils.SetupTestUser(t, 1)
 
 	//
-	// Write to store
+	// Create document
 	//
-	writer, err := store.CreateStore(sdc, &proto.StoreInit{
-		Content: proto.StoreInit_GENERIC,
-		Init: &proto.StoreInit_Generic{
-			Generic: &proto.GenericStoreInit{
-				Filename: storeFileName,
-			},
-		},
-	})
+	docKey, err := apidef.NewSymKey(user.UserID, []*apidef.Key{user.UserCred.AsymKey})
 	assert.NoError(err, sberr.FromError(err))
+
+	writer, err := document.CreateDocument(sdc, docFileName, docKey)
+	assert.NoError(err, sberr.FromError(err))
+	docKey = writer.DocKey()
 
 	localFile, err := os.Create(localFileName)
 	assert.NoError(err)
@@ -50,33 +48,27 @@ func TestStore(t *testing.T) {
 		writeBytes := utils.Min(writeBytesLeft, rand.Intn(maxWriteSize))
 		bytes := make([]byte, writeBytes)
 		rand.Read(bytes)
+		b64bytes := []byte(base64.StdEncoding.EncodeToString(bytes))
 
-		n, err := localFile.Write(bytes)
+		m, err := localFile.Write(b64bytes)
 		assert.NoError(err)
 
-		m, err := writer.Write(bytes)
+		n, err := writer.Write(b64bytes)
 		assert.NoError(err, sberr.FromError(err))
 
 		assert.Equal(m, n)
-		writeBytesLeft -= len(bytes)
+		writeBytesLeft -= len(b64bytes)
 	}
 
 	assert.NoError(localFile.Close())
 	assert.NoError(writer.Close())
 
 	//
-	// Read from store
+	// Read document
 	//
 	localFile, err = os.Open(localFileName)
 	assert.NoError(err)
-	reader, err := store.OpenStore(sdc, &proto.StoreInit{
-		Content: proto.StoreInit_GENERIC,
-		Init: &proto.StoreInit_Generic{
-			Generic: &proto.GenericStoreInit{
-				Filename: storeFileName,
-			},
-		},
-	})
+	reader, err := document.OpenDocument(sdc, writer.DocID(), docKey)
 	assert.NoError(err, sberr.FromError(err))
 
 	var lerr, rerr error
