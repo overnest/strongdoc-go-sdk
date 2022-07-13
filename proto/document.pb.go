@@ -20,80 +20,80 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-type DocStoreInit struct {
-	MetaVer int64 `protobuf:"varint,1,opt,name=metaVer,proto3" json:"metaVer,omitempty"`
+type DocInit struct {
+	StoreVer int64 `protobuf:"varint,1,opt,name=storeVer,proto3" json:"storeVer,omitempty"`
 	// Types that are valid to be assigned to Doc:
-	//	*DocStoreInit_V1
-	Doc                  isDocStoreInit_Doc `protobuf_oneof:"doc"`
-	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
-	XXX_unrecognized     []byte             `json:"-"`
-	XXX_sizecache        int32              `json:"-"`
+	//	*DocInit_V1
+	Doc                  isDocInit_Doc `protobuf_oneof:"doc"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
-func (m *DocStoreInit) Reset()         { *m = DocStoreInit{} }
-func (m *DocStoreInit) String() string { return proto.CompactTextString(m) }
-func (*DocStoreInit) ProtoMessage()    {}
-func (*DocStoreInit) Descriptor() ([]byte, []int) {
+func (m *DocInit) Reset()         { *m = DocInit{} }
+func (m *DocInit) String() string { return proto.CompactTextString(m) }
+func (*DocInit) ProtoMessage()    {}
+func (*DocInit) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9d2790a4091b3173, []int{0}
 }
 
-func (m *DocStoreInit) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_DocStoreInit.Unmarshal(m, b)
+func (m *DocInit) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DocInit.Unmarshal(m, b)
 }
-func (m *DocStoreInit) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_DocStoreInit.Marshal(b, m, deterministic)
+func (m *DocInit) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DocInit.Marshal(b, m, deterministic)
 }
-func (m *DocStoreInit) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DocStoreInit.Merge(m, src)
+func (m *DocInit) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DocInit.Merge(m, src)
 }
-func (m *DocStoreInit) XXX_Size() int {
-	return xxx_messageInfo_DocStoreInit.Size(m)
+func (m *DocInit) XXX_Size() int {
+	return xxx_messageInfo_DocInit.Size(m)
 }
-func (m *DocStoreInit) XXX_DiscardUnknown() {
-	xxx_messageInfo_DocStoreInit.DiscardUnknown(m)
+func (m *DocInit) XXX_DiscardUnknown() {
+	xxx_messageInfo_DocInit.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_DocStoreInit proto.InternalMessageInfo
+var xxx_messageInfo_DocInit proto.InternalMessageInfo
 
-func (m *DocStoreInit) GetMetaVer() int64 {
+func (m *DocInit) GetStoreVer() int64 {
 	if m != nil {
-		return m.MetaVer
+		return m.StoreVer
 	}
 	return 0
 }
 
-type isDocStoreInit_Doc interface {
-	isDocStoreInit_Doc()
+type isDocInit_Doc interface {
+	isDocInit_Doc()
 }
 
-type DocStoreInit_V1 struct {
-	V1 *DocStoreInitV1 `protobuf:"bytes,100,opt,name=v1,proto3,oneof"`
+type DocInit_V1 struct {
+	V1 *DocInitV1 `protobuf:"bytes,100,opt,name=v1,proto3,oneof"`
 }
 
-func (*DocStoreInit_V1) isDocStoreInit_Doc() {}
+func (*DocInit_V1) isDocInit_Doc() {}
 
-func (m *DocStoreInit) GetDoc() isDocStoreInit_Doc {
+func (m *DocInit) GetDoc() isDocInit_Doc {
 	if m != nil {
 		return m.Doc
 	}
 	return nil
 }
 
-func (m *DocStoreInit) GetV1() *DocStoreInitV1 {
-	if x, ok := m.GetDoc().(*DocStoreInit_V1); ok {
+func (m *DocInit) GetV1() *DocInitV1 {
+	if x, ok := m.GetDoc().(*DocInit_V1); ok {
 		return x.V1
 	}
 	return nil
 }
 
 // XXX_OneofWrappers is for the internal use of the proto package.
-func (*DocStoreInit) XXX_OneofWrappers() []interface{} {
+func (*DocInit) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
-		(*DocStoreInit_V1)(nil),
+		(*DocInit_V1)(nil),
 	}
 }
 
-type DocStoreInitV1 struct {
+type DocInitV1 struct {
 	DocID                string   `protobuf:"bytes,1,opt,name=docID,proto3" json:"docID,omitempty"`
 	DocVer               string   `protobuf:"bytes,2,opt,name=docVer,proto3" json:"docVer,omitempty"`
 	DocKey               *Key     `protobuf:"bytes,3,opt,name=docKey,proto3" json:"docKey,omitempty"`
@@ -102,73 +102,592 @@ type DocStoreInitV1 struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *DocStoreInitV1) Reset()         { *m = DocStoreInitV1{} }
-func (m *DocStoreInitV1) String() string { return proto.CompactTextString(m) }
-func (*DocStoreInitV1) ProtoMessage()    {}
-func (*DocStoreInitV1) Descriptor() ([]byte, []int) {
+func (m *DocInitV1) Reset()         { *m = DocInitV1{} }
+func (m *DocInitV1) String() string { return proto.CompactTextString(m) }
+func (*DocInitV1) ProtoMessage()    {}
+func (*DocInitV1) Descriptor() ([]byte, []int) {
 	return fileDescriptor_9d2790a4091b3173, []int{1}
 }
 
-func (m *DocStoreInitV1) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_DocStoreInitV1.Unmarshal(m, b)
+func (m *DocInitV1) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DocInitV1.Unmarshal(m, b)
 }
-func (m *DocStoreInitV1) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_DocStoreInitV1.Marshal(b, m, deterministic)
+func (m *DocInitV1) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DocInitV1.Marshal(b, m, deterministic)
 }
-func (m *DocStoreInitV1) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DocStoreInitV1.Merge(m, src)
+func (m *DocInitV1) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DocInitV1.Merge(m, src)
 }
-func (m *DocStoreInitV1) XXX_Size() int {
-	return xxx_messageInfo_DocStoreInitV1.Size(m)
+func (m *DocInitV1) XXX_Size() int {
+	return xxx_messageInfo_DocInitV1.Size(m)
 }
-func (m *DocStoreInitV1) XXX_DiscardUnknown() {
-	xxx_messageInfo_DocStoreInitV1.DiscardUnknown(m)
+func (m *DocInitV1) XXX_DiscardUnknown() {
+	xxx_messageInfo_DocInitV1.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_DocStoreInitV1 proto.InternalMessageInfo
+var xxx_messageInfo_DocInitV1 proto.InternalMessageInfo
 
-func (m *DocStoreInitV1) GetDocID() string {
+func (m *DocInitV1) GetDocID() string {
 	if m != nil {
 		return m.DocID
 	}
 	return ""
 }
 
-func (m *DocStoreInitV1) GetDocVer() string {
+func (m *DocInitV1) GetDocVer() string {
 	if m != nil {
 		return m.DocVer
 	}
 	return ""
 }
 
-func (m *DocStoreInitV1) GetDocKey() *Key {
+func (m *DocInitV1) GetDocKey() *Key {
 	if m != nil {
 		return m.DocKey
 	}
 	return nil
 }
 
+type DocVerList struct {
+	Vers                 []string `protobuf:"bytes,1,rep,name=vers,proto3" json:"vers,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DocVerList) Reset()         { *m = DocVerList{} }
+func (m *DocVerList) String() string { return proto.CompactTextString(m) }
+func (*DocVerList) ProtoMessage()    {}
+func (*DocVerList) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{2}
+}
+
+func (m *DocVerList) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DocVerList.Unmarshal(m, b)
+}
+func (m *DocVerList) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DocVerList.Marshal(b, m, deterministic)
+}
+func (m *DocVerList) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DocVerList.Merge(m, src)
+}
+func (m *DocVerList) XXX_Size() int {
+	return xxx_messageInfo_DocVerList.Size(m)
+}
+func (m *DocVerList) XXX_DiscardUnknown() {
+	xxx_messageInfo_DocVerList.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DocVerList proto.InternalMessageInfo
+
+func (m *DocVerList) GetVers() []string {
+	if m != nil {
+		return m.Vers
+	}
+	return nil
+}
+
+type DocListReq struct {
+	StoreVer int64 `protobuf:"varint,1,opt,name=storeVer,proto3" json:"storeVer,omitempty"`
+	// Types that are valid to be assigned to List:
+	//	*DocListReq_V1
+	List                 isDocListReq_List `protobuf_oneof:"list"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
+}
+
+func (m *DocListReq) Reset()         { *m = DocListReq{} }
+func (m *DocListReq) String() string { return proto.CompactTextString(m) }
+func (*DocListReq) ProtoMessage()    {}
+func (*DocListReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{3}
+}
+
+func (m *DocListReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DocListReq.Unmarshal(m, b)
+}
+func (m *DocListReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DocListReq.Marshal(b, m, deterministic)
+}
+func (m *DocListReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DocListReq.Merge(m, src)
+}
+func (m *DocListReq) XXX_Size() int {
+	return xxx_messageInfo_DocListReq.Size(m)
+}
+func (m *DocListReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_DocListReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DocListReq proto.InternalMessageInfo
+
+func (m *DocListReq) GetStoreVer() int64 {
+	if m != nil {
+		return m.StoreVer
+	}
+	return 0
+}
+
+type isDocListReq_List interface {
+	isDocListReq_List()
+}
+
+type DocListReq_V1 struct {
+	V1 *DocListReqV1 `protobuf:"bytes,100,opt,name=v1,proto3,oneof"`
+}
+
+func (*DocListReq_V1) isDocListReq_List() {}
+
+func (m *DocListReq) GetList() isDocListReq_List {
+	if m != nil {
+		return m.List
+	}
+	return nil
+}
+
+func (m *DocListReq) GetV1() *DocListReqV1 {
+	if x, ok := m.GetList().(*DocListReq_V1); ok {
+		return x.V1
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*DocListReq) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*DocListReq_V1)(nil),
+	}
+}
+
+type DocListReqV1 struct {
+	DocID                string   `protobuf:"bytes,1,opt,name=docID,proto3" json:"docID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DocListReqV1) Reset()         { *m = DocListReqV1{} }
+func (m *DocListReqV1) String() string { return proto.CompactTextString(m) }
+func (*DocListReqV1) ProtoMessage()    {}
+func (*DocListReqV1) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{4}
+}
+
+func (m *DocListReqV1) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DocListReqV1.Unmarshal(m, b)
+}
+func (m *DocListReqV1) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DocListReqV1.Marshal(b, m, deterministic)
+}
+func (m *DocListReqV1) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DocListReqV1.Merge(m, src)
+}
+func (m *DocListReqV1) XXX_Size() int {
+	return xxx_messageInfo_DocListReqV1.Size(m)
+}
+func (m *DocListReqV1) XXX_DiscardUnknown() {
+	xxx_messageInfo_DocListReqV1.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DocListReqV1 proto.InternalMessageInfo
+
+func (m *DocListReqV1) GetDocID() string {
+	if m != nil {
+		return m.DocID
+	}
+	return ""
+}
+
+type DocListResp struct {
+	StoreVer int64 `protobuf:"varint,1,opt,name=storeVer,proto3" json:"storeVer,omitempty"`
+	// Types that are valid to be assigned to List:
+	//	*DocListResp_V1
+	List                 isDocListResp_List `protobuf_oneof:"list"`
+	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
+	XXX_unrecognized     []byte             `json:"-"`
+	XXX_sizecache        int32              `json:"-"`
+}
+
+func (m *DocListResp) Reset()         { *m = DocListResp{} }
+func (m *DocListResp) String() string { return proto.CompactTextString(m) }
+func (*DocListResp) ProtoMessage()    {}
+func (*DocListResp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{5}
+}
+
+func (m *DocListResp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DocListResp.Unmarshal(m, b)
+}
+func (m *DocListResp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DocListResp.Marshal(b, m, deterministic)
+}
+func (m *DocListResp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DocListResp.Merge(m, src)
+}
+func (m *DocListResp) XXX_Size() int {
+	return xxx_messageInfo_DocListResp.Size(m)
+}
+func (m *DocListResp) XXX_DiscardUnknown() {
+	xxx_messageInfo_DocListResp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DocListResp proto.InternalMessageInfo
+
+func (m *DocListResp) GetStoreVer() int64 {
+	if m != nil {
+		return m.StoreVer
+	}
+	return 0
+}
+
+type isDocListResp_List interface {
+	isDocListResp_List()
+}
+
+type DocListResp_V1 struct {
+	V1 *DocListRespV1 `protobuf:"bytes,100,opt,name=v1,proto3,oneof"`
+}
+
+func (*DocListResp_V1) isDocListResp_List() {}
+
+func (m *DocListResp) GetList() isDocListResp_List {
+	if m != nil {
+		return m.List
+	}
+	return nil
+}
+
+func (m *DocListResp) GetV1() *DocListRespV1 {
+	if x, ok := m.GetList().(*DocListResp_V1); ok {
+		return x.V1
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*DocListResp) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*DocListResp_V1)(nil),
+	}
+}
+
+type DocListRespV1 struct {
+	Docs                 map[string]*DocVerList `protobuf:"bytes,1,rep,name=docs,proto3" json:"docs,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
+	XXX_unrecognized     []byte                 `json:"-"`
+	XXX_sizecache        int32                  `json:"-"`
+}
+
+func (m *DocListRespV1) Reset()         { *m = DocListRespV1{} }
+func (m *DocListRespV1) String() string { return proto.CompactTextString(m) }
+func (*DocListRespV1) ProtoMessage()    {}
+func (*DocListRespV1) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{6}
+}
+
+func (m *DocListRespV1) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DocListRespV1.Unmarshal(m, b)
+}
+func (m *DocListRespV1) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DocListRespV1.Marshal(b, m, deterministic)
+}
+func (m *DocListRespV1) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DocListRespV1.Merge(m, src)
+}
+func (m *DocListRespV1) XXX_Size() int {
+	return xxx_messageInfo_DocListRespV1.Size(m)
+}
+func (m *DocListRespV1) XXX_DiscardUnknown() {
+	xxx_messageInfo_DocListRespV1.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DocListRespV1 proto.InternalMessageInfo
+
+func (m *DocListRespV1) GetDocs() map[string]*DocVerList {
+	if m != nil {
+		return m.Docs
+	}
+	return nil
+}
+
+type DocDelReq struct {
+	StoreVer int64 `protobuf:"varint,1,opt,name=storeVer,proto3" json:"storeVer,omitempty"`
+	// Types that are valid to be assigned to List:
+	//	*DocDelReq_V1
+	List                 isDocDelReq_List `protobuf_oneof:"list"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
+}
+
+func (m *DocDelReq) Reset()         { *m = DocDelReq{} }
+func (m *DocDelReq) String() string { return proto.CompactTextString(m) }
+func (*DocDelReq) ProtoMessage()    {}
+func (*DocDelReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{7}
+}
+
+func (m *DocDelReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DocDelReq.Unmarshal(m, b)
+}
+func (m *DocDelReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DocDelReq.Marshal(b, m, deterministic)
+}
+func (m *DocDelReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DocDelReq.Merge(m, src)
+}
+func (m *DocDelReq) XXX_Size() int {
+	return xxx_messageInfo_DocDelReq.Size(m)
+}
+func (m *DocDelReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_DocDelReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DocDelReq proto.InternalMessageInfo
+
+func (m *DocDelReq) GetStoreVer() int64 {
+	if m != nil {
+		return m.StoreVer
+	}
+	return 0
+}
+
+type isDocDelReq_List interface {
+	isDocDelReq_List()
+}
+
+type DocDelReq_V1 struct {
+	V1 *DocDelReqV1 `protobuf:"bytes,100,opt,name=v1,proto3,oneof"`
+}
+
+func (*DocDelReq_V1) isDocDelReq_List() {}
+
+func (m *DocDelReq) GetList() isDocDelReq_List {
+	if m != nil {
+		return m.List
+	}
+	return nil
+}
+
+func (m *DocDelReq) GetV1() *DocDelReqV1 {
+	if x, ok := m.GetList().(*DocDelReq_V1); ok {
+		return x.V1
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*DocDelReq) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*DocDelReq_V1)(nil),
+	}
+}
+
+type DocDelReqV1 struct {
+	DocID                string   `protobuf:"bytes,1,opt,name=docID,proto3" json:"docID,omitempty"`
+	DocVer               string   `protobuf:"bytes,2,opt,name=docVer,proto3" json:"docVer,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DocDelReqV1) Reset()         { *m = DocDelReqV1{} }
+func (m *DocDelReqV1) String() string { return proto.CompactTextString(m) }
+func (*DocDelReqV1) ProtoMessage()    {}
+func (*DocDelReqV1) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{8}
+}
+
+func (m *DocDelReqV1) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DocDelReqV1.Unmarshal(m, b)
+}
+func (m *DocDelReqV1) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DocDelReqV1.Marshal(b, m, deterministic)
+}
+func (m *DocDelReqV1) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DocDelReqV1.Merge(m, src)
+}
+func (m *DocDelReqV1) XXX_Size() int {
+	return xxx_messageInfo_DocDelReqV1.Size(m)
+}
+func (m *DocDelReqV1) XXX_DiscardUnknown() {
+	xxx_messageInfo_DocDelReqV1.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DocDelReqV1 proto.InternalMessageInfo
+
+func (m *DocDelReqV1) GetDocID() string {
+	if m != nil {
+		return m.DocID
+	}
+	return ""
+}
+
+func (m *DocDelReqV1) GetDocVer() string {
+	if m != nil {
+		return m.DocVer
+	}
+	return ""
+}
+
+type DocDelResp struct {
+	StoreVer int64 `protobuf:"varint,1,opt,name=storeVer,proto3" json:"storeVer,omitempty"`
+	// Types that are valid to be assigned to List:
+	//	*DocDelResp_V1
+	List                 isDocDelResp_List `protobuf_oneof:"list"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
+}
+
+func (m *DocDelResp) Reset()         { *m = DocDelResp{} }
+func (m *DocDelResp) String() string { return proto.CompactTextString(m) }
+func (*DocDelResp) ProtoMessage()    {}
+func (*DocDelResp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{9}
+}
+
+func (m *DocDelResp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DocDelResp.Unmarshal(m, b)
+}
+func (m *DocDelResp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DocDelResp.Marshal(b, m, deterministic)
+}
+func (m *DocDelResp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DocDelResp.Merge(m, src)
+}
+func (m *DocDelResp) XXX_Size() int {
+	return xxx_messageInfo_DocDelResp.Size(m)
+}
+func (m *DocDelResp) XXX_DiscardUnknown() {
+	xxx_messageInfo_DocDelResp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DocDelResp proto.InternalMessageInfo
+
+func (m *DocDelResp) GetStoreVer() int64 {
+	if m != nil {
+		return m.StoreVer
+	}
+	return 0
+}
+
+type isDocDelResp_List interface {
+	isDocDelResp_List()
+}
+
+type DocDelResp_V1 struct {
+	V1 *DocDelRespV1 `protobuf:"bytes,100,opt,name=v1,proto3,oneof"`
+}
+
+func (*DocDelResp_V1) isDocDelResp_List() {}
+
+func (m *DocDelResp) GetList() isDocDelResp_List {
+	if m != nil {
+		return m.List
+	}
+	return nil
+}
+
+func (m *DocDelResp) GetV1() *DocDelRespV1 {
+	if x, ok := m.GetList().(*DocDelResp_V1); ok {
+		return x.V1
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*DocDelResp) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*DocDelResp_V1)(nil),
+	}
+}
+
+type DocDelRespV1 struct {
+	Docs                 map[string]*DocVerList `protobuf:"bytes,1,rep,name=docs,proto3" json:"docs,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
+	XXX_unrecognized     []byte                 `json:"-"`
+	XXX_sizecache        int32                  `json:"-"`
+}
+
+func (m *DocDelRespV1) Reset()         { *m = DocDelRespV1{} }
+func (m *DocDelRespV1) String() string { return proto.CompactTextString(m) }
+func (*DocDelRespV1) ProtoMessage()    {}
+func (*DocDelRespV1) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9d2790a4091b3173, []int{10}
+}
+
+func (m *DocDelRespV1) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DocDelRespV1.Unmarshal(m, b)
+}
+func (m *DocDelRespV1) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DocDelRespV1.Marshal(b, m, deterministic)
+}
+func (m *DocDelRespV1) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DocDelRespV1.Merge(m, src)
+}
+func (m *DocDelRespV1) XXX_Size() int {
+	return xxx_messageInfo_DocDelRespV1.Size(m)
+}
+func (m *DocDelRespV1) XXX_DiscardUnknown() {
+	xxx_messageInfo_DocDelRespV1.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DocDelRespV1 proto.InternalMessageInfo
+
+func (m *DocDelRespV1) GetDocs() map[string]*DocVerList {
+	if m != nil {
+		return m.Docs
+	}
+	return nil
+}
+
 func init() {
-	proto.RegisterType((*DocStoreInit)(nil), "proto.DocStoreInit")
-	proto.RegisterType((*DocStoreInitV1)(nil), "proto.DocStoreInitV1")
+	proto.RegisterType((*DocInit)(nil), "proto.DocInit")
+	proto.RegisterType((*DocInitV1)(nil), "proto.DocInitV1")
+	proto.RegisterType((*DocVerList)(nil), "proto.DocVerList")
+	proto.RegisterType((*DocListReq)(nil), "proto.DocListReq")
+	proto.RegisterType((*DocListReqV1)(nil), "proto.DocListReqV1")
+	proto.RegisterType((*DocListResp)(nil), "proto.DocListResp")
+	proto.RegisterType((*DocListRespV1)(nil), "proto.DocListRespV1")
+	proto.RegisterMapType((map[string]*DocVerList)(nil), "proto.DocListRespV1.DocsEntry")
+	proto.RegisterType((*DocDelReq)(nil), "proto.DocDelReq")
+	proto.RegisterType((*DocDelReqV1)(nil), "proto.DocDelReqV1")
+	proto.RegisterType((*DocDelResp)(nil), "proto.DocDelResp")
+	proto.RegisterType((*DocDelRespV1)(nil), "proto.DocDelRespV1")
+	proto.RegisterMapType((map[string]*DocVerList)(nil), "proto.DocDelRespV1.DocsEntry")
 }
 
 func init() { proto.RegisterFile("document.proto", fileDescriptor_9d2790a4091b3173) }
 
 var fileDescriptor_9d2790a4091b3173 = []byte{
-	// 217 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x90, 0x41, 0x4b, 0xc4, 0x30,
-	0x10, 0x85, 0x4d, 0x4b, 0x57, 0x76, 0x94, 0x3d, 0x04, 0x95, 0xe0, 0x69, 0xc9, 0xc5, 0x9e, 0x02,
-	0xad, 0xff, 0xa0, 0xf4, 0x60, 0xe9, 0x2d, 0x42, 0xf1, 0xda, 0x26, 0x41, 0xa4, 0xb6, 0x23, 0x49,
-	0x2c, 0xf4, 0x1f, 0xf8, 0xb3, 0xc5, 0x24, 0x82, 0x9e, 0x66, 0xde, 0xf7, 0x78, 0xf3, 0x60, 0xe0,
-	0xa4, 0x51, 0x7d, 0x2e, 0x66, 0xf5, 0xe2, 0xc3, 0xa2, 0x47, 0x5a, 0x84, 0x71, 0x0f, 0xb3, 0xd9,
-	0x5d, 0x44, 0xfc, 0x05, 0xae, 0x5b, 0x54, 0xcf, 0x1e, 0xad, 0xe9, 0xd6, 0x37, 0x4f, 0x19, 0x5c,
-	0x2e, 0xc6, 0x8f, 0x83, 0xb1, 0x8c, 0x9c, 0x49, 0x99, 0xcb, 0x5f, 0x49, 0x1f, 0x20, 0xdb, 0x2a,
-	0xa6, 0xcf, 0xa4, 0xbc, 0xaa, 0x6f, 0x63, 0x5a, 0xfc, 0x8d, 0x0e, 0xd5, 0xd3, 0x85, 0xcc, 0xb6,
-	0xaa, 0x29, 0x20, 0xd7, 0xa8, 0xf8, 0x04, 0xa7, 0xff, 0x36, 0xbd, 0x81, 0x42, 0xa3, 0xea, 0xda,
-	0x70, 0xf9, 0x28, 0xa3, 0xa0, 0x77, 0x70, 0xd0, 0xa8, 0x7e, 0x0a, 0xb3, 0x80, 0x93, 0xa2, 0x3c,
-	0xf0, 0xde, 0xec, 0x2c, 0x0f, 0x9d, 0x90, 0x3a, 0x7b, 0xb3, 0xcb, 0xe4, 0x34, 0x35, 0x70, 0x85,
-	0x8b, 0x70, 0xde, 0xe2, 0xfa, 0xea, 0xc6, 0x77, 0x9f, 0x56, 0x8d, 0x4a, 0x38, 0x3d, 0xc7, 0x44,
-	0x73, 0x6c, 0xd3, 0x1b, 0xdc, 0x17, 0x21, 0xd3, 0x21, 0xc0, 0xc7, 0xef, 0x00, 0x00, 0x00, 0xff,
-	0xff, 0x24, 0x7d, 0xe6, 0xae, 0x1d, 0x01, 0x00, 0x00,
+	// 419 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x54, 0x41, 0x8b, 0xd4, 0x30,
+	0x14, 0x36, 0xed, 0x74, 0x74, 0x5e, 0x55, 0xd6, 0xb8, 0x48, 0x19, 0x50, 0x4a, 0x58, 0x75, 0x4e,
+	0x85, 0xd6, 0x8b, 0xe8, 0x6d, 0xa8, 0xe0, 0xba, 0x1e, 0x24, 0xe0, 0x8a, 0x07, 0x0f, 0x6b, 0x12,
+	0x64, 0x98, 0x6e, 0x33, 0x36, 0xd9, 0x42, 0xff, 0x81, 0x17, 0xf1, 0x2f, 0x4b, 0x5f, 0x62, 0xa7,
+	0xeb, 0x8c, 0xbb, 0x78, 0xd8, 0x53, 0xf3, 0xde, 0xf7, 0xbe, 0xf7, 0xe5, 0x7b, 0x2f, 0x14, 0xee,
+	0x4b, 0x2d, 0x2e, 0xce, 0x55, 0x6d, 0xb3, 0x4d, 0xa3, 0xad, 0xa6, 0x11, 0x7e, 0xe6, 0xb0, 0x56,
+	0x9d, 0x71, 0x29, 0xf6, 0x01, 0x6e, 0x97, 0x5a, 0x1c, 0xd7, 0x2b, 0x4b, 0xe7, 0x70, 0xc7, 0x58,
+	0xdd, 0xa8, 0x53, 0xd5, 0x24, 0x24, 0x25, 0x8b, 0x90, 0x0f, 0x31, 0x65, 0x10, 0xb4, 0x79, 0x22,
+	0x53, 0xb2, 0x88, 0x8b, 0x03, 0x47, 0xcd, 0x3c, 0xef, 0x34, 0x7f, 0x7b, 0x8b, 0x07, 0x6d, 0xbe,
+	0x8c, 0x20, 0x94, 0x5a, 0xb0, 0x2f, 0x30, 0x1b, 0x10, 0x7a, 0x08, 0x91, 0xd4, 0xe2, 0xb8, 0xc4,
+	0x86, 0x33, 0xee, 0x02, 0xfa, 0x08, 0xa6, 0x52, 0x8b, 0x5e, 0x27, 0xc0, 0xb4, 0x8f, 0x28, 0xc3,
+	0xfc, 0x89, 0xea, 0x92, 0x10, 0x95, 0xc0, 0x2b, 0x9d, 0xa8, 0x8e, 0x7b, 0x84, 0xa5, 0x00, 0x25,
+	0x56, 0xbf, 0x5f, 0x19, 0x4b, 0x29, 0x4c, 0x5a, 0xd5, 0x98, 0x84, 0xa4, 0xe1, 0x62, 0xc6, 0xf1,
+	0xcc, 0x3e, 0x61, 0x45, 0x0f, 0x73, 0xf5, 0xfd, 0x4a, 0x57, 0x4f, 0x47, 0xae, 0x1e, 0x6e, 0x5d,
+	0x79, 0xea, 0x60, 0x6c, 0x0a, 0x93, 0x6a, 0x65, 0x2c, 0x3b, 0x82, 0xbb, 0x63, 0x74, 0xbf, 0x39,
+	0xf6, 0x19, 0xe2, 0xa1, 0xca, 0x6c, 0xae, 0xd4, 0x7f, 0x36, 0xd2, 0x3f, 0xfc, 0x5b, 0xdf, 0x6c,
+	0x76, 0x2e, 0xf0, 0x8b, 0xc0, 0xbd, 0x4b, 0x38, 0x2d, 0x60, 0x22, 0xb5, 0x70, 0xfe, 0xe3, 0xe2,
+	0xc9, 0xbe, 0x1e, 0x7d, 0x64, 0xde, 0xd4, 0xb6, 0xe9, 0x38, 0xd6, 0xce, 0xdf, 0xe1, 0x82, 0x5c,
+	0x8a, 0x1e, 0x40, 0xb8, 0x56, 0x9d, 0x77, 0xd0, 0x1f, 0xe9, 0x73, 0x88, 0xda, 0xb3, 0xea, 0x42,
+	0xe1, 0x6e, 0xe2, 0xe2, 0xc1, 0xb6, 0xa7, 0x1f, 0x3a, 0x77, 0xf8, 0xab, 0xe0, 0x25, 0x61, 0x1f,
+	0xb1, 0x57, 0xa9, 0xaa, 0xeb, 0x46, 0x7d, 0x34, 0xb2, 0x4a, 0xb7, 0x2d, 0x1d, 0x73, 0xc7, 0xe8,
+	0x6b, 0x9c, 0xe1, 0x1f, 0xf0, 0xff, 0x5e, 0x91, 0xdf, 0x3f, 0x92, 0xaf, 0x99, 0xff, 0x3f, 0xf6,
+	0xef, 0xa9, 0x3b, 0xb7, 0xfa, 0x49, 0xf0, 0x01, 0x0c, 0x30, 0xcd, 0x2f, 0x4d, 0xff, 0xf1, 0x9e,
+	0x0e, 0x37, 0x39, 0xfc, 0x65, 0x01, 0x4c, 0xe8, 0xf3, 0xcc, 0xd8, 0x46, 0xd7, 0xdf, 0xcc, 0x59,
+	0x65, 0xfd, 0x51, 0x6a, 0x91, 0x19, 0xb9, 0x76, 0xdc, 0x65, 0xaf, 0x87, 0x3f, 0x01, 0xf3, 0x83,
+	0x90, 0xaf, 0x53, 0x4c, 0xbe, 0xf8, 0x1d, 0x00, 0x00, 0xff, 0xff, 0xe2, 0x59, 0xcd, 0x21, 0x1b,
+	0x04, 0x00, 0x00,
 }

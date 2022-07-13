@@ -1,4 +1,4 @@
-package documentv1
+package common
 
 import (
 	"encoding/json"
@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"github.com/go-errors/errors"
-	"github.com/overnest/strongdoc-go-sdk/document/common"
 )
 
 //////////////////////////////////////////////////////////////////
@@ -17,7 +16,7 @@ import (
 
 // DocPlainHdrBodyV1 is the plaintext header for document.
 type DocPlainHdrBodyV1 struct {
-	common.DocFormatVer
+	DocFormatVer
 	KeyID   string
 	KeyType string
 	Nonce   []byte
@@ -39,7 +38,7 @@ func (hdr *DocPlainHdrBodyV1) Write(writer io.Writer) (n int, err error) {
 		return 0, err
 	}
 
-	size := common.DocHeaderLen(len(serial))
+	size := DocHeaderLen(len(serial))
 	n, err = size.Write(writer)
 	if err != nil {
 		return
@@ -59,7 +58,7 @@ func (hdr *DocPlainHdrBodyV1) Write(writer io.Writer) (n int, err error) {
 }
 
 func (hdr *DocPlainHdrBodyV1) Read(reader io.Reader) (err error) {
-	hdrLen, err := common.DocHeaderLenRead(reader)
+	hdrLen, err := DocHeaderLenRead(reader)
 	if err != nil {
 		return
 	}
@@ -70,7 +69,7 @@ func (hdr *DocPlainHdrBodyV1) Read(reader io.Reader) (err error) {
 		return
 	}
 
-	if common.DocHeaderLen(n) != hdrLen {
+	if DocHeaderLen(n) != hdrLen {
 		return fmt.Errorf("could not read entire plain text header")
 	}
 
@@ -93,7 +92,7 @@ func DocPlainHdrBodyV1Deserialize(data []byte) (*DocPlainHdrBodyV1, error) {
 
 // DocCipherHdrBodyV1 is the ciphertext header for document
 type DocCipherHdrBodyV1 struct {
-	common.DocFormatVer
+	DocFormatVer
 	DocName string
 }
 
@@ -111,7 +110,7 @@ func (hdr *DocCipherHdrBodyV1) Write(writer io.Writer) (n int, err error) {
 		return 0, err
 	}
 
-	size := common.DocHeaderLen(len(serial))
+	size := DocHeaderLen(len(serial))
 	n, err = size.Write(writer)
 	if err != nil {
 		return
@@ -131,7 +130,7 @@ func (hdr *DocCipherHdrBodyV1) Write(writer io.Writer) (n int, err error) {
 }
 
 func (hdr *DocCipherHdrBodyV1) Read(reader io.Reader) (err error) {
-	hdrLen, err := common.DocHeaderLenRead(reader)
+	hdrLen, err := DocHeaderLenRead(reader)
 	if err != nil {
 		return
 	}
@@ -142,7 +141,7 @@ func (hdr *DocCipherHdrBodyV1) Read(reader io.Reader) (err error) {
 		return
 	}
 
-	if common.DocHeaderLen(n) != hdrLen {
+	if DocHeaderLen(n) != hdrLen {
 		return fmt.Errorf("could not read entire cipher text header")
 	}
 

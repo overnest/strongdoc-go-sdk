@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	DOC_META_V1  = int64(1)
-	DOC_META_CUR = DOC_META_V1
+	DOC_STORE_V1  = int64(1)
+	DOC_STORE_CUR = DOC_STORE_V1
 
 	DOC_FORMAT_V1  = int64(1)
 	DOC_FORMAT_CUR = DOC_FORMAT_V1

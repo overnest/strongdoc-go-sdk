@@ -84,12 +84,12 @@ func UpdateDocumentV1(sdc client.StrongDocClient, docID string, docKey *apidef.K
 
 func createDocumentV1(sdc client.StrongDocClient, docName, docID string, docKey *apidef.Key) (docV1 *docWriterV1, err error) {
 	storeWriter, err := store.CreateStore(sdc, &proto.StoreInit{
-		Content: proto.StoreInit_DOCUMENT,
+		Content: proto.StoreContent_DOCUMENT,
 		Init: &proto.StoreInit_Doc{
-			Doc: &proto.DocStoreInit{
-				MetaVer: common.DOC_META_CUR,
-				Doc: &proto.DocStoreInit_V1{
-					V1: &proto.DocStoreInitV1{
+			Doc: &proto.DocInit{
+				StoreVer: common.DOC_FORMAT_CUR,
+				Doc: &proto.DocInit_V1{
+					V1: &proto.DocInitV1{
 						DocID:  docID,
 						DocVer: "",
 						DocKey: docKey.PKey,
@@ -109,8 +109,8 @@ func createDocumentV1(sdc client.StrongDocClient, docName, docID string, docKey 
 	}()
 
 	respInit := storeWriter.GetInit().GetDoc()
-	switch respInit.GetMetaVer() {
-	case common.DOC_META_V1:
+	switch respInit.GetStoreVer() {
+	case common.DOC_STORE_V1:
 		respInitV1 := respInit.GetV1()
 		if respInitV1 == nil {
 			return nil, fmt.Errorf("create document response is missing")
@@ -135,7 +135,7 @@ func createDocumentV1(sdc client.StrongDocClient, docName, docID string, docKey 
 			return nil, err
 		}
 
-		plainHdr := &DocPlainHdrBodyV1{
+		plainHdr := &common.DocPlainHdrBodyV1{
 			DocFormatVer: common.DocFormatVer{DocFormatVer: common.DOC_FORMAT_CUR},
 			KeyID:        key.PKey.KeyID,
 			KeyType:      key.SKey.Type.Name,
@@ -160,7 +160,7 @@ func createDocumentV1(sdc client.StrongDocClient, docName, docID string, docKey 
 			output:    storeWriter,
 		}
 
-		cipherHdr := &DocCipherHdrBodyV1{
+		cipherHdr := &common.DocCipherHdrBodyV1{
 			DocFormatVer: common.DocFormatVer{DocFormatVer: common.DOC_FORMAT_CUR},
 			DocName:      docName,
 		}
@@ -173,7 +173,7 @@ func createDocumentV1(sdc client.StrongDocClient, docName, docID string, docKey 
 
 		return docV1, nil
 	default:
-		return nil, fmt.Errorf("unsupported document meta version %v", respInit.GetMetaVer())
+		return nil, fmt.Errorf("unsupported document store version %v", respInit.GetStoreVer())
 	}
 }
 
@@ -241,12 +241,12 @@ func OpenDocumentV1(sdc client.StrongDocClient, docID string, docKey *apidef.Key
 
 func openDocumentV1(sdc client.StrongDocClient, docID, docVer string, docKey *apidef.Key) (docV1 *docReaderV1, err error) {
 	storeReader, err := store.OpenStore(sdc, &proto.StoreInit{
-		Content: proto.StoreInit_DOCUMENT,
+		Content: proto.StoreContent_DOCUMENT,
 		Init: &proto.StoreInit_Doc{
-			Doc: &proto.DocStoreInit{
-				MetaVer: common.DOC_META_CUR,
-				Doc: &proto.DocStoreInit_V1{
-					V1: &proto.DocStoreInitV1{
+			Doc: &proto.DocInit{
+				StoreVer: common.DOC_STORE_CUR,
+				Doc: &proto.DocInit_V1{
+					V1: &proto.DocInitV1{
 						DocID:  docID,
 						DocVer: docVer,
 						DocKey: nil,
@@ -266,14 +266,14 @@ func openDocumentV1(sdc client.StrongDocClient, docID, docVer string, docKey *ap
 	}()
 
 	respInit := storeReader.GetInit().GetDoc()
-	switch respInit.GetMetaVer() {
-	case common.DOC_META_V1:
+	switch respInit.GetStoreVer() {
+	case common.DOC_STORE_V1:
 		respInitV1 := respInit.GetV1()
 		if respInitV1 == nil {
 			return nil, fmt.Errorf("open document response is missing")
 		}
 
-		plainHdr := &DocPlainHdrBodyV1{}
+		plainHdr := &common.DocPlainHdrBodyV1{}
 		err = plainHdr.Read(storeReader)
 		if err != nil {
 			return nil, err
@@ -294,7 +294,7 @@ func openDocumentV1(sdc client.StrongDocClient, docID, docVer string, docKey *ap
 			reader:    storeReader,
 		}
 
-		cipherHdr := &DocCipherHdrBodyV1{}
+		cipherHdr := &common.DocCipherHdrBodyV1{}
 		err = cipherHdr.Read(docV1)
 		if err != nil {
 			docV1 = nil
@@ -304,7 +304,7 @@ func openDocumentV1(sdc client.StrongDocClient, docID, docVer string, docKey *ap
 		docV1.docName = cipherHdr.DocName
 		return docV1, nil
 	default:
-		return nil, fmt.Errorf("unsupported document type version %v", respInit.GetMetaVer())
+		return nil, fmt.Errorf("unsupported document store version %v", respInit.GetStoreVer())
 	}
 }
 

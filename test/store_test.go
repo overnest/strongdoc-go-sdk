@@ -32,7 +32,7 @@ func TestStore(t *testing.T) {
 	// Write to store
 	//
 	writer, err := store.CreateStore(sdc, &proto.StoreInit{
-		Content: proto.StoreInit_GENERIC,
+		Content: proto.StoreContent_GENERIC,
 		Init: &proto.StoreInit_Generic{
 			Generic: &proto.GenericStoreInit{
 				Filename: storeFileName,
@@ -70,7 +70,7 @@ func TestStore(t *testing.T) {
 	localFile, err = os.Open(localFileName)
 	assert.NoError(err)
 	reader, err := store.OpenStore(sdc, &proto.StoreInit{
-		Content: proto.StoreInit_GENERIC,
+		Content: proto.StoreContent_GENERIC,
 		Init: &proto.StoreInit_Generic{
 			Generic: &proto.GenericStoreInit{
 				Filename: storeFileName,
